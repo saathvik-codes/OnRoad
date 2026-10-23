@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS prices (     -- append-only: one row per read that ch
     PRIMARY KEY (variant_id, city, fetched_at)
 );
 CREATE INDEX IF NOT EXISTS idx_prices_latest ON prices(variant_id, city, fetched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_models_brand ON models(brand_slug, active);
+CREATE INDEX IF NOT EXISTS idx_variants_model ON variants(model_id, active);
+CREATE INDEX IF NOT EXISTS idx_dealers_brand_city ON dealers(brand_slug, active, city);
+CREATE INDEX IF NOT EXISTS idx_offers_brand_active ON offers(brand_slug, active, valid_until);
+CREATE INDEX IF NOT EXISTS idx_specs_variant ON specs(variant_id);
+CREATE INDEX IF NOT EXISTS idx_features_variant ON features(variant_id);
 CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT, brand_slug TEXT, model_name TEXT, title TEXT, amount_inr INTEGER,
     details TEXT, valid_until TEXT, city TEXT, source TEXT, source_url TEXT, fetched_at TEXT, active INTEGER DEFAULT 1,
