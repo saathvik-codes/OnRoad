@@ -46,6 +46,35 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
     return response
 
+_RESP_CACHE: dict[str, tuple[float, int, bytes, dict]] = {}
+_CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/api/models/", "/api/bands", "/api/cities",
+              "/api/meta", "/api/variant-specs", "/api/loan-rates", "/api/states", "/api/model-features")
+_CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "300"))
+
+
+@app.middleware("http")
+async def cache_public_reads(request: Request, call_next):
+    """Public catalogue reads are identical for everyone until the next data refresh, so keep them for a few minutes."""
+    import time as _time
+    from fastapi.responses import Response as _Resp
+    path = request.url.path
+    if request.method != "GET" or not path.startswith(_CACHEABLE) or _CACHE_TTL <= 0:
+        return await call_next(request)
+    key = str(request.url.path) + "?" + str(request.url.query)
+    hit = _RESP_CACHE.get(key)
+    if hit and hit[0] > _time.time():
+        return _Resp(content=hit[2], status_code=hit[1], headers=hit[3])
+    response = await call_next(request)
+    if response.status_code != 200:
+        return response
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "set-cookie")}
+    if len(_RESP_CACHE) > 2000:
+        _RESP_CACHE.clear()
+    _RESP_CACHE[key] = (_time.time() + _CACHE_TTL, 200, body, headers)
+    return _Resp(content=body, status_code=200, headers=headers)
+
+
 db.init()
 LOGOS = db.ROOT / "data" / "logos"
 COOKIE = "or_session"
@@ -577,33 +606,67 @@ import os as _os_img
 IMG_CACHE = (_os_img.environ.get("IMG_CACHE") and __import__("pathlib").Path(_os_img.environ["IMG_CACHE"])) or db.ROOT / "data" / "img_cache"
 
 
+def _img_file(u: str, w: int):
+    """Downscaled WebP of a known manufacturer image, cached on disk (path), or None if it can't be fetched."""
+    import hashlib, io
+    IMG_CACHE.mkdir(parents=True, exist_ok=True)
+    f = IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
+    if f.exists():
+        return f
+    from PIL import Image
+    import httpx as _httpx
+    r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
+                   timeout=30, follow_redirects=True)
+    r.raise_for_status()
+    im = Image.open(io.BytesIO(r.content))
+    im = im.convert("RGBA") if im.mode in ("P", "LA", "RGBA") or "transparency" in im.info else im.convert("RGB")
+    if im.width > w:
+        im = im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
+    tmp = f.with_suffix(".tmp")
+    im.save(tmp, "WEBP", quality=84, method=4)
+    tmp.replace(f)                                   # atomic: a half-written file is never served
+    return f
+
+
 @app.get("/api/img")
 def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
     """Serves a manufacturer image we already store (models / feature photos), downscaled to WebP and cached on disk.
     Avoids huge originals (1-2 MB PNGs) and hotlink / referrer blocks. Only URLs present in our DB are allowed."""
-    import hashlib, io
     from fastapi.responses import Response
     known = (one("SELECT 1 AS x FROM models WHERE image_url = ?", (u,)) or one("SELECT 1 AS x FROM variants WHERE image_url = ?", (u,))
              or one("SELECT 1 AS x FROM feature_images WHERE image_url = ?", (u,)))
     if not known:
         raise HTTPException(404, "Unknown image")
-    IMG_CACHE.mkdir(parents=True, exist_ok=True)
-    f = IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
-    if not f.exists():
-        from PIL import Image
-        import httpx as _httpx
-        try:
-            r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
-                           timeout=30, follow_redirects=True)
-            r.raise_for_status()
-            im = Image.open(io.BytesIO(r.content))
-            im = im.convert("RGBA") if im.mode in ("P", "LA", "RGBA") or "transparency" in im.info else im.convert("RGB")
-            if im.width > w:
-                im = im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
-            im.save(f, "WEBP", quality=84, method=4)
-        except Exception as e:
-            raise HTTPException(502, f"Image unavailable ({type(e).__name__})")
+    try:
+        f = _img_file(u, w)
+    except Exception as e:
+        raise HTTPException(502, f"Image unavailable ({type(e).__name__})")
     return Response(f.read_bytes(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
+
+
+def _warm_images() -> None:
+    """At startup, pre-render every model / variant photo at the sizes the site and app ask for, so the first visitor
+    gets the cached copy (~0.3 s) instead of a fetch from the manufacturer (3-6 s). Runs in the background."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    def run():
+        jobs = [(r["image_url"], w) for r in q("SELECT DISTINCT image_url FROM models WHERE active = 1 AND image_url LIKE 'http%'")
+                for w in (480, 800, 1200)]
+        jobs += [(r["image_url"], 1200) for r in q("""SELECT DISTINCT v.image_url FROM variants v JOIN models m ON m.id = v.model_id
+                                                       WHERE v.active = 1 AND m.active = 1 AND v.image_url LIKE 'http%'""")]
+        def one_job(j):
+            try:
+                _img_file(*j)
+            except Exception:
+                pass                                   # unreachable image: the endpoint retries on demand
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            list(ex.map(one_job, jobs))
+        logging.getLogger("onroad.img").info("image cache warmed: %d renditions", len(jobs))
+    threading.Thread(target=run, name="onroad-img-warm", daemon=True).start()
+
+
+if os.getenv("WARM_IMAGES", "1") == "1":
+    _warm_images()
 
 
 @app.get("/api/recommendations")
@@ -1271,6 +1334,7 @@ def _refresh_loop(hours: float) -> None:
             _t.sleep(60)                                  # let the server finish starting
             try:
                 ingest.run(None, city="Hyderabad")        # every brand, launch city: prices, offers, dealers, specs
+                _RESP_CACHE.clear()
                 for c in cities[k:k + 3]:                  # three more cities per cycle, round-robin
                     ingest.run(None, city=c)
                 k = (k + 3) % len(cities)
@@ -1278,6 +1342,8 @@ def _refresh_loop(hours: float) -> None:
                 fill_images.run()
                 from . import places
                 places.match_and_rate(300)
+                _RESP_CACHE.clear()
+                _warm_images()                             # render photos of anything new
             except Exception as e:                         # never kill the API because a site was down
                 logging.getLogger("onroad.refresh").warning("refresh failed: %s", e)
             _t.sleep(hours * 3600)

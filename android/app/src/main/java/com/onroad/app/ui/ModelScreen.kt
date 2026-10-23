@@ -165,7 +165,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: B
                 }
             }
             Tab.Specs -> item {
-                SpecsSection(model.brandName, variant?.name ?: "", specs, topSpecs) { u -> vm.prefs.img(u, 700) }
+                SpecsSection(model.brandName, variant?.name ?: "", specs, topSpecs) { u -> vm.prefs.img(u, 640) }
             }
             Tab.Safety -> if (model.crashTests.isEmpty()) item {
                 Text("No official Bharat NCAP or Global NCAP result on record for the ${model.name}.", color = Mute, modifier = Modifier.padding(20.dp))

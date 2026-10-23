@@ -133,7 +133,7 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { Pills(brands.take(12), brand) { brand = it } }
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(l.filter { brand == "all" || it.brandSlug == brand }, key = { it.id }) { o ->
-                    OfferCard(o, vm.prefs.img(o.modelImage, 400), Modifier.fillMaxWidth()) {
+                    OfferCard(o, vm.prefs.img(o.modelImage, 480), Modifier.fillMaxWidth()) {
                         o.sourceUrl?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
                 }
@@ -201,7 +201,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
                     Tile(Modifier.fillMaxWidth().clickable { onModel(x.id) }, pad = 14) {
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(vm.prefs.img(x.imageUrl, 400), x.name, contentScale = ContentScale.Fit, modifier = Modifier.width(110.dp).aspectRatio(16 / 10f))
+                                AsyncImage(vm.prefs.img(x.imageUrl, 480), x.name, contentScale = ContentScale.Fit, modifier = Modifier.width(110.dp).aspectRatio(16 / 10f))
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Chip(if (i == 0) "Best match · ${x.matchScore}%" else "${x.matchScore}% match", if (i == 0) Ignition else Electric)

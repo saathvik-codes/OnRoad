@@ -141,7 +141,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(s.offers.take(8).size) { i ->
                             val o = s.offers[i]
-                            OfferCard(o, vm.prefs.img(o.modelImage, 400), Modifier.width(300.dp)) { onOffers() }
+                            OfferCard(o, vm.prefs.img(o.modelImage, 480), Modifier.width(300.dp)) { onOffers() }
                         }
                     }
                     Spacer(Modifier.height(22.dp))

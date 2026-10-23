@@ -148,7 +148,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
             items(saved, key = { it.variantId + it.city }) { c ->
                 Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clickable { onModel(c.modelId) }, pad = 12) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(vm.prefs.img(c.imageUrl, 320), c.model, contentScale = ContentScale.Fit, modifier = Modifier.width(96.dp).aspectRatio(16 / 10f))
+                        AsyncImage(vm.prefs.img(c.imageUrl, 480), c.model, contentScale = ContentScale.Fit, modifier = Modifier.width(96.dp).aspectRatio(16 / 10f))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("${c.brand} ${c.model}", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
