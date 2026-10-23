@@ -28,7 +28,24 @@ from pydantic import BaseModel, Field
 
 from . import db, onroad_calc, ingest
 
-app = FastAPI(title="OnRoad API", docs_url="/api/docs", openapi_url="/api/openapi.json")
+ENABLE_DOCS = os.getenv("ENABLE_DOCS", "1") == "1"
+app = FastAPI(
+    title="OnRoad API", 
+    docs_url="/api/docs" if ENABLE_DOCS else None, 
+    openapi_url="/api/openapi.json" if ENABLE_DOCS else None,
+    redoc_url=None
+)
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
+    return response
+
 db.init()
 LOGOS = db.ROOT / "data" / "logos"
 COOKIE = "or_session"
