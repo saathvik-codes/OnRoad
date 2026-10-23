@@ -36,7 +36,7 @@ export function SiteNav() {
   if (path.startsWith("/lab")) return null;
   return (
     <header className={cn("fixed inset-x-0 top-0 z-50 transition", scrolled ? "glass" : "bg-transparent")}>
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-5 lg:gap-6">
         <Link href="/" aria-label="onroad home"><Logo /></Link>
         <nav className="hidden items-center gap-1 lg:flex">
           {LINKS.map((l) => (
@@ -45,16 +45,16 @@ export function SiteNav() {
           ))}
         </nav>
         <SearchBox className="ml-auto hidden w-56 md:block xl:w-72" />
-        <CityPicker className="ml-auto md:ml-0" />
-        <ThemeToggle />
-        <div className="flex items-center gap-2">
+        <CityPicker className="ml-auto min-w-0 md:ml-0" />
+        <span className="hidden sm:block"><ThemeToggle /></span>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {me ? (
             <Link href={me.role === "dealer" ? "/dealer" : me.role === "admin" ? "/admin" : "/account"}
-              className="rounded-full border border-line bg-panel px-4 py-1.5 text-sm text-ink hover:bg-panel-soft font-medium">
+              className="whitespace-nowrap rounded-full border border-line bg-panel px-3 py-1.5 text-sm font-medium text-ink hover:bg-panel-soft sm:px-4">
               {me.role === "dealer" ? "Dealer desk" : me.role === "admin" ? "Admin" : "My garage"}
             </Link>
           ) : (
-            <Link href="/login" className="rounded-full bg-accent text-white px-4 py-1.5 text-sm font-medium hover:brightness-110 shadow-sm">Log in</Link>
+            <Link href="/login" className="whitespace-nowrap rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:brightness-110 sm:px-4">Log in</Link>
           )}
           <button className="rounded-full p-2 text-ink lg:hidden" aria-label="Menu" onClick={() => setOpen(!open)}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -66,6 +66,7 @@ export function SiteNav() {
           <SearchBox className="mb-3" onDone={() => setOpen(false)} />
           {LINKS.map((l) => <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="block py-2 text-ink font-medium hover:text-accent transition">{l.label}</Link>)}
           <Link href="/calculator" onClick={() => setOpen(false)} className="mt-2 flex items-center gap-2 text-accent font-semibold"><Calculator className="h-4 w-4" /> Check a dealer quote</Link>
+          <div className="mt-3 flex items-center justify-between border-t border-line pt-3 sm:hidden"><span className="text-sm text-mute">Appearance</span><ThemeToggle /></div>
         </div>
       )}
     </header>

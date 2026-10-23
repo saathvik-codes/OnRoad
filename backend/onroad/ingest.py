@@ -208,8 +208,14 @@ def refresh_brand(a, city: str) -> dict:
 
             def vid_for(x):
                 mid = known_models.get(model_key(a.brand, x.model)) or f"{slug}/{model_key(a.brand, x.model)}"
-                return (vid_of.get((mid, x.variant.lower(), (x.fuel or "").lower(), (x.transmission or "").lower()))
-                        or vid_of.get((mid, x.variant.lower(), "", "")))
+                fu, tr = (x.fuel or "").lower(), (x.transmission or "").lower()
+                hit = vid_of.get((mid, x.variant.lower(), fu, tr)) or vid_of.get((mid, x.variant.lower(), "", ""))
+                if hit:
+                    return hit
+                # price name = spec name + edition suffix (e.g. "PURE PAMT" -> "PURE PAMT Standard"): accept only one match
+                pre = x.variant.lower() + " "
+                c = {v for (m_, n, f_, t_), v in vid_of.items() if m_ == mid and n.startswith(pre) and f_ == fu and t_ == tr}
+                return c.pop() if len(c) == 1 else None
             n_s = n_f = 0
             for x in specs:
                 vid = vid_for(x)

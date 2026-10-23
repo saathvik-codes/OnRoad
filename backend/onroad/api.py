@@ -976,6 +976,23 @@ def dealer_offer(body: DealerOfferIn, acc: dict = Depends(role("dealer"))):
     return {"ok": True}
 
 
+@app.get("/api/dealers/near")
+def dealers_near(lat: float, lng: float, brand: str | None = None, vehicle_type: str | None = None, limit: int = Query(30, le=100)):
+    """Nearest official showrooms to the user's location (any brand, or one brand), with distance in km."""
+    cond, params = ["d.active = 1", "d.lat IS NOT NULL", "d.lng IS NOT NULL",
+                    "d.lat BETWEEN ? AND ?", "d.lng BETWEEN ? AND ?"], [lat - 3, lat + 3, lng - 3, lng + 3]
+    if brand:
+        cond.append("d.brand_slug = ?"); params.append(brand)
+    if vehicle_type:
+        cond.append("b.vehicle_type = ?"); params.append(vehicle_type)
+    rows = q(f"""SELECT d.id, d.brand_slug, b.name AS brand_name, d.name, d.address, d.city, d.state, d.pincode, d.phone, d.lat, d.lng, d.kind
+                 FROM dealers d JOIN brands b ON b.slug = d.brand_slug WHERE {' AND '.join(cond)}""", tuple(params))
+    for r in rows:
+        r["distance_km"] = round(_km(lat, lng, r["lat"], r["lng"]), 1)
+    rows.sort(key=lambda r: r["distance_km"])
+    return rows[:limit]
+
+
 @app.get("/api/dealers/search")
 def dealer_search(brand: str, city: str | None = None, text: str = ""):
     text_pattern = f"%{(text or '').strip().lower()}%"

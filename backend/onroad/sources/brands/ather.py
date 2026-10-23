@@ -89,6 +89,13 @@ class AtherAdapter(BrandAdapter):
             raise NotSupported(f"Ather publishes no price rows for {city!r}" + (f" (blocked: {self._blocked})" if self._blocked else ""))
         return out
 
+
+    def specs(self):
+        """The model page's schema.org Product JSON-LD additionalProperty list is Ather Energy's spec sheet for the model
+        (displacement, power, torque, brakes, tank ...); it is attached to each priced variant of that model."""
+        from ._spec_kit import model_sheet_specs
+        return model_sheet_specs(self, "Ather Energy")
+
     def dealers(self, city: str = "Hyderabad"):
         raise NotSupported("Ather dealer locator not read by this adapter")
 

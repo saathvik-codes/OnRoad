@@ -86,5 +86,8 @@ class HarleyDavidsonAdapter(BrandAdapter):
     def offers(self, city: str = "Hyderabad"):
         raise NotSupported("offers not read by this adapter")
 
+    def specs(self):
+        raise NotSupported('harley-davidson.com/in model pages (checked 2026-10-23: x-440, x-440-t) carry no spec table or schema.org spec sheet in the server-rendered HTML')
+
 
 ADAPTER = HarleyDavidsonAdapter()

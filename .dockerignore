@@ -50,3 +50,9 @@ scripts/
 data/outreach_drafts.csv
 data/rebuild.json
 data/image_credits.md
+
+# live DB with user data stays local; the image ships data/seed.db
+data/onroad.db
+data/onroad.db-*
+data/backup_*
+data/img_cache

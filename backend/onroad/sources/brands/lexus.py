@@ -94,6 +94,45 @@ class LexusAdapter(BrandAdapter):
                                    model_url=m["url"], image_url=m["image"]))
         return out
 
+
+    def specs(self):
+        """Model page (lexusindia.co.in/models/<model>/) grade table: header row of grade names ('Exquisite',
+        'Overtrail', 'Luxury', 'F Sport'), rows Powertrain / Drivetrain / ... A priced variant ('NX 350h Exquisite')
+        takes the column of the one grade its name contains."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, apply_tables, grade_tokens, html_tables
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+        with Polite() as h:
+            for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+                try:
+                    soup = BeautifulSoup(h.get(url).text, "html.parser")
+                except Exception:
+                    continue
+                tables = []
+                for t in soup.find_all("table"):
+                    for pt in html_tables([t], url):
+                        if not pt.cols or not all(pt.cols):
+                            first = t.find("tr")
+                            cells = [clean(c.get_text(" ")) for c in first.find_all(["td", "th"])] if first else []
+                            if cells and not cells[0] and len(cells) - 1 == len(pt.rows[0][2] if pt.rows else []):
+                                pt.cols = cells[1:]
+                        tables.append(pt)
+                vocab = {c for t in tables for c in t.cols if c}
+                for v in (x for x in priced if x.model_url == url):
+                    g = grade_tokens(v.variant, vocab)
+                    if len(g) != 1:
+                        continue
+                    sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                    grade = next(iter(g))
+                    apply_tables(sink, tables, col_ok=lambda c, grade=grade: c == grade)
+                    s_, f_ = sink.out()
+                    specs += s_
+                    feats += f_
+        if not specs and not feats:
+            raise NotSupported("lexusindia.co.in model pages carry no grade table for the priced grades")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         with Polite() as p:
             page = p.text(DEALER_URL)

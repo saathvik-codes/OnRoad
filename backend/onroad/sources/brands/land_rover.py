@@ -205,5 +205,8 @@ class LandRoverAdapter(BrandAdapter):
                                f"redirects to {r.url} (status {r.status_code})")
         raise NotSupported(f"Land Rover offers page now exists at {r.url}; parser not implemented - re-verify")
 
+    def specs(self):
+        raise NotSupported('landrover.in / rangerover.com serve no server-rendered spec tables (checked 2026-10-23: /defender/index.html has none, spec URLs 404); prices come from a PDF price list')
+
 
 ADAPTER = LandRoverAdapter()

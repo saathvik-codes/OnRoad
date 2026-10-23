@@ -80,8 +80,8 @@ export function CityPicker({ className, onDone }: { className?: string; onDone?:
   return (
     <div ref={box} className={cn("relative", className)}>
       <button onClick={() => setOpen(!open)} aria-label="Choose city"
-        className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-panel-soft px-3.5 text-sm text-ink hover:border-line/80 font-medium cursor-pointer shadow-xs">
-        <MapPin className="h-4 w-4 text-accent" /><span className="max-w-[110px] truncate">{city}</span>
+        className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-panel-soft px-3 text-sm sm:px-3.5 text-ink hover:border-line/80 font-medium cursor-pointer shadow-xs">
+        <MapPin className="h-4 w-4 text-accent" /><span className="max-w-[84px] truncate sm:max-w-[110px]">{city}</span>
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-[320px] overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl backdrop-blur-xl">

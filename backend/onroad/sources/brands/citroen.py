@@ -203,7 +203,7 @@ class CitroenAdapter(BrandAdapter):
         if vm and vm.group(2).lower() in MONTHS:
             valid = dt.date(int(vm.group(3)), MONTHS[vm.group(2).lower()], int(vm.group(1))).isoformat()
         cm = re.search(r"\*(Offer valid on limited stock.*?Benefits may vary basis model & variants\.)", t)
-        cond = re.sub(r"\s*\|\s*", " ", re.sub(r"(\d)\s*\|\s*(st|nd|rd|th)", r"", cm.group(1))) if cm else None
+        cond = re.sub(r"\s*\|\s*", " ", re.sub(r"(\d)\s*\|\s*(st|nd|rd|th)", r"\1\2", cm.group(1))) if cm else None
         out = []
         for m in re.finditer(r"Citro[eë]n ([^|]{2,30}?) \| (Additional benefits of up to ₹\s*([\d.,]+)\s*(Lakh)?\*?)", t):
             n = float(m.group(3).replace(",", ""))

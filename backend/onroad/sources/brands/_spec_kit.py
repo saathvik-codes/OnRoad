@@ -537,3 +537,98 @@ def feature_key_2w(text: str) -> str:
         return "front_disc"
     k = feature_key(t)
     return k if k in FEATURE_KEYS and k not in ("rear_disc_brakes",) else "other"
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# schema.org spec sheets (Product / Vehicle JSON-LD additionalProperty = PropertyValue list)
+
+_SHEET_KEYS = {"displacement": ("Engine", "displacement"), "maximum power": ("Engine", "max_power"),
+               "max power": ("Engine", "max_power"), "maximum torque": ("Engine", "max_torque"),
+               "max torque": ("Engine", "max_torque"), "engine type": ("Engine", "engine_type"),
+               "wheelbase": ("Dimensions", "wheelbase"), "fuel capacity": ("Capacity", "fuel_tank"),
+               "fuel tank capacity": ("Capacity", "fuel_tank"), "brakes front": ("Chassis", "front_brakes"),
+               "brakes rear": ("Chassis", "rear_brakes"), "front brake": ("Chassis", "front_brakes"),
+               "rear brake": ("Chassis", "rear_brakes"), "front tyre": ("Chassis", "tyre_size"),
+               "rear tyre": ("Chassis", "tyre_size"), "kerb weight": ("Dimensions", "kerb_weight"),
+               "seat height": ("Dimensions", "seat_height"), "ground clearance": ("Dimensions", "ground_clearance"),
+               "transmission": ("Performance", "gearbox")}
+
+
+def jsonld_property_sheets(page: str) -> list[list[dict]]:
+    """additionalProperty lists of every schema.org Product / Vehicle / Motorcycle JSON-LD block on a page (blocks with
+    trailing junk are still read up to the end of their first JSON value)."""
+    import json
+    out = []
+    for block in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', page, re.S | re.I):
+        try:
+            d, _ = json.JSONDecoder(strict=False).raw_decode(block.strip())
+        except ValueError:
+            continue
+        items = d if isinstance(d, list) else (d.get("@graph") or [d]) if isinstance(d, dict) else []
+        for x in items:
+            if isinstance(x, dict) and isinstance(x.get("additionalProperty"), list) and x["additionalProperty"]:
+                out.append(x["additionalProperty"])
+    return out
+
+
+_TRIM_SENSITIVE = {"front_brakes", "rear_brakes", "tyre_size", "kerb_weight"}
+
+
+def apply_property_sheet(sink: "SpecSink", props: list[dict], src: str, shared: bool = False) -> None:
+    """PropertyValue rows -> specs (known names / spec keys only; owner-reported figures are never used) and ABS / CBS
+    rows -> two-wheeler equipment. shared=True: the sheet is the model's and is being attached to one of several
+    priced variants, so rows that commonly differ between trims (brakes, ABS/CBS, tyres, kerb weight) are left out."""
+    for pv in props:
+        if not isinstance(pv, dict):
+            continue
+        name = norm_space(str(pv.get("name") or ""))
+        val = norm_space(str(pv.get("value") or ""))
+        unit = norm_space(str(pv.get("unitText") or ""))
+        if not name or not val or re.search(r"owner|reported|claimed by user", name, re.I):
+            continue
+        if unit and not val.lower().endswith(unit.lower()):
+            val = f"{val} {unit}"
+        if re.fullmatch(r"(?i)abs|cbs|braking system", name):
+            if shared:
+                continue
+            text = feature_label(name, val)
+            sink.feature(text, "✓", src, key=feature_key_2w(text))
+            continue
+        gk = _SHEET_KEYS.get(name.lower()) or spec_key("", name)
+        if gk and not (shared and gk[1] in _TRIM_SENSITIVE):
+            sink.spec(gk[0], gk[1], name, val, src, check=False)
+
+
+def model_sheet_specs(adapter, what: str):
+    """specs() for a brand whose model pages carry ONE schema.org spec sheet (JSON-LD additionalProperty): fetch each
+    priced model's page through the adapter's robots-aware Site (`adapter.s`), and attach the sheet to every priced
+    variant of that model. Pages with no sheet or several different sheets are skipped (no guessing which applies)."""
+    import json
+    from ..base import NotSupported
+    priced = adapter.prices("Hyderabad")
+    specs, feats = [], []
+    for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+        try:
+            r = adapter.s.get(url, ok=(200, 404))
+        except NotSupported:
+            raise
+        except Exception:
+            continue
+        if r.status_code != 200:
+            continue
+        sheets = {json.dumps(p, sort_keys=True): p for p in jsonld_property_sheets(r.text)}
+        if len(sheets) != 1:
+            continue
+        props = next(iter(sheets.values()))
+        mine = [x for x in priced if x.model_url == url]
+        if len({x.model for x in mine}) != 1:
+            continue                    # one page shared by several models: the sheet's model is not known
+        for v in mine:
+            sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+            apply_property_sheet(sink, props, url, shared=len(mine) > 1)
+            s_, f_ = sink.out()
+            specs += s_
+            feats += f_
+    if not specs and not feats:
+        raise NotSupported(f"{what} model pages carry no single schema.org spec sheet")
+    return specs, feats

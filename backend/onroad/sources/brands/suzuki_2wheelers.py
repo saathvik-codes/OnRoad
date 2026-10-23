@@ -118,6 +118,13 @@ class SuzukiTwoWheelersAdapter(BrandAdapter):
             raise NotSupported(f"Suzuki publishes no prices for {city!r}")
         return out
 
+
+    def specs(self):
+        """The model page's schema.org Product JSON-LD additionalProperty list is Suzuki Motorcycle India's spec sheet for the model
+        (displacement, power, torque, brakes, tank ...); it is attached to each priced variant of that model."""
+        from ._spec_kit import model_sheet_specs
+        return model_sheet_specs(self, "Suzuki Motorcycle India")
+
     def dealers(self, city: str = "Hyderabad"):
         raise NotSupported("Suzuki find-dealer form is posted by a script whose endpoint is not exposed (plain POST -> 405)")
 

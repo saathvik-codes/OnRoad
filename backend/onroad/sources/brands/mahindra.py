@@ -236,7 +236,8 @@ class MahindraAdapter(BrandAdapter):
                         continue                 # some "specifications" links point at a brochure PDF that 404s
                     if "html" not in r.headers.get("content-type", ""):
                         continue
-                    for sec, lab, val, kind in _mahindra_spec_rows(r.text):
+                    rows = _mahindra_spec_rows(r.text) or _mahindra_table_rows(r.text, c["name"], fuel, trans)
+                    for sec, lab, val, kind in rows:
                         sink.row(sec, lab, val, url, kind)
                     s, f = sink.out()
                     specs += s
@@ -273,6 +274,80 @@ def _mahindra_spec_rows(text: str) -> list[tuple[str, str, str, str]]:
                 if value and not (kind == "spec" and value == "✓"):
                     # section ids ("engineAndTransmission") would mis-key every row of the section, so none is passed
                     out.append(("", clean(label), value, kind))
+    return out
+
+
+_FUELS = ("diesel", "petrol", "cng", "electric")
+_TRANS = {"MT": "Manual", "MANUAL": "Manual", "AT": "Automatic", "AUTOMATIC": "Automatic", "AMT": "Automatic"}
+_DRIVE = {"RWD": "2", "2WD": "2", "4X2": "2", "FWD": "2", "4WD": "4", "4X4": "4", "AWD": "4"}
+
+
+def _grid(table) -> list[tuple[str, list[str]]]:
+    """Rows of a comparison table as (label, one value per leaf column), colspans repeated across the leaves."""
+    out = []
+    for tr in table.find_all("tr"):
+        cells = tr.find_all(["td", "th"])
+        if len(cells) < 2:
+            continue                                   # section heading row
+        vals = []
+        for c in cells[1:]:
+            vals += [clean(c.get_text(" ", strip=True))] * int(c.get("colspan") or 1)
+        out.append((clean(cells[0].get_text(" ", strip=True)), vals))
+    return out
+
+
+def _leaves(rows, tokens: set[str], fuel: str, trans: str, drive: str, ids: set[str]) -> set[int]:
+    width = max((len(v) for _, v in rows), default=0)
+    cand = set(range(width))
+    for lab, vals in rows:
+        up = [v.upper() for v in vals]
+        fuel_row = not lab or any(w in lab.lower() for w in ("engine", "fuel"))
+        idx = range(len(vals))
+        if ids and any(v in ids for v in vals):
+            cand &= {i for i in idx if vals[i] in ids}
+        elif fuel_row and fuel and any(f in v.lower() for v in vals for f in _FUELS):
+            # a column with no fuel word (e.g. an engine code) is "unknown", not excluded
+            cand &= {i for i in idx if fuel.lower() in vals[i].lower() or not any(f in vals[i].lower() for f in _FUELS)}
+        elif up and all(v in _TRANS for v in up) and trans:
+            cand &= {i for i in idx if _TRANS[up[i]] == trans}
+        elif up and all(v in _DRIVE for v in up):
+            cand &= {i for i in idx if _DRIVE[up[i]] == drive}
+        elif up and all(re.fullmatch(r"[A-Z0-9+]{2,6}", v) for v in up) and any(v in tokens for v in up):
+            cand &= {i for i in idx if up[i] in tokens}
+    return cand
+
+
+def _mahindra_table_rows(text: str, name: str, fuel: str, trans: str) -> list[tuple[str, str, str, str]]:
+    """Variant pages that show one model-wide comparison table (columns per engine / drive / gearbox / trim, e.g.
+    Thar OG, Thar Roxx). The variant's column is found from its fuel, gearbox, drive and trim code; a row is kept
+    only when every column that could be this variant agrees on the value, so nothing is guessed."""
+    from bs4 import BeautifulSoup
+    tables = [_grid(t) for t in BeautifulSoup(text, "html.parser").select(".spec-section table")]
+    tokens = set(name.upper().replace("-", " ").split())
+    drive = "4" if tokens & {"4WD", "4X4", "AWD"} else "2"
+    ids: set[str] = set()
+    for rows in tables:                                # pass 1: tables that pin the variant to one column name it
+        c = _leaves(rows, tokens, fuel, trans, drive, set())
+        if len(c) == 1:
+            i = c.pop()
+            head = rows[0][1]                          # the table's column header names this variant's engine / trim
+            if i < len(head) and len(set(head)) > 1:
+                ids.add(head[i])
+    out, seen = [], set()
+    for rows in tables:
+        c = _leaves(rows, tokens, fuel, trans, drive, ids)
+        if not c:
+            continue
+        for lab, vals in rows:
+            got = {vals[i] for i in c if i < len(vals)}
+            if len(got) != 1 or not lab or lab in seen:
+                continue
+            v = got.pop()
+            if v in ("", "-", "NA", "N/A", "✗", "✕", "×", "No"):
+                continue
+            seen.add(lab)
+            out.append(("", lab, "✓" if v in ("✓", "✔", "Yes", "Standard") else v,
+                        "feature" if v in ("✓", "✔", "Yes", "Standard") else "spec"))
     return out
 
 

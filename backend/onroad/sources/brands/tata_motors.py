@@ -372,6 +372,7 @@ class TataMotorsAdapter(BrandAdapter):
                     names_seen[name] = names_seen.get(name, 0) + 1
                     if names_seen[name] > 1:          # two cards with the same title: keep the API label to tell them apart
                         name = clean((x.get("variantLabel") or base).rsplit(",", 1)[0])
+                    self.__dict__.setdefault("_card_names", {})[vid] = (name, _transmission(f"{base} {name}", m["line"], opts))
                     out.append(Variant(
                         model=m["name"], variant=name, fuel=fuel, transmission=_transmission(f"{base} {name}", m["line"], opts),
                         ex_showroom_inr=price, city=label_city, source_url=m["price_page"],
@@ -466,19 +467,26 @@ class TataMotorsAdapter(BrandAdapter):
                 opts = self._transmission_options(h, m)
                 # price-card variants of this model: (card name, fuel, transmission) keyed by the card's id base
                 cards = {}
+                labels = {norm(r.get("variantLabel", "").rpartition(",")[0]): r.get("variantLabel", "") for r in rows}
+                seen_nm: dict[str, int] = {}
                 for vid, t5, t6 in m["cards"]:
                     base = vid.split("_", 1)[0]
                     nm = clean(f"{t5} {t6}")
-                    cards.setdefault(norm(base), (nm, _transmission(f"{base} {nm}", m["line"], opts)))
+                    seen_nm[nm] = seen_nm.get(nm, 0) + 1
+                    if seen_nm[nm] > 1:          # same renaming rule as prices(): repeated card titles use the API label
+                        nm = clean((labels.get(norm(base)) or base).rsplit(",", 1)[0])
+                        if t6 and not nm.lower().endswith(t6.lower()):
+                            nm = clean(f"{nm} {t6}")       # the price API's label carries the edition ("Standard")
+                    # same name the price read gave this card (it renames repeated card titles), else the card title
+                    hit = self.__dict__.get("_card_names", {}).get(vid) or (nm, _transmission(f"{base} {nm}", m["line"], opts))
+                    if hit not in cards.setdefault(norm(base), []):
+                        cards[norm(base)].append(hit)        # one spec row can serve several cards (Standard / Dark editions)
                 for r in rows:
                     label = (r.get("variantLabel") or "")
                     vname, _, fuel_s = label.rpartition(",")
                     fuel = _fuel(fuel_s, m["line"])
-                    hit = cards.get(norm(vname))
-                    if not hit:
-                        continue
-                    name, trans = hit
-                    for g in r.get("productSpecifications") or []:
+                    for name, trans in cards.get(norm(vname), []):
+                      for g in r.get("productSpecifications") or []:
                         grp = g.get("specTypeTitle") or ""
                         if grp.lower() == "price":
                             continue
@@ -487,7 +495,7 @@ class TataMotorsAdapter(BrandAdapter):
                                 specs.append(Spec(m["name"], name, fuel, trans, grp,
                                                   re.sub(r"[^a-z0-9]+", "_", (s.get("specLabel") or "").lower()).strip("_"),
                                                   s.get("specLabel") or "", clean(s["specValue"]), src))
-                    for g in r.get("productFeatures") or []:
+                      for g in r.get("productFeatures") or []:
                         for f in g.get("featureList") or []:
                             val = clean(f.get("featureValue"))
                             if not val or val.lower() in ("no", "na", "-"):

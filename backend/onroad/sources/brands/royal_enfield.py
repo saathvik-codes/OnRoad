@@ -35,6 +35,14 @@ from ._geo import geo
 
 BASE = "https://www.royalenfield.com"
 PRICING_PAGE = "/in/en/motorcycles/dealership-pricing/"
+DEALERS = "https://dealers.royalenfield.com"
+_CITY_ALIASES = {"bengaluru": ["Bengaluru", "Bangalore"], "gurugram": ["Gurugram", "Gurgaon"], "mumbai": ["Mumbai", "Navi Mumbai", "Thane"],
+                 "delhi": ["Delhi", "New Delhi"], "new delhi": ["New Delhi", "Delhi"], "kochi": ["Kochi", "Cochin", "Ernakulam"],
+                 "thiruvananthapuram": ["Thiruvananthapuram", "Trivandrum"], "vadodara": ["Vadodara", "Baroda"], "mysuru": ["Mysuru", "Mysore"]}
+
+
+def _slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 API = "https://api.royalenfield.com/aem-content/master-data/motorcycle-prices"
 SLUG = {"supermeteor650": "super-meteor-650", "hunter350": "hunter-350", "classic350": "classic-350", "meteor": "meteor",
         "scram411": "scram411", "interceptor": "interceptor", "continentalgt": "continental-gt", "himalayan": "himalayan",
@@ -132,8 +140,51 @@ class RoyalEnfieldAdapter(BrandAdapter):
                                    image_url=self._image(k)))
         return out
 
+
+    def specs(self):
+        """Model page /in/en/motorcycles/<model>/ carries a schema.org Product JSON-LD whose additionalProperty list is
+        Royal Enfield's key spec sheet (Displacement 648 cc, Maximum Power, Fuel Capacity ...). It is one sheet per
+        model, attached to each priced variant (colourway) of the model; trim-sensitive rows (brakes, ABS, tyres) are
+        kept only when the model has a single priced variant."""
+        from ._spec_kit import model_sheet_specs
+        return model_sheet_specs(self, "royalenfield.com")
+
     def dealers(self, city: str = "Hyderabad"):
-        raise NotSupported("Royal Enfield locate-us page loads its dealers-around-me script dynamically; not read")
+        """dealers.royalenfield.com (Royal Enfield's own locator) lists every outlet in its sitemap as
+        /<state>/<city>/<area>-<name>-<dealer id>; each page carries the outlet's record ("info": name, type, address,
+        pincode, phone, lat/long). Only the pages for `city` are read."""
+        return self._dealers({_slug(c) for c in _CITY_ALIASES.get(city.lower(), [city])})
+
+    def all_dealers(self):
+        """Every outlet in India (weekly sweep, onroad.dealer_sweep), so 'nearest showroom' works outside the big cities."""
+        return self._dealers(None)
+
+    def _dealers(self, want: set[str] | None):
+        from ..base import Dealer
+        s = self.s
+        urls = [u for u in re.findall(r"<loc>(https://dealers\.royalenfield\.com/[^<]+)</loc>", s.text(DEALERS + "/sitemap.xml"))
+                if len(u.split("/")) >= 6 and (want is None or u.split("/")[4] in want)]
+        out = []
+        for u in urls:
+            try:
+                page = s.text(u)
+            except Exception:
+                continue
+            i = page.find('"info":{"dealerId"')
+            if i < 0:
+                continue
+            try:
+                d = json.JSONDecoder().raw_decode(page, i + 7)[0]
+            except ValueError:
+                continue
+            kind = (d.get("type") or "").lower()
+            out.append(Dealer(
+                name=f"{d.get('name', '').strip()}, {d.get('area', '').strip()}".strip(", "), address=_html.unescape(d.get("address") or ""),
+                city=d.get("city") or city, state=d.get("state") or "", pincode=d.get("pincode") or None,
+                phone=d.get("phoneNumber") or None, email=d.get("email") or None,
+                lat=float(d["latitude"]) if d.get("latitude") else None, lng=float(d["longitude"]) if d.get("longitude") else None,
+                kind="service" if kind == "service" else ("sales+service" if "service" in kind else "sales"), source_url=u))
+        return out
 
     def offers(self, city: str = "Hyderabad"):
         raise NotSupported("offers not read by this adapter")

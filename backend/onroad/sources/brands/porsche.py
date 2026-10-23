@@ -122,5 +122,8 @@ class PorscheAdapter(BrandAdapter):
         raise NotSupported("Porsche India publishes no offers/finance-scheme page (the leasing-data API is not used "
                            "for India: leasingOption is empty on every model card)")
 
+    def specs(self):
+        raise NotSupported('porsche.com/_india_ model pages render technical data client-side; the server HTML has no spec table or schema.org spec sheet (checked 2026-10-23, 911 Carrera)')
+
 
 ADAPTER = PorscheAdapter()

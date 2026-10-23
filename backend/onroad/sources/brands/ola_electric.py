@@ -86,6 +86,43 @@ class OlaElectricAdapter(BrandAdapter):
                         ex_showroom_inr=c["price"], city=NATIONAL, source_url=c["src"], body_type="Electric Scooter",
                         battery_kwh=c["kwh"], model_url=c["src"], image_url=c["image"]) for c in cards]
 
+
+    def specs(self):
+        """The city price page (/electric-scooter-price/<state>/<city>) ends with Ola's spec-sheet comparison: <table>s
+        whose columns are the variants currently selected in each column's picker (h3#product_variant_value_colN,
+        e.g. 'S1 Pro+ 5.2 kWh'). Only those server-rendered columns are read, so only the variants shown there get
+        specs; a column is matched to a priced variant by its name ignoring spaces."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, apply_tables, html_tables
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+        for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+            soup = BeautifulSoup(self.s.get(url).text, "html.parser")
+            tables = []
+            for t in soup.find_all("table"):
+                heads = t.select("h3[id^=product_variant_value_col]")
+                if not heads:
+                    continue
+                for pt in html_tables([t], url):
+                    pt.cols = [clean(h.get_text(" ")) for h in heads]
+                    pt.rows = [r for r in pt.rows if len(r[2]) == len(pt.cols)
+                               and not re.search(r"(?i)price|emi|warranty|cost", r[1])]    # not equipment
+                    tables.append(pt)
+            if not tables:
+                continue
+
+            def key(n):
+                return re.sub(r"\s+", "", n or "").lower()
+            for v in (x for x in priced if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                apply_tables(sink, tables, col_ok=lambda h, k=key(v.variant): key(h) == k)
+                s_, f_ = sink.out()
+                specs += s_
+                feats += f_
+        if not specs and not feats:
+            raise NotSupported("olaelectric.com price page shows no spec-sheet column for a priced variant")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         url, page = self._page(city)
         m = re.search(r"id='current_city_data' style='display:none' data-value='(\[.*?\])'", page, re.S)

@@ -59,3 +59,8 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Live database (has user accounts). The repo ships data/seed.db instead.
+data/onroad.db
+data/onroad.db-*
+data/backup_*

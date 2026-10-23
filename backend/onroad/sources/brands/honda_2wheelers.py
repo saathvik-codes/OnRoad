@@ -22,9 +22,10 @@ Gaps: colour-specific prices are not published (one price per variant); models l
 from __future__ import annotations
 
 import re
+import time
 
 from ..base import BrandAdapter, Dealer, NotSupported, Variant
-from ._2w_common import Site, inr, meta, norm, trans_2w
+from ._2w_common import Site, clean, inr, meta, norm, trans_2w
 from ._geo import geo
 
 BASE = "https://www.honda2wheelersindia.com"
@@ -162,6 +163,52 @@ class HondaTwoWheelersAdapter(BrandAdapter):
             raise NotSupported(f"Honda publishes no prices for {state}")
         return out
 
+
+    def specs(self):
+        """Model page (honda2wheelersindia.com/<scooter|motorcycle>/<model>) "Get to know your ride": per variant node
+        (Title e.g. 'Standard', 'DLX', 'SMART') the spec tabs (Engine, Transmission, Tyres & Brakes, Body Dimensions,
+        Electricals ...) with SpecificationName / SpecificationValue pairs, embedded in the page's Next.js data.
+        A priced variant takes the block whose title its name ends with ('STD' = 'Standard'); no or several matches
+        -> skipped."""
+        from ._spec_kit import SpecSink, feature_key_2w, feature_label
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+        c = self.client()
+        for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+            time.sleep(1.0)
+            try:
+                r = c.get(url, follow_redirects=True)
+            except Exception:
+                continue
+            if "_Incapsula_Resource" in r.text[:3000]:
+                raise NotSupported(f"Incapsula bot protection on {url}; not bypassed")
+            if r.status_code != 200:
+                continue
+            blocks = _h2w_spec_blocks(r.text)
+            for v in (x for x in priced if x.model_url == url):
+                name = re.sub(r"\s+", " ", v.variant.upper()).strip()
+                hits = [k for k in blocks if name.endswith(" " + k.upper()) or name == k.upper()
+                        or (k.lower() == "standard" and re.search(r"\bSTD$", name))]
+                if len(hits) != 1:
+                    continue
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                for tab, lab, val in blocks[hits[0]]:
+                    if not val or val in ("-", "NA"):
+                        continue
+                    if "seat height" in lab.lower():
+                        sink.spec("Dimensions", "seat_height", lab, val, url)
+                    elif re.search(r"(?i)head ?lamp|tail ?lamp|winker|\babs\b|\bcbs\b|usb|bluetooth|display|meter", lab):
+                        text = feature_label(lab, val)
+                        sink.feature(text, "✓", url, key=feature_key_2w(text))
+                    else:
+                        sink.row(tab if lab.lower() in ("front", "rear", "type") else "", lab, val, url, "spec")
+                s_, f_ = sink.out()
+                specs += s_
+                feats += f_
+        if not specs and not feats:
+            raise NotSupported("honda2wheelersindia.com model pages carried no per-variant spec blocks")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)
         if not g:
@@ -184,6 +231,34 @@ class HondaTwoWheelersAdapter(BrandAdapter):
 
     def offers(self, city: str = "Hyderabad"):
         raise NotSupported("offers not read by this adapter")
+
+
+
+_H2W_HEAD = re.compile(r'"Title":\{"value":"([^"]*)"\},"ModelCode":\{"value":"[^"]*"\}')
+_H2W_TAB = re.compile(r'"url":"/Data/Tags/SpecificationTabName/[^"]*","name":"[^"]*","displayName":"[^"]*","fields":\{"Title":\{"value":"([^"]*)"\}')
+_H2W_ITEM = re.compile(r'"url":"/Data/Tags/SpecificationTag/[^"]*","name":"[^"]*","displayName":"[^"]*","fields":\{"Title":\{"value":"([^"]*)"\}\}\}\},'
+                       r'\{"name":"SpecificationValue","jsonValue":\{"value":"([^"]*)"\}')
+
+
+def _h2w_spec_blocks(page: str) -> dict[str, list[tuple[str, str, str]]]:
+    """{variant title: [(tab, label, value)]} from the 'Get to know your ride' data embedded in a model page
+    (Next.js flight data: each variant node's Title / ModelCode, then its spec tabs and SpecificationName/Value)."""
+    t = page.replace('\\"', '"')
+    heads = list(_H2W_HEAD.finditer(t))
+    out: dict[str, list[tuple[str, str, str]]] = {}
+    for i, h in enumerate(heads):
+        seg = t[h.end(): heads[i + 1].start() if i + 1 < len(heads) else len(t)]
+        marks = sorted([(m.start(), "tab", m.group(1), "") for m in _H2W_TAB.finditer(seg)]
+                       + [(m.start(), "item", m.group(1), m.group(2)) for m in _H2W_ITEM.finditer(seg)])
+        tab, rows = "", out.setdefault(clean(h.group(1)), [])
+        for _, kind, a, b in marks:
+            if kind == "tab":
+                tab = clean(a)
+            elif tab.lower() != "to be ignored":
+                row = (tab, clean(a).rstrip(":"), clean(b))
+                if row not in rows:
+                    rows.append(row)
+    return {k: v for k, v in out.items() if v}
 
 
 ADAPTER = HondaTwoWheelersAdapter()

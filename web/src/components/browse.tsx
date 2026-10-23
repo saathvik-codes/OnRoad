@@ -27,8 +27,8 @@ export function BrandGrid({ limit, vehicleType = "car" }: { limit?: number; vehi
       {!data ? Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-32" />) : brands.map((b, i) => (
         <motion.div key={b.slug} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
           <Link href={`${basePath}?brand=${b.slug}`} title={b.models ? undefined : "Prices not available right now: open for the reason"}
-            className={`group flex h-32 flex-col items-center justify-center gap-2 rounded-2xl bg-white p-4 shadow-[0_10px_40px_-20px_rgba(255,255,255,0.25)] border border-line transition hover:-translate-y-1 hover:shadow-[0_18px_50px_-18px_rgba(255,77,46,0.6)] ${b.models ? "" : "opacity-60 grayscale"}`}>
-            {b.logo ? <img src={b.logo} alt={b.name} className="h-12 w-auto max-w-[110px] object-contain transition group-hover:scale-105" />
+            className={`group flex h-28 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-white p-3 sm:h-32 sm:p-4 shadow-[0_10px_40px_-20px_rgba(255,255,255,0.25)] border border-line transition hover:-translate-y-1 hover:shadow-[0_18px_50px_-18px_rgba(255,77,46,0.6)] ${b.models ? "" : "opacity-60 grayscale"}`}>
+            {b.logo ? <img src={b.logo} alt={b.name} className="h-9 w-full max-w-full object-contain transition group-hover:scale-105 sm:h-12" />
               : <span className="text-center font-bold text-slate-900 text-sm">{b.name}</span>}
             <span className="text-center text-[11px] font-medium leading-tight text-neutral-600">{b.name}<br />{b.from_inr ? `from ${lakh(b.from_inr)}` : b.models ? `${b.models} models` : "Prices unavailable"}</span>
           </Link>

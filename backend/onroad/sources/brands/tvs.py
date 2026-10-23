@@ -141,6 +141,13 @@ class TVSAdapter(BrandAdapter):
             raise NotSupported(f"TVS publishes no prices for {city!r}")
         return out
 
+
+    def specs(self):
+        """The model page's schema.org Product JSON-LD additionalProperty list is TVS Motor's spec sheet for the model
+        (displacement, power, torque, brakes, tank ...); it is attached to each priced variant of that model."""
+        from ._spec_kit import model_sheet_specs
+        return model_sheet_specs(self, "TVS Motor")
+
     def dealers(self, city: str = "Hyderabad"):
         raise NotSupported("TVS dealer locator (/tvs-dealer-locator/tvs-2-wheeler) exposes no dealer list as text or XHR we can read")
 

@@ -132,7 +132,8 @@ class HeroAdapter(BrandAdapter):
         {"Engine": {...}, "Dimensions": {...}, "Brakes": {...}, ..., "Additional Features": {...}}. Hero publishes one
         sheet per model page, so it is attached to every priced variant of that model; a page with more than one
         sheet is skipped (sheets are labelled only 'variant1', 'variant2'). "Additional Features" and the ABS row
-        become equipment; everything else is read as specs."""
+        become equipment; everything else is read as specs. When the model has several priced variants, brakes,
+        tyres, weight, ABS and the feature list (which differ by trim) are left out."""
         import json as _json
         from bs4 import BeautifulSoup
         from ._spec_kit import SpecSink, feature_key_2w, feature_label
@@ -154,14 +155,19 @@ class HeroAdapter(BrandAdapter):
             if len(sheets) != 1:
                 continue
             sheet = sheets[0]
-            for v in (x for x in priced if x.model_url == url):
+            mine = [x for x in priced if x.model_url == url]
+            for v in mine:
                 sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                shared = len(mine) > 1      # model sheet on several trims: drop rows that differ by trim
                 for group, rows in sheet.items():
                     if not isinstance(rows, dict):
                         continue
                     for lab, val in rows.items():
                         val = clean(str(val))
                         if not val or val.lower() in ("no", "na", "-", "n/a"):
+                            continue
+                        if shared and (group.lower() in ("brakes", "wheels and tyres", "additional features", "weight")
+                                       or lab.strip().upper() == "ABS"):
                             continue
                         if group.lower() == "additional features" or lab.strip().upper() == "ABS":
                             text = feature_label(lab, val)

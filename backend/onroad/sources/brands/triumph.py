@@ -21,6 +21,7 @@ import re
 
 from ..base import BrandAdapter, NotSupported, Variant
 from ._2w_common import NATIONAL, Site, clean, inr, spec_rows, table_rows
+from ._geo import coords_ok, pin_state
 
 BASE = "https://www.triumphmotorcycles.in"
 
@@ -107,7 +108,50 @@ class TriumphAdapter(BrandAdapter):
         return specs, feats
 
     def dealers(self, city: str = "Hyderabad"):
-        raise NotSupported("Triumph dealer search not read by this adapter")
+        c = city.lower()
+        alias = {"bengaluru": "bangalore", "gurugram": "gurgaon", "mysuru": "mysore", "vadodara": "baroda"}.get(c, c)
+        return [d for d in self.all_dealers() if d.city.lower() in (c, alias)]
+
+    def all_dealers(self):
+        """triumphmotorcycles.in lists every Indian dealer in its sitemap (/dealers/india/<name>); each page has the
+        name, the address block (lines, city, state, PIN), phone and a Google Maps directions link with lat,lng."""
+        if getattr(self, "_dealer_cache", None) is not None:
+            return self._dealer_cache
+        from bs4 import BeautifulSoup
+        from ..base import Dealer
+        urls = sorted(set(re.findall(r"<loc>(https://www\.triumphmotorcycles\.in/dealers/india/[^<]+)</loc>", self.s.text("/sitemap.xml"))))
+        out = []
+        for u in urls:
+            try:
+                soup = BeautifulSoup(self.s.text(u), "html.parser")
+            except Exception:
+                continue
+            title = soup.select_one(".dealer-header__title")
+            loc = soup.select_one(".dealer-location")
+            if not title or not loc:
+                continue
+            lines = [clean(x) for x in loc.get_text("\n", strip=True).split("\n") if clean(x)]
+            pin_i = next((i for i, x in enumerate(lines) if re.fullmatch(r"\d{6}", x)), None)
+            if pin_i is None or pin_i < 3:
+                continue
+            name = clean(title.get_text())
+            start = next((i + 1 for i, x in enumerate(lines[:pin_i]) if x.upper() == name.upper()), 0)
+            street = ", ".join(lines[start:pin_i - 2])
+            tel = soup.select_one('a[href^="tel:"]')
+            m = re.search(r"destination=(-?\d+\.\d+),(-?\d+\.\d+)", str(soup))
+            pin = lines[pin_i]
+            state = pin_state(pin) or lines[pin_i - 1]
+            # the block ends "... city, [state,] PIN" but the state line is sometimes missing
+            city = lines[pin_i - 2] if lines[pin_i - 1].lower() == state.lower() else lines[pin_i - 1]
+            street = ", ".join(x for x in lines[start:pin_i] if x not in (city, lines[pin_i - 1]) or x == street)
+            lat, lng = (float(m.group(1)), float(m.group(2))) if m else (None, None)
+            if not coords_ok(pin, lat, lng):
+                lat = lng = None                       # pin dropped in the wrong state on the brand's page
+            out.append(Dealer(name=name.title(), address=street, city=city, state=state, pincode=pin,
+                              phone=tel["href"][4:] if tel else None, email=None, lat=lat, lng=lng,
+                              kind="sales+service", source_url=u))
+        self._dealer_cache = out
+        return out
 
     def offers(self, city: str = "Hyderabad"):
         raise NotSupported("offers not read by this adapter")

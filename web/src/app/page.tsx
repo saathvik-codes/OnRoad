@@ -41,7 +41,7 @@ function Chapter({ i, progress, children }: { i: number; progress: MotionValue<n
   // the first chapter is visible before any scrolling; the last one stays up at the end
   const opacity = useTransform(progress, [start, start + 0.03, end - 0.03, end], [i === 0 ? 1 : 0, 1, 1, i === n - 1 ? 1 : 0]);
   const y = useTransform(progress, [start, start + 0.04], [i === 0 ? 0 : 40, 0]);
-  return <motion.div style={{ opacity, y }} className="absolute inset-0 flex items-center">{children}</motion.div>;
+  return <motion.div style={{ opacity, y }} className="absolute inset-0 flex items-center px-5">{children}</motion.div>;
 }
 
 function Story() {
@@ -58,8 +58,8 @@ function Story() {
             <Chapter key={c.k} i={i} progress={scrollYProgress}>
               <div className="max-w-xl">
                 <p className="mb-5 font-mono text-sm text-accent">{c.k} / 0{CHAPTERS.length}</p>
-                <h1 className="font-[family-name:var(--font-display)] text-5xl font-bold leading-[1.02] tracking-tight text-white sm:text-7xl">{c.title}</h1>
-                <p className="mt-6 max-w-md text-lg text-white/70">{c.body}</p>
+                <h1 className="font-[family-name:var(--font-display)] text-[2.6rem] font-bold leading-[1.04] tracking-tight text-white sm:text-7xl">{c.title}</h1>
+                <p className="mt-5 max-w-md text-base text-white/70 sm:mt-6 sm:text-lg">{c.body}</p>
                 {i === 0 && (
                   <div className="pointer-events-auto mt-9 flex flex-wrap gap-3">
                     <Link href="/cars?finder=1" className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 font-medium text-white shadow-[0_0_40px_-6px_rgba(255,77,46,0.8)]">
