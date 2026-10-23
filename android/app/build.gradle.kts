@@ -22,8 +22,8 @@ android {
     }
     buildTypes {
         release {
-            // public HTTPS address of the API for phone testing (Cloudflare quick tunnel; also editable in Profile → Server)
-            buildConfigField("String", "DEFAULT_SERVER", "\"https://territories-reading-remind-branches.trycloudflare.com\"")
+            // production API on Render (also editable in Profile → Server)
+            buildConfigField("String", "DEFAULT_SERVER", "\"https://onroad-uu9c.onrender.com\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
