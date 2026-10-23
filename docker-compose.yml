@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: onroad_backend
+    restart: always
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8100
+      - API_SECRET=onroad_production_secret_key_change_in_env
+      - COOKIE_SECURE=1
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: onroad_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - API_ORIGIN=http://backend:8100
+      - NODE_ENV=production
+    depends_on:
+      - backend

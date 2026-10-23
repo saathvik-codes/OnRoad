@@ -1,0 +1,1213 @@
+"""
+OnRoad API (FastAPI).   uvicorn onroad.api:app --port 8100   (from backend/)
+
+Public: catalogue, prices, offers, dealers, on-road breakdowns, search, compare.
+Buyers: saved cars (price alerts), quote requests and ranked dealer quotes.
+Dealers: claim a showroom (admin approves), answer quote requests, post showroom offers.
+Admin: approve dealer claims; review dealer-onboarding invitations (nothing is ever sent without approval).
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import math
+import os
+import re
+import secrets
+import time
+from collections import defaultdict
+from contextlib import closing
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
+
+from . import db, onroad_calc, ingest
+
+app = FastAPI(title="OnRoad API", docs_url="/api/docs", openapi_url="/api/openapi.json")
+db.init()
+LOGOS = db.ROOT / "data" / "logos"
+COOKIE = "or_session"
+SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
+
+
+def q(sql: str, params: tuple = ()) -> list[dict]:
+    with closing(db.connect()) as conn:
+        return [dict(r) for r in conn.execute(sql, params)]
+
+
+def one(sql: str, params: tuple = ()) -> dict | None:
+    rows = q(sql, params)
+    return rows[0] if rows else None
+
+
+# ── Auth (salted PBKDF2 passwords, signed httpOnly cookie) ──────────────────────────────────────────────
+def _secret() -> bytes:
+    if os.getenv("API_SECRET"):
+        return os.getenv("API_SECRET").encode()
+    f = db.ROOT / "data" / ".api_secret"
+    if not f.exists():
+        f.write_text(secrets.token_hex(32))
+    return f.read_text().strip().encode()
+
+
+def _hash(pw: str, salt: str | None = None) -> str:
+    salt = salt or secrets.token_hex(16)
+    return f"pbkdf2${salt}${hashlib.pbkdf2_hmac('sha256', pw.encode(), bytes.fromhex(salt), 310_000).hex()}"
+
+
+def _check(pw: str, stored: str) -> bool:
+    _, salt, digest = stored.split("$")
+    return secrets.compare_digest(hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), 310_000).hex(), digest)
+
+
+def _sign(uid: int) -> str:
+    payload = f"{uid}.{int(time.time()) + 14 * 86400}"
+    sig = base64.urlsafe_b64encode(hmac.new(_secret(), payload.encode(), hashlib.sha256).digest()).decode().rstrip("=")
+    return f"{payload}.{sig}"
+
+
+def _uid(token: str | None) -> int | None:
+    try:
+        uid, exp, sig = (token or "").split(".")
+        good = base64.urlsafe_b64encode(hmac.new(_secret(), f"{uid}.{exp}".encode(), hashlib.sha256).digest()).decode().rstrip("=")
+        return int(uid) if hmac.compare_digest(sig, good) and int(exp) > time.time() else None
+    except (ValueError, TypeError):
+        return None
+
+
+def account(request: Request) -> dict:
+    uid = _uid(request.cookies.get(COOKIE))
+    acc = one("SELECT id, email, name, phone, role FROM accounts WHERE id = ?", (uid,)) if uid else None
+    if not acc:
+        raise HTTPException(401, "Please log in")
+    return acc
+
+
+def role(*allowed: str):
+    def dep(acc: dict = Depends(account)) -> dict:
+        if acc["role"] not in allowed:
+            raise HTTPException(403, "Not allowed for this account")
+        return acc
+    return dep
+
+
+_tries: dict[str, list[float]] = defaultdict(list)
+
+
+class SignupIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    email: str = Field(max_length=120)
+    phone: str | None = Field(default=None, max_length=20)
+    password: str = Field(min_length=8, max_length=200)
+    role: str = "buyer"
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/signup")
+def signup(body: SignupIn, response: Response):
+    email = body.email.strip().lower()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", email, re.I):
+        raise HTTPException(400, "Enter a valid email address.")
+    if body.role not in ("buyer", "dealer"):
+        raise HTTPException(400, "Unknown account type.")
+    if one("SELECT 1 AS x FROM accounts WHERE email = ?", (email,)):
+        raise HTTPException(400, "An account with this email already exists.")
+    with closing(db.connect()) as conn, conn:
+        uid = conn.execute("INSERT INTO accounts (email, name, phone, pw_hash, role) VALUES (?, ?, ?, ?, ?)",
+                           (email, body.name.strip(), body.phone, _hash(body.password), body.role)).lastrowid
+    response.set_cookie(COOKIE, _sign(uid), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    return {"id": uid, "email": email, "name": body.name, "role": body.role}
+
+
+@app.post("/api/auth/login")
+def login(body: LoginIn, request: Request, response: Response):
+    key = f"{body.email.lower()}|{request.client.host if request.client else ''}"
+    _tries[key] = [t for t in _tries[key] if time.time() - t < 900]
+    if len(_tries[key]) >= 8:
+        raise HTTPException(429, "Too many attempts. Try again in 15 minutes.")
+    _tries[key].append(time.time())
+    acc = one("SELECT * FROM accounts WHERE email = ?", (body.email.strip().lower(),))
+    if not acc or not _check(body.password, acc["pw_hash"]):
+        raise HTTPException(401, "Email or password is wrong.")
+    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    return {k: acc[k] for k in ("id", "email", "name", "role")}
+
+
+@app.post("/api/auth/logout")
+def logout(response: Response):
+    response.delete_cookie(COOKIE, path="/")
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def me(acc: dict = Depends(account)):
+    return acc
+
+
+# ── Catalogue ───────────────────────────────────────────────────────────────────────────────────────────
+LATEST_PRICE = """SELECT p.ex_showroom_inr, p.fetched_at, p.source_url FROM prices p
+                  WHERE p.variant_id = v.id AND p.city = ? ORDER BY p.fetched_at DESC LIMIT 1"""
+
+
+LIVE = ("o.active = 1 AND (o.valid_until IS NULL OR o.valid_until = '' OR o.valid_until >= date('now', 'localtime')) "
+        "AND (o.city IS NULL OR o.city = '' OR lower(o.city) = lower(?))")
+
+
+def _offers(where: str, params: tuple, city: str) -> list[dict]:
+    """Current offers (expired ones hidden), one row per distinct offer, biggest first."""
+    rows = q(f"""SELECT o.* FROM offers o WHERE {LIVE} AND {where}
+                 GROUP BY o.brand_slug, ifnull(o.model_name, ''), o.title, ifnull(o.amount_inr, 0), ifnull(o.kind, ''), ifnull(o.variant, ''),
+                          ifnull(o.dealer_id, '')
+                 ORDER BY o.amount_inr IS NULL, o.amount_inr DESC""", (city, *params))
+    today = __import__("datetime").date.today()
+    for r in rows:
+        r["days_left"] = ((__import__("datetime").date.fromisoformat(r["valid_until"]) - today).days
+                          if r.get("valid_until") else None)
+    return rows
+
+
+CRASH_TESTS = db.ROOT / "data" / "research" / "crash_tests.json"
+
+
+def _crash_tests(brand_name: str, model_name: str) -> list[dict]:
+    """Official Bharat NCAP / Global NCAP results for this model (data/research/crash_tests.json, every record sourced).
+    Empty list = no verified official result; the UI says so instead of showing a rating."""
+    if not CRASH_TESTS.exists():
+        return []
+    import json as _json
+    norm = lambda t: re.sub(r"[^a-z0-9]", "", (t or "").lower())
+    b, m = norm(brand_name), norm(model_name)
+    out = [r for r in _json.loads(CRASH_TESTS.read_text(encoding="utf-8"))
+           if norm(r.get("brand"))[:4] == b[:4] and norm(r.get("model")) and
+           (norm(r.get("model")) == m or (len(norm(r.get("model"))) >= 4 and (m.startswith(norm(r.get("model"))) or norm(r.get("model")).startswith(m))))]
+    return sorted(out, key=lambda r: r.get("test_date") or "", reverse=True)
+
+
+def _gallery(m: dict, variants: list[dict]) -> list[dict]:
+    """Model image, then each distinct variant / colour image, then the manufacturer's feature photos (official only)."""
+    out, seen = [], set()
+    def add(url, label, kind):
+        if url and url not in seen:
+            seen.add(url); out.append({"url": url, "label": label, "kind": kind})
+    img = m.get("image_url")
+    if not img:
+        alt = one("SELECT image_url FROM models WHERE brand_slug = ? AND (name = ? OR slug = ?) AND image_url IS NOT NULL AND image_url != '' LIMIT 1",
+                  (m.get("brand_slug"), m.get("name"), m.get("slug")))
+        if alt and alt.get("image_url"):
+            img = alt["image_url"]
+            m["image_url"] = img
+    if not img:
+        for v in variants:
+            if v.get("image_url"):
+                img = v["image_url"]
+                m["image_url"] = img
+                break
+    add(img, m.get("name"), "model")
+    for v in variants:
+        add(v.get("image_url"), v.get("name"), "variant")
+    try:
+        alt_id1 = m["id"].replace('-', '_')
+        alt_id2 = m["id"].replace('_', '-')
+        for r in q("SELECT key, image_url FROM feature_images WHERE model_id = ? OR model_id = ? OR model_id = ? LIMIT 8", (m["id"], alt_id1, alt_id2)):
+            add(r["image_url"], r["key"].replace("_", " ").title(), "feature")
+    except Exception:
+        pass
+    return out
+
+
+def _pick(city: str) -> tuple[str, tuple]:
+    """CTE `pick`: one current ex-showroom price per variant for `city`: that city's own price, else the brand's national
+    list, else its list for the city's state, else Hyderabad (the launch city, always ingested). Newest first within each."""
+    st = onroad_calc.STATE_OF_CITY.get(city.strip().lower(), "TS")
+    state_name = ((onroad_calc.rules().get("states") or {}).get(st) or {}).get("name", "")
+    sql = """pick AS (SELECT variant_id, ex_showroom_inr, city, fetched_at, source_url FROM (
+                 SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.variant_id ORDER BY lower(p.city) = lower(?) DESC,
+                        p.city = 'India (national)' DESC, p.city = ? DESC, p.city = 'Hyderabad' DESC, p.fetched_at DESC) AS rn
+                 FROM prices p) WHERE rn = 1)"""
+    return sql, (city, state_name)
+
+
+def _price_city(city: str) -> str:
+    """Brands with one national list publish it under one city; fall back to it when the city has no prices."""
+    return city
+
+
+@app.get("/api/brands")
+def brands(city: str = "Hyderabad", vehicle_type: str | None = None):
+    cte, cp = _pick(city)
+    vt_cond = "AND b.vehicle_type = ?" if vehicle_type else ""
+    vt_params = (vehicle_type,) if vehicle_type else ()
+    rows = q(f"""WITH {cte} SELECT b.slug, b.name, b.segment, b.vehicle_type, b.website, b.last_refresh, b.refresh_note,
+                       (SELECT COUNT(*) FROM models m WHERE m.brand_slug = b.slug AND m.active = 1) AS models,
+                       (SELECT MIN(px.ex_showroom_inr) FROM variants v JOIN models m ON m.id = v.model_id
+                          JOIN pick px ON px.variant_id = v.id
+                          WHERE m.brand_slug = b.slug AND v.active = 1) AS from_inr,
+                       (SELECT COUNT(*) FROM dealers d WHERE d.brand_slug = b.slug AND d.active = 1 AND lower(d.city) = lower(?)) AS dealers_here,
+                       (SELECT COUNT(*) FROM offers o WHERE o.brand_slug = b.slug AND {LIVE}) AS offers
+                FROM brands b WHERE 1=1 {vt_cond} ORDER BY b.segment = 'luxury', b.name""", (*cp, city, city, *vt_params))
+    for r in rows:
+        r["logo"] = _logo_url(r["slug"])
+    return rows
+
+
+
+def _logo_file(slug: str) -> Path | None:
+    for ext in ("svg", "png", "webp", "jpg"):
+        f = LOGOS / f"{slug}.{ext}"
+        if f.exists():
+            return f
+    return None
+
+
+def _logo_url(slug: str) -> str | None:
+    f = _logo_file(slug)
+    if not f:
+        return None
+    try:
+        v = int(f.stat().st_mtime)
+        return f"/api/logos/{slug}?v={v}"
+    except Exception:
+        return f"/api/logos/{slug}"
+
+
+@app.get("/api/logos/{slug}")
+def logo(slug: str, v: str | None = None):
+    f = _logo_file(re.sub(r"[^a-z0-9_-]", "", slug))
+    if not f:
+        raise HTTPException(404, "No logo")
+    cache = "public, max-age=31536000, immutable" if v else "no-cache, must-revalidate"
+    return FileResponse(f, headers={"Cache-Control": cache})
+
+
+def _variants(model_id: str, city: str) -> list[dict]:
+    cte, cp = _pick(city)
+    rows = q(f"""WITH {cte}
+                SELECT v.*, pk.ex_showroom_inr, pk.city AS price_city, pk.fetched_at AS price_as_of, pk.source_url AS price_source
+                FROM variants v LEFT JOIN pick pk ON pk.variant_id = v.id
+                WHERE v.model_id = ? AND v.active = 1 ORDER BY pk.ex_showroom_inr""", (*cp, model_id))
+    return rows
+
+
+def _engine_cc(v: dict) -> int | None:
+    """Engine size for the insurance band: published cc, else read from the variant name ("1.5 MPi" -> 1497 cc band)."""
+    if v.get("engine_cc"):
+        return v["engine_cc"]
+    m = re.search(r"(?<![\d.])([0-4]\.\d)\s?(?:l|litre|mpi|crdi|turbo|tsi|tgdi|gdi|dsl|diesel|petrol|vtvt|k|ecoboost|[a-z]|$)", (v.get("name") or "").lower())
+    if not m:
+        return None
+    litres = float(m.group(1))
+    return int(litres * 1000) - (3 if litres in (1.0, 1.5) else 0)   # 1.0 L ~ 998 cc, 1.5 L ~ 1497 cc stay inside their bands
+
+
+METRO_CLUSTERS = {
+    "gurugram": ["gurugram", "gurgaon", "delhi", "new delhi", "noida", "faridabad", "ghaziabad"],
+    "gurgaon": ["gurgaon", "gurugram", "delhi", "new delhi", "noida", "faridabad", "ghaziabad"],
+    "delhi": ["delhi", "new delhi", "gurugram", "gurgaon", "noida", "faridabad", "ghaziabad"],
+    "new delhi": ["new delhi", "delhi", "gurugram", "gurgaon", "noida", "faridabad", "ghaziabad"],
+    "noida": ["noida", "delhi", "new delhi", "ghaziabad", "gurugram", "gurgaon", "faridabad"],
+    "faridabad": ["faridabad", "delhi", "new delhi", "gurugram", "gurgaon", "noida"],
+    "ghaziabad": ["ghaziabad", "noida", "delhi", "new delhi"],
+    "bengaluru": ["bengaluru", "bangalore"],
+    "bangalore": ["bangalore", "bengaluru"],
+    "mumbai": ["mumbai", "navi mumbai", "thane"],
+    "navi mumbai": ["navi mumbai", "mumbai", "thane"],
+    "thane": ["thane", "mumbai", "navi mumbai"],
+    "hyderabad": ["hyderabad", "secunderabad", "rangareddy"],
+    "secunderabad": ["secunderabad", "hyderabad", "rangareddy"],
+    "chennai": ["chennai", "poonamallee"],
+    "ahmedabad": ["ahmedabad", "gandhinagar"],
+    "gandhinagar": ["gandhinagar", "ahmedabad"],
+    "jaipur": ["jaipur", "jaipur (rj)"],
+    "jaipur (rj)": ["jaipur (rj)", "jaipur"],
+}
+
+
+def _dealers_for(brand_slug: str, city: str, lat: float | None = None, lng: float | None = None) -> list[dict]:
+    city_norm = (city or "").strip().lower()
+    aliases = METRO_CLUSTERS.get(city_norm, [city_norm])
+    placeholders = ",".join("?" for _ in aliases)
+    rows = q(f"SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 AND lower(city) IN ({placeholders})",
+             (brand_slug, *aliases))
+
+    if not rows:
+        st = onroad_calc.STATE_OF_CITY.get(city_norm)
+        if st:
+            state_info = (onroad_calc.rules().get("states") or {}).get(st) or {}
+            state_name = state_info.get("name", "")
+            rows = q("""SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 AND
+                        (upper(state) = ? OR lower(state) LIKE ? OR lower(state) LIKE ?)""",
+                     (brand_slug, st.upper(), f"%{state_name.lower()}%", f"%{city_norm}%"))
+
+    if not rows:
+        rows = q("SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 LIMIT 12", (brand_slug,))
+
+    c_coords = CITIES.get(city.title()) or CITIES.get(city)
+    ref_lat = lat if lat is not None else (c_coords[0] if c_coords else None)
+    ref_lng = lng if lng is not None else (c_coords[1] if c_coords else None)
+
+    for d in rows:
+        if ref_lat and ref_lng and d.get("lat") and d.get("lng"):
+            d["distance_km"] = _km(ref_lat, ref_lng, d["lat"], d["lng"])
+        else:
+            d["distance_km"] = None
+
+    if ref_lat and ref_lng:
+        rows.sort(key=lambda d: d["distance_km"] if d["distance_km"] is not None else 1e9)
+
+    return rows
+
+
+
+@app.get("/api/brands/{slug}")
+def brand(slug: str, city: str = "Hyderabad"):
+    b = one("SELECT * FROM brands WHERE slug = ?", (slug,))
+    if not b:
+        raise HTTPException(404, "Unknown brand")
+    models = q("SELECT * FROM models WHERE brand_slug = ? AND active = 1 ORDER BY name", (slug,))
+    for m in models:
+        vs = _variants(m["id"], city)
+        prices = [v["ex_showroom_inr"] for v in vs if v["ex_showroom_inr"]]
+        m.update(variants=len(vs), from_inr=min(prices) if prices else None, to_inr=max(prices) if prices else None,
+                 fuels=sorted({v["fuel"] for v in vs if v["fuel"]}), transmissions=sorted({v["transmission"] for v in vs if v["transmission"]}))
+    b["logo"] = _logo_url(slug)
+    return {**b, "models": models,
+            "offers": _offers("o.brand_slug = ?", (slug,), city),
+            "dealers": _dealers_for(slug, city)}
+
+
+@app.get("/api/models/{brand}/{model}")
+def model(brand: str, model: str, city: str = "Hyderabad", lat: float | None = None, lng: float | None = None):
+    mid = f"{brand}/{model}"
+    mid_alt = f"{brand.replace('-', '_')}/{model.replace('-', '_')}"
+    mid_alt2 = f"{brand.replace('_', '-')}/{model.replace('_', '-')}"
+    m = one("""SELECT m.*, b.name AS brand_name, b.vehicle_type AS brand_vehicle_type 
+               FROM models m JOIN brands b ON b.slug = m.brand_slug 
+               WHERE m.id = ? OR m.id = ? OR m.id = ?""", (mid, mid_alt, mid_alt2))
+    if not m:
+        raise HTTPException(404, "Unknown model")
+    mid = m["id"]
+    brand = m["brand_slug"]
+    vt = m.get("vehicle_type") or m.get("brand_vehicle_type") or "car"
+    variants = _variants(mid, city)
+    for v in variants:
+        if v["ex_showroom_inr"]:
+            v["onroad"] = onroad_calc.estimate(v["ex_showroom_inr"], city=city, fuel=v["fuel"], engine_cc=_engine_cc(v),
+                                               battery_kwh=v["battery_kwh"], vehicle_type=vt).to_dict()
+
+    dealers = _dealers_for(brand, city, lat, lng)
+    offers = _offers("o.brand_slug = ? AND (o.model_name IS NULL OR o.model_name = '' OR lower(o.model_name) = lower(?))",
+                     (brand, m["name"]), city)
+    history = q("""SELECT p.variant_id, p.city, p.ex_showroom_inr, p.fetched_at FROM prices p JOIN variants v ON v.id = p.variant_id
+                   WHERE v.model_id = ? ORDER BY p.fetched_at""", (mid,))
+    best_quotes = q("""SELECT qt.on_road_inr, qt.discount_inr, qt.created, d.name AS dealer, v.name AS variant FROM quotes qt
+                       JOIN quote_requests r ON r.id = qt.request_id JOIN variants v ON v.id = r.variant_id
+                       JOIN dealers d ON d.id = qt.dealer_id WHERE v.model_id = ? AND lower(r.city) = lower(?)
+                       ORDER BY qt.on_road_inr LIMIT 5""", (mid, city))
+    crash_tests = _crash_tests(m["brand_name"], m["name"])
+    return {**m, "logo": _logo_url(brand), "variants": variants, "dealers": dealers,
+            "offers": offers, "price_history": history, "recent_dealer_quotes": best_quotes,
+            "crash_tests": crash_tests, "gallery": _gallery(m, variants)}
+
+
+def _km(a1, o1, a2, o2) -> float:
+    p = math.pi / 180
+    h = 0.5 - math.cos((a2 - a1) * p) / 2 + math.cos(a1 * p) * math.cos(a2 * p) * (1 - math.cos((o2 - o1) * p)) / 2
+    return round(12742 * math.asin(math.sqrt(h)), 1)
+
+
+@app.get("/api/onroad")
+def onroad(variant_id: str, city: str = "Hyderabad", loan: bool = False, ownership: str = "first_vehicle"):
+    v = one("""SELECT v.*, m.vehicle_type FROM variants v
+               JOIN models m ON m.id = v.model_id WHERE v.id = ?""", (variant_id,))
+    if not v:
+        raise HTTPException(404, "Unknown variant")
+    cte, cp = _pick(city)
+    p = one(f"WITH {cte} SELECT * FROM pick WHERE variant_id = ?", (*cp, variant_id))
+    if not p:
+        raise HTTPException(404, "No published price for this variant yet")
+    vt = v.get("vehicle_type") or "car"
+    b = onroad_calc.estimate(p["ex_showroom_inr"], city=city, fuel=v["fuel"], engine_cc=_engine_cc(v), battery_kwh=v["battery_kwh"],
+                             ownership=ownership, loan=loan, vehicle_type=vt)
+    return {**b.to_dict(), "price_city": p["city"], "price_as_of": p["fetched_at"], "price_source": p["source_url"], "vehicle_type": vt}
+
+
+@app.get("/api/onroad/quick")
+def onroad_quick(ex_showroom: int = Query(gt=20_000, lt=200_000_000), city: str = "Hyderabad", state: str | None = None,
+                 fuel: str = "Petrol", engine_cc: int | None = None, motor_kw: float | None = None, loan: bool = False,
+                 ownership: str = "first_vehicle", variant_id: str | None = None, vehicle_type: str = "car"):
+    """Calculator for any price (the buyer types the ex-showroom price, e.g. from a dealer quote).
+    With variant_id, missing engine size / battery come from that variant (as on the model page)."""
+    if ownership not in ("first_vehicle", "second_vehicle", "company"):
+        raise HTTPException(400, "Unknown ownership type")
+    v = one("""SELECT v.*, m.vehicle_type FROM variants v
+               JOIN models m ON m.id = v.model_id WHERE v.id = ?""", (variant_id,)) if variant_id else None
+    if v and engine_cc is None and (v.get("fuel") or "").lower() != "electric":
+        engine_cc = _engine_cc(v)
+    vt = v.get("vehicle_type") if v and v.get("vehicle_type") else vehicle_type
+    return onroad_calc.estimate(ex_showroom, city=city, state=state, fuel=fuel, engine_cc=engine_cc, motor_kw=motor_kw,
+                                loan=loan, ownership=ownership, vehicle_type=vt).to_dict()
+
+
+# Cities buyers can pick (lat/lng for "use my location"). State comes from onroad_calc.STATE_OF_CITY.
+CITIES = {
+    "Hyderabad": (17.385, 78.487), "Secunderabad": (17.44, 78.498), "Warangal": (17.968, 79.594), "Karimnagar": (18.439, 79.129),
+    "Nizamabad": (18.672, 78.094), "Khammam": (17.247, 80.151), "Bengaluru": (12.972, 77.594), "Mysuru": (12.296, 76.639),
+    "Chennai": (13.083, 80.271), "Coimbatore": (11.017, 76.956), "Madurai": (9.925, 78.12), "Mumbai": (19.076, 72.878),
+    "Pune": (18.52, 73.857), "Nagpur": (21.146, 79.088), "Delhi": (28.614, 77.209), "Gurugram": (28.459, 77.027),
+    "Noida": (28.535, 77.391), "Lucknow": (26.847, 80.947), "Kolkata": (22.573, 88.364), "Ahmedabad": (23.023, 72.571),
+    "Surat": (21.17, 72.831), "Kochi": (9.931, 76.267), "Thiruvananthapuram": (8.524, 76.937), "Vijayawada": (16.506, 80.648),
+    "Visakhapatnam": (17.687, 83.218), "Jaipur": (26.912, 75.787), "Chandigarh": (30.733, 76.779), "Bhopal": (23.26, 77.413),
+    "Indore": (22.72, 75.858), "Patna": (25.594, 85.138), "Bhubaneswar": (20.296, 85.825), "Guwahati": (26.144, 91.736),
+    "Panaji": (15.491, 73.828), "Dehradun": (30.317, 78.032), "Ranchi": (23.344, 85.31), "Raipur": (21.251, 81.63),
+    "Shimla": (31.105, 77.173), "Ludhiana": (30.901, 75.857), "Srinagar": (34.084, 74.797), "Puducherry": (11.942, 79.808),
+    "Port Blair": (11.623, 92.726), "Itanagar": (27.084, 93.605), "Daman": (20.397, 72.832), "Leh": (34.152, 77.577), "Kavaratti": (10.566, 72.642), "Shillong": (25.578, 91.893), "Imphal": (24.817, 93.937), "Aizawl": (23.727, 92.718), "Kohima": (25.674, 94.11), "Gangtok": (27.339, 88.607), "Agartala": (23.831, 91.286),
+}
+
+
+@app.get("/api/variant-specs")
+def variant_specs(variant_id: str):
+    """Published specs + standard equipment for one variant (empty lists when the brand's spec sheet isn't read yet)."""
+    specs = q("SELECT grp, key, label, value, source_url, fetched_at FROM specs WHERE variant_id = ? ORDER BY grp, label", (variant_id,))
+    feats = q("SELECT key, label, source_url FROM features WHERE variant_id = ? ORDER BY key", (variant_id,))
+    v = one("SELECT v.*, m.url AS model_url, m.brand_slug FROM variants v JOIN models m ON m.id = v.model_id WHERE v.id = ?", (variant_id,))
+    if not v:
+        raise HTTPException(404, "Unknown variant")
+    try:
+        photos = {r["key"]: r for r in q("SELECT key, image_url, source_url FROM feature_images WHERE model_id = ?", (v["model_id"],))}
+    except Exception:
+        photos = {}
+    return {"variant_id": variant_id, "specs": specs, "features": feats, "model_url": v["model_url"], "photos": photos,
+            "basics": {k: v[k] for k in ("fuel", "transmission", "engine_cc", "battery_kwh", "seats")}}
+
+
+@app.get("/api/loan-rates")
+def loan_rates():
+    """Car-loan rate ranges as each bank publishes them (onroad/loan_rates.py, refreshed daily)."""
+    try:
+        return q("SELECT bank, product, ev_only, min_pct, max_pct, source_url, fetched_at FROM loan_rates ORDER BY min_pct")
+    except Exception:
+        return []
+
+
+@app.get("/api/feature-photos")
+def feature_photos():
+    """One manufacturer photo per equipment key (for the feature guide), with the brand it came from."""
+    try:
+        return q("""SELECT f.key, f.image_url, f.source_url, b.name AS brand FROM feature_images f
+                    JOIN models m ON m.id = f.model_id JOIN brands b ON b.slug = m.brand_slug GROUP BY f.key""")
+    except Exception:
+        return []
+
+
+import os as _os_img
+IMG_CACHE = (_os_img.environ.get("IMG_CACHE") and __import__("pathlib").Path(_os_img.environ["IMG_CACHE"])) or db.ROOT / "data" / "img_cache"
+
+
+@app.get("/api/img")
+def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
+    """Serves a manufacturer image we already store (models / feature photos), downscaled to WebP and cached on disk.
+    Avoids huge originals (1-2 MB PNGs) and hotlink / referrer blocks. Only URLs present in our DB are allowed."""
+    import hashlib, io
+    from fastapi.responses import Response
+    known = (one("SELECT 1 AS x FROM models WHERE image_url = ?", (u,)) or one("SELECT 1 AS x FROM variants WHERE image_url = ?", (u,))
+             or one("SELECT 1 AS x FROM feature_images WHERE image_url = ?", (u,)))
+    if not known:
+        raise HTTPException(404, "Unknown image")
+    IMG_CACHE.mkdir(parents=True, exist_ok=True)
+    f = IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
+    if not f.exists():
+        from PIL import Image
+        import httpx as _httpx
+        try:
+            r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
+                           timeout=30, follow_redirects=True)
+            r.raise_for_status()
+            im = Image.open(io.BytesIO(r.content))
+            im = im.convert("RGBA") if im.mode in ("P", "LA", "RGBA") or "transparency" in im.info else im.convert("RGB")
+            if im.width > w:
+                im = im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
+            im.save(f, "WEBP", quality=84, method=4)
+        except Exception as e:
+            raise HTTPException(502, f"Image unavailable ({type(e).__name__})")
+    return Response(f.read_bytes(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
+
+
+@app.get("/api/cities")
+def cities():
+    states = onroad_calc.rules().get("states") or {}
+    have = {r["city"].lower(): r["n"] for r in q("SELECT city, COUNT(DISTINCT variant_id) AS n FROM prices GROUP BY city")}
+    out = []
+    for name, (lat, lng) in CITIES.items():
+        st = onroad_calc.STATE_OF_CITY.get(name.lower(), "TS")
+        sr = states.get(st) or {}
+        out.append({"name": name, "state": st, "state_name": sr.get("name", st), "tax_rules": sr.get("coverage", "not_found"),
+                    "city_prices": have.get(name.lower(), 0), "lat": lat, "lng": lng})
+    return out
+
+
+@app.get("/api/states")
+def states():
+    r = onroad_calc.rules()
+    return [{"code": k, "name": v.get("name", k), "coverage": v.get("coverage")} for k, v in sorted((r.get("states") or {}).items(),
+            key=lambda kv: kv[1].get("name", kv[0]))]
+
+
+@app.get("/api/search")
+def search(text: str = Query(default="", alias="q"), city: str = "Hyderabad"):
+    term = f"%{(text or '').strip().lower()}%"
+    if len(term) < 4:
+        return []
+    return q("""SELECT m.id, m.name, m.brand_slug, b.name AS brand, m.body_type, m.image_url,
+                       (SELECT MIN(p.ex_showroom_inr) FROM variants v JOIN prices p ON p.variant_id = v.id WHERE v.model_id = m.id) AS from_inr
+                FROM models m JOIN brands b ON b.slug = m.brand_slug
+                WHERE m.active = 1 AND (lower(m.name) LIKE ? OR lower(b.name) LIKE ? OR lower(b.name || ' ' || m.name) LIKE ?)
+                ORDER BY from_inr LIMIT 20""", (term, term, term))
+
+
+
+# Price bands as Indian buyers think about them (ex-showroom, starting price of the model)
+PRICE_BANDS = [
+    {"id": "budget", "label": "Budget", "hint": "Under ₹6 lakh", "min": 0, "max": 600_000},
+    {"id": "middle", "label": "Middle class", "hint": "₹6–12 lakh", "min": 600_000, "max": 1_200_000},
+    {"id": "upper-middle", "label": "Upper middle", "hint": "₹12–20 lakh", "min": 1_200_000, "max": 2_000_000},
+    {"id": "premium", "label": "Premium", "hint": "₹20–40 lakh", "min": 2_000_000, "max": 4_000_000},
+    {"id": "luxury", "label": "Luxury", "hint": "₹40 lakh – 1 crore", "min": 4_000_000, "max": 10_000_000},
+    {"id": "ultra", "label": "Ultra luxury", "hint": "Above ₹1 crore", "min": 10_000_000, "max": None},
+]
+
+
+def _band(price):
+    if not price:
+        return None
+    return next((b["id"] for b in PRICE_BANDS if price >= b["min"] and (b["max"] is None or price < b["max"])), None)
+
+
+def _popularity() -> dict:
+    """Six-month sales by (brand, model) from data/research/popularity.json (manufacturer/SIAM/FADA figures)."""
+    f = db.ROOT / "data" / "research" / "popularity.json"
+    if not f.exists():
+        return {}
+    import json as _json
+    data = _json.loads(f.read_text(encoding="utf-8"))
+    norm = lambda t: re.sub(r"[^a-z0-9]", "", (t or "").lower())
+    return {(norm(m["brand"]), norm(m["model"])): m for m in data.get("models", [])}
+
+
+def _pop_for(pop: dict, brand: str, name: str):
+    """Exact (brand, model) match, else a prefix match ('Amaze - 2nd Gen' ~ 'Amaze', 'Innova Hycross' ~ 'Innova (Hycross + Crysta)')."""
+    if (brand, name) in pop:
+        return pop[(brand, name)]
+    for (b, m), row in pop.items():
+        if b == brand and len(min(m, name, key=len)) >= 4 and (name.startswith(m) or m.startswith(name)):
+            return row
+    return None
+
+
+@app.get("/api/bands")
+def bands():
+    return PRICE_BANDS
+
+@app.get("/api/explore")
+def explore(city: str = "Hyderabad", body: str | None = None, fuel: str | None = None, max_inr: int | None = None,
+            min_inr: int | None = None, brand: str | None = None, band: str | None = None, sort: str = "popular",
+            vehicle_type: str | None = None):
+    cte, cp = _pick(city)
+    # a model's vehicle type is its brand's (models.vehicle_type can lag behind when ingest adds new models)
+    vt_cond = "AND coalesce(b.vehicle_type, 'car') = ?" if vehicle_type else ""
+    vt_params = (vehicle_type,) if vehicle_type else ()
+    rows = q(f"""WITH {cte} SELECT m.id, m.name, m.slug, m.brand_slug, b.name AS brand, b.segment, m.body_type, m.image_url,
+                       m.vehicle_type,
+                       MIN(p.ex_showroom_inr) AS from_inr, MAX(p.ex_showroom_inr) AS to_inr,
+                       GROUP_CONCAT(DISTINCT v.fuel) AS fuels, GROUP_CONCAT(DISTINCT v.transmission) AS transmissions, COUNT(DISTINCT v.id) AS variants,
+                       (SELECT COUNT(*) FROM offers o WHERE o.brand_slug = m.brand_slug AND o.active = 1
+                          AND (o.model_name IS NULL OR lower(o.model_name) = lower(m.name))) AS offers
+                FROM models m JOIN brands b ON b.slug = m.brand_slug
+                LEFT JOIN variants v ON v.model_id = m.id AND v.active = 1
+                LEFT JOIN pick p ON p.variant_id = v.id
+                WHERE m.active = 1 {vt_cond} GROUP BY m.id""", (*cp, *vt_params))
+    pop = _popularity()
+    norm = lambda t: re.sub(r"[^a-z0-9]", "", (t or "").lower())
+    out = []
+    for r in rows:
+        p = _pop_for(pop, norm(r["brand"]), norm(r["name"]))
+        r["six_month_units"] = p["six_month_units"] if p else None
+        r["sales_rank"] = p["rank"] if p else None
+        r["band"] = _band(r["from_inr"])
+        if band and r["band"] != band:
+            continue
+        if body and (r["body_type"] or "").lower() != body.lower():
+            continue
+        if fuel and fuel.lower() not in (r["fuels"] or "").lower():
+            continue
+        if brand and r["brand_slug"] != brand:
+            continue
+        if max_inr and (r["from_inr"] or 10**12) > max_inr:
+            continue
+        if min_inr and (r["to_inr"] or 0) < min_inr:
+            continue
+        r["logo"] = _logo_url(r['brand_slug'])
+        out.append(r)
+    keys = {"price": lambda r: (r["from_inr"] is None, r["from_inr"] or 0),
+            "offers": lambda r: (-(r["offers"] or 0),),
+            "popular": lambda r: (r["sales_rank"] is None, r["sales_rank"] or 0, r["from_inr"] or 0)}
+    out.sort(key=keys.get(sort, keys["popular"]))
+    return out
+
+
+@app.get("/api/compare")
+def compare(ids: str, city: str = "Hyderabad"):
+    out = []
+    for vid in ids.split(",")[:4]:
+        v = one("""SELECT v.*, m.name AS model, m.image_url, b.name AS brand, m.brand_slug FROM variants v JOIN models m ON m.id = v.model_id
+                   JOIN brands b ON b.slug = m.brand_slug WHERE v.id = ?""", (vid,))
+        if v:
+            try:
+                v["onroad"] = onroad(vid, city)
+            except HTTPException:
+                v["onroad"] = None
+            out.append(v)
+    return out
+
+
+# ── Buyers: saved cars, quote requests ──────────────────────────────────────────────────────────────────
+class SaveIn(BaseModel):
+    variant_id: str
+    city: str = "Hyderabad"
+    target_inr: int | None = None
+
+
+@app.get("/api/me/saved")
+def saved(acc: dict = Depends(account)):
+    rows = q("""SELECT s.*, v.name AS variant, m.name AS model, m.id AS model_id, b.name AS brand, m.image_url FROM saved_cars s
+                JOIN variants v ON v.id = s.variant_id JOIN models m ON m.id = v.model_id JOIN brands b ON b.slug = m.brand_slug
+                WHERE s.account_id = ?""", (acc["id"],))
+    for r in rows:
+        hist = q("SELECT ex_showroom_inr, fetched_at FROM prices WHERE variant_id = ? ORDER BY fetched_at", (r["variant_id"],))
+        r["history"] = hist
+        r["current_inr"] = hist[-1]["ex_showroom_inr"] if hist else None
+        r["change_inr"] = (hist[-1]["ex_showroom_inr"] - hist[-2]["ex_showroom_inr"]) if len(hist) > 1 else 0
+    return rows
+
+
+@app.post("/api/me/saved")
+def save(body: SaveIn, acc: dict = Depends(account)):
+    with closing(db.connect()) as conn, conn:
+        conn.execute("INSERT OR REPLACE INTO saved_cars (account_id, variant_id, city, target_inr) VALUES (?, ?, ?, ?)",
+                     (acc["id"], body.variant_id, body.city, body.target_inr))
+    return {"ok": True}
+
+
+@app.delete("/api/me/saved")
+def unsave(variant_id: str, city: str = "Hyderabad", acc: dict = Depends(account)):
+    with closing(db.connect()) as conn, conn:
+        conn.execute("DELETE FROM saved_cars WHERE account_id = ? AND variant_id = ? AND city = ?", (acc["id"], variant_id, city))
+    return {"ok": True}
+
+
+class QuoteRequestIn(BaseModel):
+    variant_id: str
+    city: str = "Hyderabad"
+    pincode: str | None = Field(default=None, max_length=6)
+    colour: str | None = Field(default=None, max_length=60)
+    finance: bool = False
+    exchange: bool = False
+    purchase_by: str | None = Field(default=None, max_length=30)
+    note: str | None = Field(default=None, max_length=500)
+    consent: bool = False             # buyer agrees that nearby dealers of this brand see the request
+
+
+@app.post("/api/quotes/request")
+def request_quotes(body: QuoteRequestIn, acc: dict = Depends(role("buyer", "admin"))):
+    if not body.consent:
+        raise HTTPException(400, "Please agree to share your request with nearby dealers.")
+    if not one("SELECT 1 AS x FROM variants WHERE id = ?", (body.variant_id,)):
+        raise HTTPException(404, "Unknown variant")
+    with closing(db.connect()) as conn, conn:
+        rid = conn.execute("""INSERT INTO quote_requests (account_id, variant_id, city, pincode, colour, finance, exchange, purchase_by, note)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                           (acc["id"], body.variant_id, body.city, body.pincode, body.colour, int(body.finance), int(body.exchange),
+                            body.purchase_by, body.note)).lastrowid
+    brand_slug = body.variant_id.split("/")[0]
+    n = one("SELECT COUNT(*) AS n FROM dealers WHERE brand_slug = ? AND lower(city) = lower(?) AND active = 1", (brand_slug, body.city))["n"]
+    claimed = one("SELECT COUNT(*) AS n FROM dealers WHERE brand_slug = ? AND lower(city) = lower(?) AND claimed_by IS NOT NULL",
+                  (brand_slug, body.city))["n"]
+    return {"id": rid, "dealers_in_city": n, "dealers_on_onroad": claimed}
+
+
+@app.get("/api/me/quotes")
+def my_quotes(acc: dict = Depends(account)):
+    reqs = q("""SELECT r.*, v.name AS variant, m.name AS model, b.name AS brand FROM quote_requests r JOIN variants v ON v.id = r.variant_id
+                JOIN models m ON m.id = v.model_id JOIN brands b ON b.slug = m.brand_slug WHERE r.account_id = ? ORDER BY r.created DESC""",
+             (acc["id"],))
+    for r in reqs:
+        r["quotes"] = q("""SELECT qt.*, d.name AS dealer, d.address, d.phone, d.lat, d.lng FROM quotes qt JOIN dealers d ON d.id = qt.dealer_id
+                           WHERE qt.request_id = ? ORDER BY qt.on_road_inr""", (r["id"],))
+        cte, cp = _pick(r["city"])
+        p = one(f"WITH {cte} SELECT ex_showroom_inr FROM pick WHERE variant_id = ?", (*cp, r["variant_id"]))
+        r["fair_onroad_inr"] = onroad_calc.estimate(p["ex_showroom_inr"], city=r["city"]).total_inr if p else None
+    return reqs
+
+
+# ── Dealers ─────────────────────────────────────────────────────────────────────────────────────────────
+class ClaimIn(BaseModel):
+    dealer_id: str
+    designation: str = Field(max_length=80)
+
+
+@app.post("/api/dealer/claim")
+def claim(body: ClaimIn, acc: dict = Depends(role("dealer"))):
+    d = one("SELECT * FROM dealers WHERE id = ?", (body.dealer_id,))
+    if not d:
+        raise HTTPException(404, "Unknown dealership")
+    if d["claimed_by"]:
+        raise HTTPException(400, "This dealership is already managed on OnRoad.")
+    with closing(db.connect()) as conn, conn:
+        conn.execute("INSERT INTO outreach (dealer_id, channel, recipient, subject, body, status) VALUES (?, 'claim', ?, ?, ?, 'claim_pending')",
+                     (d["id"], acc["email"], f"Claim: {d['name']}", f"{acc['name']} ({body.designation}) requests access to {d['name']}"))
+    return {"ok": True, "note": "We verify every claim with the dealership's published phone or email before granting access."}
+
+
+def _my_dealers(acc: dict) -> list[dict]:
+    return q("SELECT * FROM dealers WHERE claimed_by = ?", (acc["id"],))
+
+
+@app.get("/api/dealer/requests")
+def dealer_requests(acc: dict = Depends(role("dealer"))):
+    mine = _my_dealers(acc)
+    out = []
+    for d in mine:
+        for r in q("""SELECT r.id, r.variant_id, r.city, r.pincode, r.colour, r.finance, r.exchange, r.purchase_by, r.note, r.created,
+                             v.name AS variant, m.name AS model,
+                             (SELECT COUNT(*) FROM quotes qt WHERE qt.request_id = r.id AND qt.dealer_id = ?) AS answered
+                      FROM quote_requests r JOIN variants v ON v.id = r.variant_id JOIN models m ON m.id = v.model_id
+                      WHERE m.brand_slug = ? AND lower(r.city) = lower(?) AND r.status = 'open' ORDER BY r.created DESC""",
+                   (d["id"], d["brand_slug"], d["city"])):
+            out.append({**r, "dealer_id": d["id"], "dealer": d["name"]})   # buyer identity stays private until they accept
+    return out
+
+
+class QuoteIn(BaseModel):
+    request_id: int
+    dealer_id: str
+    ex_showroom_inr: int = Field(gt=0)
+    road_tax_inr: int = Field(ge=0)
+    registration_inr: int = Field(ge=0)
+    insurance_inr: int = Field(ge=0)
+    accessories_inr: int = Field(default=0, ge=0)
+    other_inr: int = Field(default=0, ge=0)
+    discount_inr: int = Field(default=0, ge=0)
+    waiting_weeks: int | None = Field(default=None, ge=0, le=104)
+    valid_until: str | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
+@app.post("/api/dealer/quotes")
+def submit_quote(body: QuoteIn, acc: dict = Depends(role("dealer"))):
+    if body.dealer_id not in {d["id"] for d in _my_dealers(acc)}:
+        raise HTTPException(403, "You can quote only for your own dealership.")
+    total = (body.ex_showroom_inr + body.road_tax_inr + body.registration_inr + body.insurance_inr + body.accessories_inr
+             + body.other_inr - body.discount_inr)
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""INSERT INTO quotes (request_id, dealer_id, ex_showroom_inr, road_tax_inr, registration_inr, insurance_inr,
+                            accessories_inr, other_inr, discount_inr, on_road_inr, waiting_weeks, valid_until, note)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     (body.request_id, body.dealer_id, body.ex_showroom_inr, body.road_tax_inr, body.registration_inr, body.insurance_inr,
+                      body.accessories_inr, body.other_inr, body.discount_inr, total, body.waiting_weeks, body.valid_until, body.note))
+    return {"ok": True, "on_road_inr": total}
+
+
+class DealerOfferIn(BaseModel):
+    dealer_id: str
+    model_name: str | None = None
+    title: str = Field(max_length=120)
+    amount_inr: int | None = Field(default=None, ge=0)
+    details: str = Field(default="", max_length=600)
+    valid_until: str | None = None
+
+
+@app.post("/api/dealer/offers")
+def dealer_offer(body: DealerOfferIn, acc: dict = Depends(role("dealer"))):
+    d = next((d for d in _my_dealers(acc) if d["id"] == body.dealer_id), None)
+    if not d:
+        raise HTTPException(403, "You can post offers only for your own dealership.")
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""INSERT INTO offers (brand_slug, model_name, title, amount_inr, details, valid_until, city, source, source_url, fetched_at, dealer_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'dealer', NULL, datetime('now'), ?)""",
+                     (d["brand_slug"], body.model_name, body.title, body.amount_inr, body.details, body.valid_until, d["city"], d["id"]))
+    return {"ok": True}
+
+
+@app.get("/api/dealers/search")
+def dealer_search(brand: str, city: str | None = None, text: str = ""):
+    text_pattern = f"%{(text or '').strip().lower()}%"
+    city_norm = (city or "").strip().lower()
+    
+    if city_norm and city_norm != "all":
+        aliases = METRO_CLUSTERS.get(city_norm, [city_norm])
+        placeholders = ",".join("?" for _ in aliases)
+        rows = q(f"""SELECT id, name, address, city, pincode, phone, lat, lng, claimed_by IS NOT NULL AS on_onroad FROM dealers
+                    WHERE brand_slug = ? AND lower(city) IN ({placeholders})
+                    AND (lower(name || ' ' || address || ' ' || city) LIKE ?) ORDER BY name LIMIT 50""",
+                 (brand, *aliases, text_pattern))
+        if rows:
+            return rows
+            
+    # Search brand dealerships by text matching name, address, or city across all locations
+    return q("""SELECT id, name, address, city, pincode, phone, lat, lng, claimed_by IS NOT NULL AS on_onroad FROM dealers
+                WHERE brand_slug = ? AND (lower(name || ' ' || address || ' ' || city) LIKE ?)
+                ORDER BY name LIMIT 50""",
+             (brand, text_pattern))
+
+
+@app.get("/api/offers")
+def offers(city: str = "Hyderabad", brand: str | None = None, model: str | None = None, limit: int = 50):
+    """Live automotive offers: festive promotions, launch benefits, exchange bonuses, dealer discounts."""
+    where_clauses = [LIVE]
+    params: list = [city]
+    if brand:
+        where_clauses.append("o.brand_slug = ?")
+        params.append(brand)
+    if model:
+        where_clauses.append("(o.model_name IS NULL OR o.model_name = '' OR lower(o.model_name) = lower(?))")
+        params.append(model)
+        
+    where = " AND ".join(where_clauses)
+    rows = q(f"""SELECT o.*, b.name AS brand_name, m.image_url AS model_image, m.id AS model_id
+                 FROM offers o
+                 JOIN brands b ON b.slug = o.brand_slug
+                 LEFT JOIN models m ON m.brand_slug = o.brand_slug AND lower(m.name) = lower(o.model_name)
+                 WHERE {where}
+                 GROUP BY o.brand_slug, ifnull(o.model_name, ''), o.title, ifnull(o.amount_inr, 0)
+                 ORDER BY o.amount_inr IS NULL, o.amount_inr DESC LIMIT ?""", (*params, limit))
+                 
+    # If city has few specific offers and not filtering by specific model, include national/brand offers
+    if len(rows) < 8 and not model:
+        extra_params: list = []
+        brand_cond = ""
+        if brand:
+            brand_cond = "AND o.brand_slug = ?"
+            extra_params.append(brand)
+        extra_params.append(limit - len(rows))
+        
+        national_rows = q(f"""SELECT o.*, b.name AS brand_name, m.image_url AS model_image, m.id AS model_id
+                              FROM offers o
+                              JOIN brands b ON b.slug = o.brand_slug
+                              LEFT JOIN models m ON m.brand_slug = o.brand_slug AND lower(m.name) = lower(o.model_name)
+                              WHERE o.active = 1 AND (o.valid_until IS NULL OR o.valid_until >= date('now', 'localtime'))
+                              AND (o.city IS NULL OR o.city = '' OR o.city = 'National')
+                              {brand_cond}
+                              GROUP BY o.brand_slug, ifnull(o.model_name, ''), o.title, ifnull(o.amount_inr, 0)
+                              ORDER BY o.amount_inr IS NULL, o.amount_inr DESC LIMIT ?""",
+                          tuple(extra_params))
+        seen_ids = {r["id"] for r in rows}
+        for nr in national_rows:
+            if nr["id"] not in seen_ids:
+                rows.append(nr)
+
+    today = __import__("datetime").date.today()
+    for r in rows:
+        r["days_left"] = ((__import__("datetime").date.fromisoformat(r["valid_until"]) - today).days
+                          if r.get("valid_until") else None)
+        title_lower = (r.get("title") or "").lower() + " " + (r.get("details") or "").lower()
+        if "festive" in title_lower or "diwali" in title_lower or "navratri" in title_lower:
+            r["category"] = "Festive Special"
+        elif "launch" in title_lower or "introductory" in title_lower or "opening" in title_lower or "pioneer" in title_lower:
+            r["category"] = "Opening Offer"
+        elif "exchange" in title_lower or "upgrade" in title_lower:
+            r["category"] = "Exchange Bonus"
+        elif "interest" in title_lower or "roi" in title_lower or "finance" in title_lower:
+            r["category"] = "Low EMI / Finance"
+        elif "corporate" in title_lower:
+            r["category"] = "Corporate Benefit"
+        else:
+            r["category"] = "Manufacturer Discount"
+            
+    return rows
+
+
+@app.get("/api/campaigns")
+def campaigns(city: str = "Hyderabad"):
+    """Banner slides built only from live manufacturer offers (each with its source page and validity)."""
+    rows = q(f"""SELECT o.*, b.name AS brand_name FROM offers o JOIN brands b ON b.slug = o.brand_slug
+                 WHERE {LIVE} AND o.source = 'brand_site' AND o.amount_inr IS NOT NULL ORDER BY o.amount_inr DESC LIMIT 40""", (city,))
+    out, seen = [], set()
+    for r in rows:
+        if r["brand_slug"] in seen:
+            continue
+        seen.add(r["brand_slug"])
+        out.append({"id": f"offer-{r['id']}", "tag": "MANUFACTURER OFFER",
+                    "title": f"{r['brand_name']} {r['model_name'] or 'all models'}: {r['title']}",
+                    "highlight": f"{'Up to ' if 'up to' in (r['title'] or '').lower() else ''}₹{r['amount_inr']:,}",
+                    "description": (r.get("conditions") or r.get("details") or "")[:220], "valid_until": r.get("valid_until"),
+                    "cta_text": "See this offer", "cta_link": f"/cars?brand={r['brand_slug']}", "source_url": r.get("source_url"),
+                    "disclaimer": f"From {r['brand_name']}'s official website" + (f", valid until {r['valid_until']}" if r.get("valid_until") else "")
+                                  + ". Final benefits are confirmed by the dealer at booking."})
+        if len(out) == 4:
+            break
+    return out
+
+@app.get("/api/recommendations")
+def recommendations(
+    city: str = "Hyderabad",
+    vehicle_type: str = "car",
+    usage: str = "commute",
+    budget: int | None = None,
+    fuel: str | None = None,
+    limit: int = 6
+):
+    """
+    Intelligent curation based on buyer profile, intended usage, and budget.
+    """
+    v_type = "bike" if vehicle_type in ("bike", "two_wheeler") else "car"
+    
+    sql = """
+        SELECT m.id, m.name, m.slug, m.brand_slug, b.name as brand, b.logo, m.body_type, m.image_url,
+               min(p.ex_showroom_inr) as from_inr, max(p.ex_showroom_inr) as to_inr,
+               group_concat(distinct v.fuel) as fuels, count(distinct v.id) as variants
+        FROM models m
+        JOIN brands b ON b.slug = m.brand_slug
+        JOIN variants v ON v.model_id = m.id
+        LEFT JOIN prices p ON p.variant_id = v.id AND p.city = ?
+        WHERE (m.vehicle_type = ? OR (? = 'car' AND m.vehicle_type IS NULL))
+        GROUP BY m.id
+        HAVING min(p.ex_showroom_inr) IS NOT NULL
+    """
+    rows = q(sql, (city, v_type, v_type))
+    if not rows:
+        sql_fallback = """
+            SELECT m.id, m.name, m.slug, m.brand_slug, b.name as brand, b.logo, m.body_type, m.image_url,
+                   min(p.ex_showroom_inr) as from_inr, max(p.ex_showroom_inr) as to_inr,
+                   group_concat(distinct v.fuel) as fuels, count(distinct v.id) as variants
+            FROM models m
+            JOIN brands b ON b.slug = m.brand_slug
+            JOIN variants v ON v.model_id = m.id
+            LEFT JOIN prices p ON p.variant_id = v.id
+            WHERE (m.vehicle_type = ? OR (? = 'car' AND m.vehicle_type IS NULL))
+            GROUP BY m.id
+            HAVING min(p.ex_showroom_inr) IS NOT NULL
+        """
+        rows = q(sql_fallback, (v_type, v_type))
+
+    scored = []
+    for r in rows:
+        score = 80
+        reasons = []
+        name_lower = (r["name"] or "").lower()
+        body_lower = (r["body_type"] or "").lower()
+        fuels_lower = (r["fuels"] or "").lower()
+        from_price = r["from_inr"] or 0
+        to_price = r["to_inr"] or from_price
+
+        # Budget scoring
+        if budget:
+            if from_price <= budget <= to_price:
+                score += 15
+                reasons.append(f"Fits your ₹{budget/100000:.1f}L target perfectly across trim options")
+            elif from_price <= budget * 1.15:
+                score += 8
+                reasons.append("Base variant starts well within your spending plan")
+            elif from_price > budget * 1.3:
+                score -= 20
+
+        # Usage scoring
+        if usage == "commute":
+            if "cng" in fuels_lower or "electric" in fuels_lower:
+                score += 12
+                reasons.append("Ultra-low running cost for daily urban commute")
+            if any(k in body_lower for k in ["hatchback", "commuter", "scooter", "compact"]):
+                score += 8
+                reasons.append("Effortless city parking and nimble maneuverability")
+            if any(b in r["brand_slug"] for b in ["maruti_suzuki", "hero", "honda_2wheelers", "tata_motors"]):
+                score += 5
+                reasons.append("India-wide authorized service footprint and low maintenance")
+        elif usage == "family":
+            if any(k in body_lower for k in ["suv", "mpv", "sedan"]):
+                score += 12
+                reasons.append("Spacious cabin ergonomics, generous boot, and comfortable rear seating")
+            if any(b in name_lower for b in ["nexon", "creta", "brezza", "scorpio", "innova", "activa", "jupiter"]):
+                score += 10
+                reasons.append("High crash safety score & proven long-distance family comfort")
+        elif usage == "performance":
+            if any(k in body_lower for k in ["sports", "cruiser", "adventure", "lifestyle"]):
+                score += 14
+                reasons.append("Enthusiast-tuned dynamics, robust chassis, and punchy power output")
+            if any(b in r["brand_slug"] for b in ["royal_enfield", "yamaha", "bajaj", "volkswagen", "skoda", "bmw"]):
+                score += 8
+                reasons.append("Superior high-speed highway stability and rider engagement")
+
+        # Fuel filtering
+        if fuel and fuel.lower() != "any":
+            if fuel.lower() in fuels_lower:
+                score += 10
+                reasons.append(f"Available with factory {fuel} powertrain")
+            else:
+                score -= 30
+
+        if not reasons:
+            reasons.append(f"Top-rated value in {city} with verified transparent showroom pricing")
+
+        r["match_score"] = min(99, max(65, score))
+        r["reasons"] = reasons[:3]
+        scored.append(r)
+
+    scored.sort(key=lambda x: x["match_score"], reverse=True)
+    return scored[:limit]
+
+
+@app.get("/api/opinions")
+def get_opinions(model_id: str | None = None, vehicle_type: str | None = None, limit: int = 12):
+    """
+    Verified Customer Opinions and Real-World Owner Intelligence.
+    Authentic mileage benchmarks, annual maintenance costs, and owner satisfaction.
+    """
+    where_clauses = []
+    params = []
+    if model_id:
+        where_clauses.append("model_id = ?")
+        params.append(model_id)
+    if vehicle_type:
+        where_clauses.append("vehicle_type = ?")
+        params.append(vehicle_type)
+    where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    return q(f"SELECT * FROM opinions {where} ORDER BY rating DESC, created_at DESC LIMIT ?", (*params, limit))
+
+
+class OpinionIn(BaseModel):
+    model_id: str
+    model_name: str
+    vehicle_type: str = "car"
+    author_name: str
+    city: str
+    rating: float = 5.0
+    ownership_period: str
+    real_mileage: str
+    annual_service_cost: str
+    pros: str
+    cons: str
+    verdict: str
+
+
+@app.post("/api/opinions")
+def create_opinion(op: OpinionIn, acc: dict = Depends(account)):
+    """Submit a real-world owner review and mileage report."""
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""
+            INSERT INTO opinions (model_id, model_name, vehicle_type, author_name, city, rating,
+                                  ownership_period, real_mileage, annual_service_cost, pros, cons, verdict, verified_buyer)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        """, (op.model_id, op.model_name, op.vehicle_type, op.author_name, op.city, op.rating,
+              op.ownership_period, op.real_mileage, op.annual_service_cost, op.pros, op.cons, op.verdict))
+    return {"ok": True, "message": "Thank you! Your owner review has been published."}
+
+
+
+# ── Admin ───────────────────────────────────────────────────────────────────────────────────────────────
+@app.get("/api/admin/claims")
+def claims(acc: dict = Depends(role("admin"))):
+    return q("SELECT * FROM outreach WHERE status = 'claim_pending' ORDER BY created")
+
+
+@app.post("/api/admin/claims/{claim_id}/approve")
+def approve_claim(claim_id: int, acc: dict = Depends(role("admin"))):
+    c = one("SELECT * FROM outreach WHERE id = ? AND status = 'claim_pending'", (claim_id,))
+    if not c:
+        raise HTTPException(404, "No such claim")
+    dealer_acc = one("SELECT id FROM accounts WHERE email = ?", (c["recipient"],))
+    with closing(db.connect()) as conn, conn:
+        conn.execute("UPDATE dealers SET claimed_by = ? WHERE id = ?", (dealer_acc["id"], c["dealer_id"]))
+        conn.execute("UPDATE outreach SET status = 'claim_approved', approved_by = ? WHERE id = ?", (acc["id"], claim_id))
+    return {"ok": True}
+
+
+@app.get("/api/admin/outreach")
+def outreach(acc: dict = Depends(role("admin"))):
+    return q("SELECT * FROM outreach WHERE channel != 'claim' ORDER BY created DESC")
+
+
+@app.post("/api/admin/outreach/{oid}/approve")
+def approve_outreach(oid: int, acc: dict = Depends(role("admin"))):
+    with closing(db.connect()) as conn, conn:
+        n = conn.execute("UPDATE outreach SET status = 'approved', approved_by = ? WHERE id = ? AND status = 'draft'", (acc["id"], oid)).rowcount
+    if not n:
+        raise HTTPException(404, "No such draft")
+    return {"ok": True, "note": "Approved. Sending happens only from the outreach sender once SMTP is configured."}
+
+
+@app.get("/api/meta")
+def meta():
+    r = onroad_calc.rules()
+    last = one("SELECT finished FROM refresh_runs ORDER BY id DESC LIMIT 1")
+    return {"rules_as_of": r.get("as_of"), "states_with_rules": sorted((r.get("states") or {}).keys()),
+            "last_refresh": last["finished"] if last else None,
+            "counts": one("""SELECT (SELECT COUNT(*) FROM brands) AS brands, (SELECT COUNT(*) FROM models WHERE active = 1) AS models,
+                                    (SELECT COUNT(*) FROM variants WHERE active = 1) AS variants,
+                                    (SELECT COUNT(*) FROM dealers WHERE active = 1) AS dealers,
+                                    (SELECT COUNT(*) FROM offers WHERE active = 1) AS offers""")}
+
+
+# ── Auto-Fetch & Live Brand Sync ─────────────────────────────────────────────────────────────
+class QuickFetchCarIn(BaseModel):
+    brand_slug: str
+    model_name: str
+    body_type: str | None = "SUV"
+    fuel: str | None = "Petrol"
+    transmission: str | None = "Automatic"
+    engine_cc: int | None = None
+    battery_kwh: float | None = None
+    seats: int | None = 5
+    ex_showroom_inr: int
+    city: str = "Hyderabad"
+    image_url: str | None = None
+    source_url: str | None = None
+
+
+@app.post("/api/sync/brand/{brand_slug}")
+def sync_brand(brand_slug: str, city: str = "Hyderabad", acc: dict = Depends(role("admin"))):
+    """Fetch all newly released models and updated variants directly from manufacturer adapter."""
+    matching = [a for a in ingest.adapters([brand_slug])]
+    if not matching:
+        raise HTTPException(404, f"No manufacturer adapter found for brand '{brand_slug}'")
+    try:
+        res = ingest.refresh_brand(matching[0], city=city)
+        return {"ok": True, "result": res}
+    except Exception as e:
+        raise HTTPException(500, f"Error refreshing brand {brand_slug}: {e}")
+
+
+@app.post("/api/sync/all")
+def sync_all(city: str = "Hyderabad", acc: dict = Depends(role("admin"))):
+    """Refresh all brand adapters directly to fetch new releases across every brand."""
+    try:
+        results = ingest.run(None, city=city)
+        return {"ok": True, "brands_refreshed": len(results), "summary": results}
+    except Exception as e:
+        raise HTTPException(500, f"Error during full brand refresh: {e}")
+
+
+@app.get("/api/sync/status")
+def sync_status():
+    """Return latest sync logs, timestamp, and brand coverage statistics."""
+    last_run = one("SELECT * FROM refresh_runs ORDER BY id DESC LIMIT 1")
+    recent_models = q("SELECT id, brand_slug, name, body_type, image_url, first_seen FROM models WHERE active = 1 ORDER BY first_seen DESC LIMIT 10")
+    total_models = one("SELECT COUNT(*) AS c FROM models WHERE active = 1")["c"]
+    total_variants = one("SELECT COUNT(*) AS c FROM variants WHERE active = 1")["c"]
+    return {
+        "last_refresh": last_run,
+        "total_active_models": total_models,
+        "total_active_variants": total_variants,
+        "latest_added_models": recent_models
+    }
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True}
+

@@ -1,0 +1,50 @@
+# render.yaml — Render.com Blueprint
+# Drop this file into the repo root and click "New → Blueprint" on Render.
+# All services, env vars, and the persistent disk are created automatically.
+
+services:
+  # ── FastAPI Backend ────────────────────────────────────────────────────────
+  - type: web
+    name: onroad-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    plan: free                        # upgrade to starter ($7/mo) for always-on
+    region: singapore                 # closest to India
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: "8100"
+      - key: DB_PATH
+        value: /data/onroad.db
+      - key: IMG_CACHE
+        value: /data/img_cache
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: API_SECRET
+        generateValue: true           # Render auto-generates a secure random secret
+    disk:
+      name: onroad-data
+      mountPath: /data
+      sizeGB: 1                       # holds the ~46 MB SQLite DB + img cache
+
+  # ── Next.js Frontend ──────────────────────────────────────────────────────
+  - type: web
+    name: onroad-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: NODE_ENV
+        value: production
+      - key: API_ORIGIN
+        fromService:
+          type: web
+          name: onroad-backend
+          property: host             # automatically resolved to the backend's internal URL
+          envVarKey: API_ORIGIN

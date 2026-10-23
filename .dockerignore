@@ -1,0 +1,47 @@
+# .dockerignore — keep Docker build contexts lean and secure
+# Applied to both Dockerfile.backend and Dockerfile.web (docker reads from repo root)
+
+# Version control
+.git
+.gitignore
+
+# Node
+web/node_modules
+web/.next
+web/.next/cache
+
+# Python
+backend/__pycache__
+backend/**/__pycache__
+backend/**/*.pyc
+backend/.pytest_cache
+backend/.venv
+backend/venv
+
+# Dev/test artifacts
+backend/api.log
+backend/feature_images.log
+backend/multi_city.log
+backend/rebuild.log
+backend/refresh.log
+backend/*.log
+backend/*.json
+
+# Sensitive local data (do NOT include .api_secret in the image)
+data/.api_secret
+
+# Large img_cache — DO copy the DB, logos, research; but NOT the cached images
+data/img_cache
+
+# Backup files (not needed in prod)
+data/backup_*
+data/*.backup.*
+data/*.py
+
+# Dev tools
+.gemini
+*.md
+tunnel.log
+test_models.py
+check_*.py
+scripts/

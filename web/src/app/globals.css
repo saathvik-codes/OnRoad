@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+  --color-bg: #05060a;
+  --color-ink: #f8fafc;
+  --color-panel: #0c0e14;
+  --color-panel-soft: #141824;
+  --color-line: #1d2230;
+  --color-mute: #94a3b8;
+  --color-accent: #ff4d2e;      /* ignition orange */
+  --color-accent-2: #39d0ff;    /* electric cyan */
+  --color-good: #34d399;
+  --text-main: #f8fafc;
+}
+
+html.light, [data-theme="light"] {
+  --color-bg: #f8fafc;
+  --color-ink: #090d16;
+  --color-panel: #ffffff;
+  --color-panel-soft: #f1f5f9;
+  --color-line: #e2e8f0;
+  --color-mute: #475569;
+  --color-accent: #e03817;
+  --color-accent-2: #0284c7;
+  --color-good: #059669;
+  --text-main: #090d16;
+  color-scheme: light;
+}
+
+html.dark, [data-theme="dark"] {
+  --color-bg: #05060a;
+  --color-ink: #f8fafc;
+  --color-panel: #0c0e14;
+  --color-panel-soft: #141824;
+  --color-line: #1d2230;
+  --color-mute: #94a3b8;
+  --color-accent: #ff4d2e;
+  --color-accent-2: #39d0ff;
+  --color-good: #34d399;
+  --text-main: #f8fafc;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+  --color-bg: var(--color-bg);
+  --color-ink: var(--color-ink);
+  --color-panel: var(--color-panel);
+  --color-panel-soft: var(--color-panel-soft);
+  --color-line: var(--color-line);
+  --color-mute: var(--color-mute);
+  --color-accent: var(--color-accent);
+  --color-accent-2: var(--color-accent-2);
+  --color-good: var(--color-good);
+}
+
+html { 
+  background: var(--color-bg); 
+  color: var(--text-main);
+}
+body {
+  background: var(--color-bg);
+  color: var(--text-main);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+.text-ink {
+  color: #f8fafc !important;
+}
+html.light .text-ink, [data-theme="light"] .text-ink {
+  color: #090d16 !important;
+}
+.text-mute {
+  color: #94a3b8 !important;
+}
+html.light .text-mute, [data-theme="light"] .text-mute {
+  color: #475569 !important;
+}
+:root { scrollbar-color: #3a4256 #0b0d14; scrollbar-width: auto; }
+html.light { scrollbar-color: #94a3b8 #eef2f7; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+.glass { background: rgba(14, 17, 25, 0.62); backdrop-filter: blur(18px) saturate(140%); border: 1px solid rgba(255, 255, 255, 0.07); }
+html.light .glass { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(226, 232, 240, 0.8); }
+.text-gradient { background: linear-gradient(100deg, #fff 0%, #ffb59f 45%, #ff4d2e 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html.light .text-gradient:not([data-invert] *) { background: linear-gradient(100deg, #0f172a 0%, #e03817 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grain::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: #232838; border-radius: 8px; }
+html.light .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee { animation: marquee 40s linear infinite; }
+
+/* ── Light Mode High-Contrast Typography & Surface Styles ── */
+html.light {
+  color: #0f172a;
+}
+html.light :is(h1, h2, h3, h4, h5, h6):not([data-invert] *) {
+  color: #0f172a;
+}
+html.light .text-white:not(.bg-accent *):not(.bg-accent):not([data-invert]):not(button.bg-accent *):not(.bg-black *):not([data-badge]):not([data-invert] *):not([class*="bg-accent"]):not([class*="bg-accent"] *):not([class*="bg-emerald-"]):not([class*="bg-red-"]):not([class*="bg-good"]):not([class*="bg-sky-"]):not([class*="bg-indigo-"]) {
+  color: #0f172a !important;
+}
+html.light .text-white\/90:not(.bg-accent *):not(.bg-accent):not([data-invert] *) {
+  color: rgba(15, 23, 42, 0.9) !important;
+}
+html.light .text-white\/85:not(.bg-accent *):not(.bg-accent):not([data-invert] *) {
+  color: rgba(15, 23, 42, 0.85) !important;
+}
+html.light .text-white\/80:not(.bg-accent *):not(.bg-accent):not([data-invert] *) {
+  color: rgba(15, 23, 42, 0.8) !important;
+}
+html.light .text-white\/70:not(.bg-accent *):not(.bg-accent):not([data-invert] *) {
+  color: rgba(15, 23, 42, 0.7) !important;
+}
+html.light .text-mute {
+  color: #64748b !important;
+}
+html.light .bg-panel {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+html.light .bg-panel\/40, html.light .bg-panel\/60, html.light .bg-panel\/80, html.light .bg-panel\/90, html.light .bg-panel\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+html.light :is(.border-white\/5, .border-white\/10):not([data-invert] *) {
+  border-color: #e2e8f0 !important;
+}
+html.light .border-white\/15, html.light .border-white\/20 {
+  border-color: #cbd5e1 !important;
+}
+html.light .bg-white\/5:not([data-invert] *) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+html.light .bg-white\/10:not([data-invert] *) {
+  background-color: #e2e8f0 !important;
+}
+html.light .bg-white\/15 {
+  background-color: #cbd5e1 !important;
+}
+html.light input, html.light select, html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+html.light th {
+  color: #64748b !important;
+}
+html.light td {
+  color: #0f172a !important;
+}
+html.light .hover\:bg-white\/\[0\.04\]:hover, html.light .hover\:bg-white\/\[0\.03\]:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+

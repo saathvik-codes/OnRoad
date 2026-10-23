@@ -1,0 +1,1947 @@
+{
+  "as_of": "2026-10-19",
+  "schema_notes": "rate is a fraction of road_tax_base. max_inr null = no upper bound. Any field null = could not be verified. coverage: verified | partial | secondary_only | not_found.",
+  "gst_context": {
+    "summary": "From 22-09-2025 (GST 2.0, 56th GST Council): small cars (petrol <=1200cc / diesel <=1500cc and length <=4m) 18%; other cars/SUVs 40%; EVs 5%; compensation cess abolished on cars. Ex-showroom already includes GST; Telangana life tax is levied on this GST-inclusive invoice cost.",
+    "verified": "secondary (GST Council notification not read)",
+    "sources": [
+      "https://www.india-briefing.com/news/gst-cess-removal-india-2025-business-benefits-39879.html/",
+      "https://www.cardekho.com/india-car-news/gst-rate-cut-for-cars-cess-removed-all-cars-to-get-cheaper-34975.htm"
+    ]
+  },
+  "central_registration": {
+    "new_registration_lmv_inr": 600,
+    "smart_card_rc_inr": 200,
+    "hypothecation_endorsement_lmv_inr": 1500,
+    "basis": "Central Motor Vehicles Rules 1989, Rule 81 fee table (central rule; applies in every state). States may add service/user/postal charges, not verified here.",
+    "ev_exemption": "Battery-operated vehicles exempt from fee for issue/renewal of RC and assignment of new registration mark: MoRTH G.S.R. 525(E), 2 Aug 2021 (cited on transport.karnataka.gov.in fee-exemption link; text not re-read here).",
+    "verified": "central-rule figures reproduced on Telangana transport site; state add-ons not verified"
+  },
+  "hsrp_rule": "HSRP on new vehicles must be supplied by manufacturer via dealer and its cost included in vehicle price; no separate itemised charge allowed (Motor Vehicles (High Security Registration Plates) Order 2018 / CMVR r.50, effective 1 Apr 2019).",
+  "states": {
+    "TS": {
+      "name": "Telangana",
+      "coverage": "verified",
+      "road_tax_basis": "Life tax under Telangana Motor Vehicles Taxation Act 1963, Sixth (individual) and Seventh (company / second vehicle) Schedules as substituted by G.O.Ms.No.53 TR&B (Tr.I) dt 13-08-2025, in force 14-08-2025.",
+      "road_tax_base": "'Cost of the vehicle' = invoice price incl. GST and other levies, cash/trade discounts NOT deducted, and not less than manufacturer ex-showroom price (s.2(aa), inserted by TS MVT (Amendment) Act No.6 of 2023, w.e.f. 13-04-2023; TS High Court has held tax is on invoice cost incl. taxes).",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 499999,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500000,
+          "max_inr": 999999,
+          "rate": 0.14,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.18,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": 4999999,
+          "rate": 0.2,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 5000000,
+          "max_inr": null,
+          "rate": 0.21,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 499999,
+          "rate": 0.15,
+          "applies_to": "second_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500000,
+          "max_inr": 999999,
+          "rate": 0.16,
+          "applies_to": "second_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.2,
+          "applies_to": "second_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": 4999999,
+          "rate": 0.22,
+          "applies_to": "second_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 5000000,
+          "max_inr": null,
+          "rate": 0.23,
+          "applies_to": "second_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 499999,
+          "rate": 0.15,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500000,
+          "max_inr": 999999,
+          "rate": 0.16,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.2,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": 4999999,
+          "rate": 0.22,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 5000000,
+          "max_inr": null,
+          "rate": 0.25,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.0,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "slab_boundary_wording": "below 5 lakh | 5 lakh or above and below 10 lakh | 10 lakh or above and below 20 lakh | 20 lakh or above and below 50 lakh | above 50 lakh (exactly 50 lakh is ambiguous in the G.O.; treated as 20-50 slab)",
+      "fuel_differential": "None. Petrol, diesel, CNG and hybrid pay the same life tax; no hybrid concession found.",
+      "second_vehicle_rule": "Additional 2% over Sixth Schedule rate for second or more personalised vehicles (seating up to 10) owned by an individual, at new registration only (G.O.Ms.No.53). Telangana HC (LiveLaw report) held it cannot be levied if first vehicle was sold before permanent registration of the new one. Feb 2026 reports say CM approved abolishing the 2% surcharge; NO G.O. found and the official life-tax page still shows it (checked 2026-10-19).",
+      "second_vehicle_waiver_status": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "registration_fee_exempt": true,
+        "order": "G.O.Ms.No.41, TR&B, dated 16-11-2024 (Telangana EV policy)",
+        "valid_from": "2024-11-18",
+        "valid_to": "2026-12-31",
+        "conditions": "EVs purchased and registered in Telangana; no cap on number of vehicles (secondary reports). Covers 2W, 4W private cars, taxis, autos, LGVs, buses.",
+        "extension_after_2026": null,
+        "road_safety_cess_exempt": null,
+        "strong_hybrid_concession": null,
+        "verified": "secondary (news); G.O. text not retrieved"
+      },
+      "cess": {
+        "road_safety_cess_inr": 5000,
+        "applies_to": "new non-transport Light Motor Vehicle (car) at first registration, one time",
+        "law": "s.3-C + Ninth Schedule, Telangana MVT (Amendment) Act 2026 (L.A. Bill No.5 of 2026, Gazette 02-01-2026)",
+        "effective": "2026-03-01 (G.O.Ms.No.10 dt 25-02-2026, per The South First; G.O. text not retrieved)"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "temporary_registration_inr": null,
+        "postal_or_speed_post_inr": null,
+        "service_or_user_charge_inr": null,
+        "note": "Fees per CMVR Rule 81 as reproduced on TS transport site. User-charge tables on TS site are commented out (not in force on page) so service charge unverified. Since Jan 2026 TS allows registration at dealer point with RC sent by speed post; no separate fee published."
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "green_tax": "Not applicable to new cars (only non-transport vehicles >15 yrs old; G.O.Ms.No.23 dt 07-05-2022).",
+      "notes": [
+        "Hyderabad/GHMC: no separate road tax, cess or registration fee found; life tax is state-wide. Difference is insurance zone (Hyderabad = Zone A for OD tariff reference; rest of Telangana = Zone B).",
+        "Old battery/CNG 5-year tax exemption (G.O.Ms.No.82 of 1993) shown on TS tax-exemption page appears to relate to periodic tax and is not applied to private car life tax in practice - treat as not applicable (unverified).",
+        "Telangana Transport Dept ordered statewide showroom inspections against handling/logistics/delivery/documentation fees and missing Temporary Registration (NewsMeter, 1 Jul 2026; circular no. not found)."
+      ],
+      "sources": [
+        {
+          "title": "TS Transport Dept - Life Time Tax (G.O.Ms.No.53 dt 13-08-2025 images)",
+          "url": "https://www.transport.telangana.gov.in/html/taxes-life-time-tax.html",
+          "accessed": "2026-10-19",
+          "type": "official"
+        },
+        {
+          "title": "TS Transport Dept - Registration fees (CMVR Rule 81)",
+          "url": "https://www.transport.telangana.gov.in/html/fees-registration.html",
+          "accessed": "2026-10-19",
+          "type": "official"
+        },
+        {
+          "title": "TS Transport Dept - Green Tax G.O.Ms.No.23 (2022)",
+          "url": "https://www.transport.telangana.gov.in/html/taxes-greentax.html",
+          "accessed": "2026-10-19",
+          "type": "official"
+        },
+        {
+          "title": "Telangana Gazette L.A. Bill No.5 of 2026 (road safety cess, Ninth Schedule)",
+          "url": "https://prsindia.org/files/bills_acts/bills_states/telangana/2026/Bill5of2026TG.pdf",
+          "date": "2026-01-02",
+          "type": "official (gazette via PRS)"
+        },
+        {
+          "title": "The South First - road safety cess from 1 March 2026",
+          "url": "https://thesouthfirst.com/telangana/telangana-to-levy-one-time-road-safety-cess-on-new-vehicles-from-1-march/",
+          "type": "secondary"
+        },
+        {
+          "title": "Deccan Herald - 100% EV road tax & registration fee exemption",
+          "url": "https://www.deccanherald.com/india/telangana/telangana-announces-100-exemption-on-road-tax-registration-fees-for-electric-vehicles-3280328",
+          "date": "2024-11",
+          "type": "secondary"
+        },
+        {
+          "title": "ETV Bharat - EV exemption valid till 31 Dec 2026",
+          "url": "https://www.etvbharat.com/en/state/incentives-fuel-transition-to-electric-vehicles-in-telangana-enn26081904371",
+          "date": "2026-08",
+          "type": "secondary"
+        },
+        {
+          "title": "Swipe - govt to scrap 2% second-vehicle tax (approval only)",
+          "url": "https://getswipe.in/blog/article/telangana-govt-to-scrap-additional-life-tax-on-second-vehicle-purchase",
+          "date": "2026-02-22",
+          "type": "secondary"
+        },
+        {
+          "title": "LiveLaw - TS HC on 2% second vehicle tax",
+          "url": "https://www.livelaw.in/tax-cases/2-additional-tax-for-acquiring-second-vehicle-cannot-be-levied-first-vehicle-sold-before-permanent-registration-of-new-vehicle-telangana-hc-277287",
+          "type": "secondary (court report)"
+        },
+        {
+          "title": "LegitQuest - TS MVT (Amendment) Act 2023 definition of cost of vehicle",
+          "url": "https://www.legitquest.com/act/the-telangana-motor-vehicles-taxation-amendment-act-2023/E031",
+          "type": "secondary (statute text)"
+        },
+        {
+          "title": "NewsMeter - TS crackdown on dealers' illegal charges",
+          "url": "https://newsmeter.in/regional/telangana/telangana-cracks-down-on-vehicle-dealers-over-illegal-charges-missing-temporary-registration-770903",
+          "date": "2026-07-01",
+          "type": "secondary"
+        },
+        {
+          "title": "The South First - dealer-point registration, RC by post",
+          "url": "https://thesouthfirst.com/telangana/no-more-rta-visits-telangana-permits-vehicle-registration-at-dealerships-rcs-delivered-by-post/",
+          "date": "2026-01-10",
+          "type": "secondary"
+        }
+      ]
+    },
+    "KA": {
+      "name": "Karnataka",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 499999,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500000,
+          "max_inr": 999999,
+          "rate": 0.14,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.17,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": null,
+          "rate": 0.18,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 1000000,
+          "rate": 0.05,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        },
+        {
+          "min_inr": 1000001,
+          "max_inr": 2500000,
+          "rate": 0.08,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        },
+        {
+          "min_inr": 2500001,
+          "max_inr": null,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": false,
+        "rates": "5% up to 10L, 8% 10-25L, 10% above 25L (4W); e-2W exempt",
+        "effective": "2026-04-01 (some reports 2026-04-10)",
+        "law": "KMVT (Amendment) Act 2026 - secondary",
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": {
+        "cess_pct_of_tax": 0.11,
+        "law": "KMVT Act 1957 s.3A (11% of tax) - secondary",
+        "welfare_cess_car_inr": 1000,
+        "welfare_cess_law": "s.3A(1B) KMVT (Second Amendment) Act 2024, Karnataka Act 3 of 2025 (official gazette on transport.karnataka.gov.in)"
+      },
+      "notes": [
+        "ICE slabs 13/14/17/18% from secondary (Spinny); official schedule PDFs on transport.karnataka.gov.in are scanned images and were not read.",
+        "Company / second-vehicle rates not verified.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://transport.karnataka.gov.in/36/motor-vehicles-taxation-schedule/en",
+          "type": "official index"
+        },
+        {
+          "url": "https://transport.karnataka.gov.in/storage/pdf-files/additionalcess.pdf",
+          "date": "2025-01-09",
+          "type": "official (welfare cess Rs1000 car)"
+        },
+        {
+          "url": "https://www.spinny.com/blog/road-tax-in-karnataka-applicability-calculation-payment-more/",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.evfy.in/news/karnataka-ends-ev-tax-exemption--new-road-tax-slabs-explained-2026",
+          "date": "2026-04-06",
+          "type": "secondary"
+        }
+      ]
+    },
+    "TN": {
+      "name": "Tamil Nadu",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 499999,
+          "rate": 0.12,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500000,
+          "max_inr": 999999,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.18,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": null,
+          "rate": 0.2,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-12-31",
+        "order": "TN Govt order dt 29-12-2025 under TN MVT Act 1974 (extension of 100% exemption for all battery vehicles)",
+        "verified": "secondary (multiple news)"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Slabs effective 09-11-2023 (TN MVT Amendment, Bill 33 of 2023).",
+        "Road safety tax / cess amount conflicts between sources (Rs1,500 vs Rs2,250) - null.",
+        "Company / second-vehicle rates not verified.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.taxscan.in/tamil-nadu-implements-fresh-life-tax-rates-for-vehicles-from-november-9-2023/341232",
+          "type": "secondary"
+        },
+        {
+          "url": "https://PRSINDIA.org/files/bills_acts/bills_states/tamil-nadu/2023/Bill33of2023TamilNadu.pdf",
+          "type": "official bill (not read)"
+        },
+        {
+          "url": "https://www.businesstoday.in/personal-finance/news/story/breather-for-ev-buyers-full-road-tax-exemption-for-evs-in-tamil-nadu-extended-by-two-years-509022-2026-01-01",
+          "date": "2026-01-01",
+          "type": "secondary"
+        }
+      ]
+    },
+    "MH": {
+      "name": "Maharashtra",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 999999,
+          "rate": 0.11,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.12,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": null,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 999999,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.14,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": null,
+          "rate": 0.15,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 999999,
+          "rate": 0.08,
+          "applies_to": "first_vehicle",
+          "fuel": "cng"
+        },
+        {
+          "min_inr": 1000000,
+          "max_inr": 1999999,
+          "rate": 0.09,
+          "applies_to": "first_vehicle",
+          "fuel": "cng"
+        },
+        {
+          "min_inr": 2000000,
+          "max_inr": null,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "cng"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.2,
+          "applies_to": "company",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.0,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "valid_to": "2030-03-31 (secondary; Maharashtra EV Policy 2025)",
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "MMVT amendment effective 01-07-2025; tax cap raised from Rs20L to Rs30L; flat 20% for company-registered and imported vehicles.",
+        "CNG/LPG rates conflict across sources (8/9/10% vs 8%/13%).",
+        "Proposed 6% tax on EVs above Rs30L was dropped (Autocar).",
+        "Road safety cess (reported 2% of tax) not verified.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.autocarindia.com/industry/new-car-prices-in-maharashtra-to-increase-with-amendments-to-motor-vehicles-tax-act-435960",
+          "date": "2025",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.deccanherald.com/india/maharashtra/maharashtra-revised-one-time-tax-structure-to-make-many-vehicles-costlier-3609597",
+          "type": "secondary"
+        }
+      ],
+      "tax_cap_inr": 3000000
+    },
+    "DL": {
+      "name": "Delhi",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 600000,
+          "rate": 0.04,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 600001,
+          "max_inr": 1000000,
+          "rate": 0.07,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 1000001,
+          "max_inr": null,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "petrol"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 600000,
+          "rate": 0.05,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 600001,
+          "max_inr": 1000000,
+          "rate": 0.0875,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 1000001,
+          "max_inr": null,
+          "rate": 0.125,
+          "applies_to": "first_vehicle",
+          "fuel": "diesel"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 3000000,
+          "rate": 0.0,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "registration_fee_exempt": true,
+        "price_cap_inr": 3000000,
+        "valid_from": "2026-07-01",
+        "valid_to": "2030-03-31",
+        "order": "Delhi EV Policy 2026",
+        "verified": "secondary (Business Standard, Coverfox)"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Official Delhi transport page states diesel vehicles pay 25% extra over applicable tax; private car slabs are in an attached notification not read - slabs secondary.",
+        "Company-owned: reported +25% (secondary).",
+        "CNG/hybrid reportedly same as petrol; strong-hybrid concession under EV Policy 2026 reported in draft only.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://transport.delhi.gov.in/transport/tax-rate",
+          "type": "official (diesel +25% note)"
+        },
+        {
+          "url": "https://www.business-standard.com/amp/india-news/delhi-ev-policy-july-1-tax-waiver-subsidies-ev-only-rules-126062900692_1.html",
+          "date": "2026-06-29",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary"
+        }
+      ]
+    },
+    "AP": {
+      "name": "Andhra Pradesh",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 1000000,
+          "rate": 0.12,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000001,
+          "max_inr": null,
+          "rate": 0.14,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.0,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "valid_to": "2029-12 (secondary)",
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": {
+        "road_safety_cess_pct_of_life_tax": 0.1,
+        "effective": "2026-01-13 (Ordinance 1 of 2026 dt 12-01-2026; Act 2026)",
+        "verified": "official"
+      },
+      "notes": [
+        "Base slabs conflict between sources (12%/14% vs 13-18%); 12/14 used as more common - unverified.",
+        "Second vehicle reported +2% (secondary).",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://prsindia.org/files/bills_acts/bills_states/andhra-pradesh/2026/Bill14of2026AP.pdf",
+          "date": "2026-03-05",
+          "type": "official bill (road safety cess 10% of life tax, deemed from 13-01-2026)"
+        },
+        {
+          "url": "https://desicalc.in/rto-tax/andhrapradesh",
+          "type": "secondary"
+        }
+      ]
+    },
+    "GJ": {
+      "name": "Gujarat",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.06,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        }
+      ],
+      "road_tax_base": "pre-GST price (secondary)",
+      "ev": {
+        "life_tax_exempt": false,
+        "rate": 0.01,
+        "valid_from": "2025-04-18",
+        "valid_to": "2026-03-31",
+        "status_after_2026_03_31": null,
+        "verified": "secondary (Autocar, News On AIR)"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "6% flat reportedly on pre-GST price (secondary).",
+        "Company rate (reported 12%) not verified.",
+        "EV 1% scheme expired 31-03-2026; reports of a replacement 100% exemption unverified.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.newsonair.gov.in/gujarat-slashes-ev-motor-vehicle-tax-to-1-to-boost-green-mobility/",
+          "date": "2025-04-19",
+          "type": "public broadcaster"
+        },
+        {
+          "url": "https://www.autocarindia.com/industry/gujarat-government-reduces-ev-road-tax-to-1-percent-till-march-2026-435160",
+          "type": "secondary"
+        }
+      ]
+    },
+    "KL": {
+      "name": "Kerala",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": 500000,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 500001,
+          "max_inr": 1000000,
+          "rate": 0.13,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1000001,
+          "max_inr": 1500000,
+          "rate": 0.15,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 1500001,
+          "max_inr": 2000000,
+          "rate": 0.17,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 2000001,
+          "max_inr": null,
+          "rate": 0.22,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        },
+        {
+          "min_inr": 0,
+          "max_inr": 1500000,
+          "rate": 0.05,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        },
+        {
+          "min_inr": 1500001,
+          "max_inr": 2000000,
+          "rate": 0.08,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        },
+        {
+          "min_inr": 2000001,
+          "max_inr": null,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "electric"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": false,
+        "rates": "5% up to 15L, 8% 15-20L, 10% above 20L (Kerala Budget Feb 2025)",
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "ICE slabs conflict (10/13/15/17/22 vs 9/11/13/16/21).",
+        "Kerala one-time tax for private vehicles covers 15 years.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.business-standard.com/industry/auto/kerala-shocks-electric-vehicle-buyers-raises-taxes-up-to-10-based-on-cost-125020701572_1.html",
+          "date": "2025-02-07",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.policybazaar.com/rto/road-tax/kerala/",
+          "type": "secondary"
+        }
+      ]
+    },
+    "WB": {
+      "name": "West Bengal",
+      "coverage": "partial",
+      "road_tax": [
+        {
+          "min_inr": 0,
+          "max_inr": null,
+          "rate": 0.1,
+          "applies_to": "first_vehicle",
+          "fuel": "any"
+        }
+      ],
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "valid_to": null,
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Reported 10% of ex-showroom incl. GST with minimum Rs40,000 (lifetime); other sources give engine-cc flat amounts - conflicting.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.bajajfinserv.in/road-tax-in-west-bengal",
+          "type": "secondary"
+        }
+      ],
+      "minimum_tax_inr": 40000
+    },
+    "UP": {
+      "name": "Uttar Pradesh",
+      "coverage": "partial",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "life_tax_exempt": true,
+        "registration_fee_exempt": true,
+        "valid_from": "2022-10-14",
+        "valid_to": "2027-10-13",
+        "conditions": "From 14-10-2025 only EVs manufactured/assembled in UP qualify (secondary)",
+        "verified": "secondary"
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Car rate conflicts: 8%/10% (PolicyBazaar), 9%/11% (others) - null-equivalent; verify.",
+        "Strong hybrid exemption (2024) status not found.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.thestatesman.com/business/up-grants-100-exemption-on-registration-fees-road-tax-for-electric-vehicle-purchases-till-october-2027-1503508414.html",
+          "type": "secondary"
+        },
+        {
+          "url": "https://www.policybazaar.com/rto/road-tax/uttar-pradesh/",
+          "type": "secondary"
+        }
+      ]
+    },
+    "AR": {
+      "name": "Arunachal Pradesh",
+      "coverage": "not_found",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "No usable source found.",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": []
+    },
+    "AS": {
+      "name": "Assam",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "EV waiver under 2021 EV policy - status unverified",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 4-14% one-time by price + 1% road safety cess on tax",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "BR": {
+      "name": "Bihar",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% exemption reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 8-12% by price (mycarhelpline adds 10% road safety cess)",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "CG": {
+      "name": "Chhattisgarh",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "conflicting (100% to Mar 2027 vs 25% rebate)",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 5-10% conflicting across sources",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "GA": {
+      "name": "Goa",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% rebate reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 9% / 12% / 15% by price + fixed infra cess above Rs10L",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "HR": {
+      "name": "Haryana",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "conflicting (100% waiver to Rs30L from Jul 2026 vs tiered 1.25-2.5%)",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 5% / 8% / 10% by price; CNG rebate reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "HP": {
+      "name": "Himachal Pradesh",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "exempt reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6% up to 15L, 7% above (+1% cess reported)",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "JH": {
+      "name": "Jharkhand",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% to Oct 2027 reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): conflicting (7%/9% vs 6%/15%) on pre-GST price",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "MP": {
+      "name": "Madhya Pradesh",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "conflicting (flat 4% vs exemption expired Mar 2026)",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): Petrol/CNG 8-14%, diesel 10-16% by price",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "MN": {
+      "name": "Manipur",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 3-8% by price",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "ML": {
+      "name": "Meghalaya",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "waiver reportedly lapsed Mar 2026",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 4-10% by price",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "MZ": {
+      "name": "Mizoram",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): flat amounts Rs11,250-19,500",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "NL": {
+      "name": "Nagaland",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6% flat",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "OD": {
+      "name": "Odisha",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "exempt reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6-12% by price (20% above Rs40L reported)",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "PB": {
+      "name": "Punjab",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% waiver reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 9.5/10-13% by price + Rs1,000 cow cess",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "RJ": {
+      "name": "Rajasthan",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% to Aug 2027 reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): engine-cc based 6-10% petrol, 8-12% diesel + 12.5% surcharge on tax",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "SK": {
+      "name": "Sikkim",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "1% reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): low rates ~1-5% (source table malformed)",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "TR": {
+      "name": "Tripura",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): flat amounts Rs4,100-8,250",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "UK": {
+      "name": "Uttarakhand",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "exempt reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6-10% by price + green tax",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "CH": {
+      "name": "Chandigarh (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% for EV and strong/plug-in hybrids 18-03-2023 to 17-03-2028 (Tribune)",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): Punjab-like 9.5/10-12/13% on pre-GST price + Rs1,000 cow cess",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.tribuneindia.com/news/chandigarh/no-road-tax-for-electric-hybrid-vehicles-in-city-511342/amp",
+          "type": "secondary news"
+        }
+      ]
+    },
+    "PY": {
+      "name": "Puducherry (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "battery EV 50% reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 4% up to 10L, 7% 10-40L, 8% above 40L on pre-GST price",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "JK": {
+      "name": "Jammu & Kashmir (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "nil tax reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 9% (J&K dealer) / 12% (outside dealer) reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "LA": {
+      "name": "Ladakh (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": {
+        "summary_unverified": "100% to Aug 2027 reported",
+        "valid_to": null,
+        "verified": false
+      },
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6% / 9% reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "AN": {
+      "name": "Andaman & Nicobar Islands (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 6-8% reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "DN": {
+      "name": "Dadra & Nagar Haveli and Daman & Diu (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): ~2.5-3% reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    },
+    "LD": {
+      "name": "Lakshadweep (UT)",
+      "coverage": "secondary_only",
+      "road_tax": null,
+      "road_tax_base": null,
+      "ev": null,
+      "registration": {
+        "new_registration_lmv_inr": 600,
+        "smart_card_rc_inr": 200,
+        "note": "CMVR Rule 81 central fee; state service charges not verified"
+      },
+      "hypothecation_fee": 1500,
+      "hsrp": 0,
+      "cess": null,
+      "notes": [
+        "Road tax (unverified secondary summary): 5.5% flat reported",
+        "Rates from secondary aggregator(s) only; NOT verified against an official notification. Do not use for live quotes without confirmation."
+      ],
+      "sources": [
+        {
+          "url": "https://motomotar.com/car-buying-guide/rto-road-tax-by-state/",
+          "date": "2026-08-05",
+          "type": "secondary aggregator"
+        },
+        {
+          "url": "https://www.mycarhelpline.com/index.php?option=com_easyblog&view=entry&id=155&Itemid=91",
+          "date": "2026-09-27",
+          "type": "secondary aggregator"
+        }
+      ]
+    }
+  },
+  "insurance": {
+    "third_party_3yr_private_car": [
+      {
+        "engine_cc_max": 1000,
+        "premium_inr": 6521
+      },
+      {
+        "engine_cc_max": 1500,
+        "premium_inr": 10640
+      },
+      {
+        "engine_cc_max": null,
+        "premium_inr": 24596
+      }
+    ],
+    "third_party_1yr_private_car": [
+      {
+        "engine_cc_max": 1000,
+        "premium_inr": 2094
+      },
+      {
+        "engine_cc_max": 1500,
+        "premium_inr": 3416
+      },
+      {
+        "engine_cc_max": null,
+        "premium_inr": 7897
+      }
+    ],
+    "ev_third_party": [
+      {
+        "kw_max": 30,
+        "premium_3yr_inr": 5543
+      },
+      {
+        "kw_max": 65,
+        "premium_3yr_inr": 9044
+      },
+      {
+        "kw_max": null,
+        "premium_3yr_inr": 20907
+      }
+    ],
+    "tp_premium_gst_rate": 0.18,
+    "tp_notification": "Motor Vehicles (Third Party Insurance Base Premium and Liability) Rules 2022, MoRTH in consultation with IRDAI, notified 25-05-2022, effective 01-06-2022. G.S.R. number not verified. As of 2026-10-19 no newer notified revision found (hike proposals of 10-25% reported in 2025-26 but not gazetted).",
+    "tp_discounts": "7.5% discount on premium for electric and hybrid electric vehicles per SCC Online summary of 2022 rules (other outlets conflict) - verify; not applied in examples.",
+    "pa_cover_inr": null,
+    "pa_cover_note": "Compulsory personal accident cover for owner-driver, sum insured Rs15 lakh (IRDAI 2018). Premium is insurer-filed; not a single notified figure. Can be skipped only if owner already has a standalone PA policy of >= Rs15 lakh or holds no driving licence.",
+    "od_estimate": {
+      "label": "ESTIMATE ONLY - own damage is insurer-priced (de-tariffed since 2007).",
+      "idv_formula": "IDV = ex-showroom price x (1 - depreciation); depreciation 5% for vehicle age <= 6 months (new car). Accessories add-on separately.",
+      "new_car_depreciation": 0.05,
+      "reference_rates_pct_of_idv_age_upto_5yr": {
+        "zone_a": {
+          "cc_upto_1000": 0.03127,
+          "cc_1001_1500": 0.03283,
+          "cc_above_1500": 0.0344
+        },
+        "zone_b": {
+          "cc_upto_1000": 0.03039,
+          "cc_1001_1500": 0.03191,
+          "cc_above_1500": 0.03343
+        }
+      },
+      "zone_a_cities": [
+        "Ahmedabad",
+        "Bengaluru",
+        "Chennai",
+        "Hyderabad",
+        "Kolkata",
+        "Mumbai",
+        "New Delhi",
+        "Pune"
+      ],
+      "ncb": "Not applicable to a new car (0%), unless transferred from a previous vehicle.",
+      "discount_note": "Reference rates are the old India Motor Tariff schedule; actual insurer quotes are typically discounted from these. Treat tariff x IDV as an upper reference, not a quote. Typical discount range: null (not verified).",
+      "ev_note": "No official OD reference by kW found; using cc>1500 band as a proxy is an assumption.",
+      "gst_rate": 0.18,
+      "sources": [
+        "https://www.shriramgi.com/article/why-car-insurance-premiums-vary-across-regions",
+        "https://bajajallianz.com/blog/motor-insurance-articles/why-vehicle-insurance-premiums-vary-from-city-to-city.html"
+      ]
+    },
+    "sources": [
+      {
+        "url": "https://mas360.moneylife.in/article/government-notifies-increase-in-motor-third-party-insurance-premium-from-1st-june/4048.html",
+        "date": "2022-05-27",
+        "type": "secondary"
+      },
+      {
+        "url": "https://www.scconline.com/blog/post/2022/05/26/base-premium-for-third-party-insurance-for-unlimited-liability-revised-vide-motor-vehicles-third-party-insurance-base-premium-and-liability-rules-2022/",
+        "date": "2022-05-26",
+        "type": "secondary (links e-Gazette 236018.pdf)"
+      },
+      {
+        "url": "https://egazette.nic.in/WriteReadData/2022/236018.pdf",
+        "type": "official gazette (could not be downloaded)"
+      }
+    ]
+  },
+  "tcs": {
+    "rate": 0.01,
+    "threshold_inr": 1000000,
+    "threshold_rule": "applies when value of the motor vehicle sale EXCEEDS Rs10,00,000 (exactly 10L = no TCS)",
+    "base": "Entire sale consideration on the dealer invoice (not only the excess over 10L). Commonly applied on the GST-inclusive invoice value; registration, road tax and insurance are not part of the dealer's sale consideration (interpretation, verify).",
+    "law": "Income-tax Act 1961 s.206C(1F) until 31-03-2026; from 01-04-2026 Income-tax Act 2025 s.394 (table entry; sub-section cited inconsistently by secondary sources). Rate and threshold unchanged for tax year 2026-27.",
+    "refundable": "Not a cost: TCS is credited to buyer's PAN (Form 26AS/AIS) and adjusted against income-tax liability or refunded via ITR.",
+    "sources": [
+      "https://taxguru.in/income-tax/tcs-rate-chart-tax-year-2026-27-income-tax-act-2025.html",
+      "https://www.taxaj.com/learn/tcs-on-sale-of-motor-vehicle-above-10-lakh-seller-compliance/"
+    ],
+    "verified": "secondary"
+  },
+  "fastag_inr": 300,
+  "fastag_detail": {
+    "issuance_fee_inr": 100,
+    "refundable_security_deposit_car_inr": 200,
+    "min_recharge_inr": null,
+    "note": "Car (VC4) typical: Rs100 issuance (often waived) + Rs200 refundable deposit + any opening balance. Issuer-dependent. Not verified on IHMCL/NHAI official page. Optional FASTag Annual Pass (Rs3,000 for 200 trips/1 yr, from 15-08-2025) is not part of on-road price.",
+    "sources": [
+      "https://www.bankbazaar.com/driving-licence/fastag-charges.html"
+    ],
+    "verified": "secondary"
+  },
+  "disallowed_charges": [
+    {
+      "item": "Handling / logistics / delivery / PDI / documentation charges",
+      "status": "not a statutory charge; Telangana Transport Dept ordered dealer inspections and refunds for unauthorised charges (Jul 2026); Delhi, Kerala and Telangana transport depts issued earlier public notices (Deccan Chronicle)",
+      "allowed": false
+    },
+    {
+      "item": "HSRP / number plate charge",
+      "status": "must be included in vehicle price for new vehicles (HSRP Order 2018)",
+      "allowed": false
+    },
+    {
+      "item": "Separate temporary registration fee beyond govt fee",
+      "status": "TR must be issued via Vahan before delivery; dealer markup not allowed (amount unverified)",
+      "allowed": false
+    },
+    {
+      "item": "Extended warranty",
+      "status": "optional",
+      "allowed": "optional"
+    },
+    {
+      "item": "Accessories pack / essential kit / coating / anti-rust",
+      "status": "optional; cannot be made a condition of sale (consumer protection - no specific official notice found)",
+      "allowed": "optional"
+    },
+    {
+      "item": "Dealer-arranged insurance",
+      "status": "buyer may buy insurance from any insurer; only valid TP cover required before registration",
+      "allowed": "optional"
+    },
+    {
+      "item": "FASTag",
+      "status": "mandatory fitment on new 4W (CMVR); dealer may charge the issuer fee only",
+      "allowed": true
+    }
+  ]
+}

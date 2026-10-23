@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps: curl for health-checks, libpq not needed (SQLite only)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies first (layer-cached)
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Copy the pre-seeded database + assets into the image as a baseline.
+# At runtime the DB_PATH env var points to the Render persistent disk (/data/onroad.db).
+# The entrypoint script below copies the seed DB to the disk on first boot.
+COPY data/ ./data/
+
+WORKDIR /app/backend
+
+ENV PYTHONPATH=/app/backend
+ENV PORT=8100
+# Default to the in-image copy; Render overrides this to /data/onroad.db
+ENV DB_PATH=/app/data/onroad.db
+ENV IMG_CACHE=/app/data/img_cache
+
+EXPOSE 8100
+
+# Startup: if a persistent disk DB doesn't exist yet, seed it from the baked-in copy
+COPY docker-entrypoint-backend.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "onroad.api:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "2"]

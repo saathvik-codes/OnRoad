@@ -1,0 +1,35 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install deps first (layer-cached)
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --legacy-peer-deps
+
+COPY web/ ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+# API_ORIGIN is baked into next.config.ts rewrites at *runtime* (not build time),
+# so no build-arg needed here. The rewrite proxy is server-side.
+
+RUN npm run build
+
+# ── Production runner ────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+# API_ORIGIN is read at runtime by next.config.ts rewrites
+ENV API_ORIGIN=http://localhost:8100
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
