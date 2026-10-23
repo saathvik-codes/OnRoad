@@ -1,0 +1,12 @@
+<resources>
+    <color name="night">#05060A</color>
+    <color name="ignition">#FF4D2E</color>
+    <style name="Theme.OnRoad" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/night</item>
+    </style>
+    <style name="Theme.OnRoad.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/night</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.OnRoad</item>
+    </style>
+</resources>

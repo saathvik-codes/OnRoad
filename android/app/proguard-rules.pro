@@ -1,0 +1,7 @@
+-keepattributes *Annotation*, InnerClasses, Signature, Exceptions
+-keep,includedescriptorclasses class com.onroad.app.**$$serializer { *; }
+-keepclassmembers class com.onroad.app.** { *** Companion; }
+-keepclasseswithmembers class com.onroad.app.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,allowobfuscation interface com.onroad.app.data.Api
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**

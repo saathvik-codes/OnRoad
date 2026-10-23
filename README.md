@@ -79,6 +79,19 @@
 - **Security**: PBKDF2 salted password hashing, HMAC signed session cookies
 - **Ingestion**: Requests, BeautifulSoup4, HTTPX, Pillow image optimization
 
+### Android app (`/android`)
+- **Stack**: Kotlin, Jetpack Compose (Material 3), Hilt, Retrofit + kotlinx.serialization, Coil 3, WorkManager
+- Talks to the same API as the website; the server address is set in `android/app/build.gradle.kts` (`DEFAULT_SERVER`) and can be changed in the app under Profile → Server.
+
+### Repository layout
+```
+backend/   FastAPI API, brand adapters, ingest + refresh jobs
+web/       Next.js website
+android/   native Android app (open this folder in Android Studio)
+data/      seed.db (public catalogue, no user data), logos, research sources
+scripts/   maintenance scripts; scripts/dev/ holds local checks (run from the repo root)
+```
+
 ---
 
 ## 💻 Local Development Setup
@@ -116,6 +129,13 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 4. Android App
+Open the `android` folder in Android Studio and run it, or build from the command line:
+```bash
+cd android
+./gradlew assembleRelease   # app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 
