@@ -147,6 +147,41 @@ class ForceMotorsAdapter(BrandAdapter):
             raise NotSupported("Force Motors /prices/ table layout changed (no passenger rows found)")
         return out
 
+    # ---------------------------------------------------------------- specs
+    def specs(self):
+        """forcemotors.com/vehicles/<model>/ "Technical Specifications" accordion: one tab per group (Engine, Gearbox,
+        Dimensions (mm) ...) of <li><span>label</span><span>value</span></li> pairs. Force publishes one sheet per model
+        (no per-variant split), so the sheet is attached to each priced variant of that model; a value listing several
+        seat layouts ("9+D/10+D/12+D") is not attached. Gurkha / Urbania live on their own microsites (not covered)."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink
+        priced = self.prices("Hyderabad")
+        specs = []
+        for url in dict.fromkeys(v.model_url for v in priced if v.model_url and v.model_url.startswith(BASE)):
+            try:
+                soup = BeautifulSoup(self._req("GET", url).text, "html.parser")
+            except Exception:
+                continue
+            rows = []
+            for title in soup.select(".products-technical-specification .product-accordian-title"):
+                pane = soup.find(id=title.get("data-tag") or "")
+                if not pane:
+                    continue
+                for li in pane.select("li"):
+                    sp = li.find_all("span")
+                    if len(sp) >= 2:
+                        rows.append((clean(title.get_text(" ")), clean(sp[0].get_text(" ")), clean(sp[1].get_text(" "))))
+            for v in (x for x in priced if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                for sec, lab, val in rows:
+                    if "/" in val and re.search(r"\+\s*D", val):
+                        continue
+                    sink.row(sec, lab, val, url, "spec")
+                specs += sink.out()[0]
+        if not specs:
+            raise NotSupported("forcemotors.com model pages carried no Technical Specifications accordion")
+        return specs, []
+
     # ---------------------------------------------------------------- dealers
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)

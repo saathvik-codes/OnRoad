@@ -26,12 +26,14 @@ export function emi(principal: number, annualRatePct: number, months: number) {
   return (principal * r * (1 + r) ** months) / ((1 + r) ** months - 1);
 }
 
-export function BankLoansComparison({ onRoadPriceInr, variantName, isEV }: { onRoadPriceInr: number; variantName: string; isEV?: boolean }) {
-  const { data: rates } = useSWR<Rate[]>("/loan-rates", fetcher);
-  const [down, setDown] = useState(String(Math.round(onRoadPriceInr * 0.2)));
+export function BankLoansComparison({ onRoadPriceInr, variantName, isEV, vehicleType }: { onRoadPriceInr: number; variantName: string; isEV?: boolean; vehicleType?: string }) {
+  const isBike = vehicleType === "bike";
+  const { data: rates } = useSWR<Rate[]>(isBike ? null : "/loan-rates", fetcher);
+  const [down, setDown] = useState("");
+  const downInr = down === "" ? Math.round(onRoadPriceInr * 0.2) : Number(down.replace(/\D/g, "") || 0);
   const [rate, setRate] = useState("");
   const [years, setYears] = useState(5);
-  const principal = Math.max(0, onRoadPriceInr - Number(down.replace(/\D/g, "") || 0));
+  const principal = Math.max(0, onRoadPriceInr - downInr);
   const months = years * 12;
   const r = Number(rate);
   const monthly = useMemo(() => emi(principal, r, months), [principal, r, months]);
@@ -42,7 +44,7 @@ export function BankLoansComparison({ onRoadPriceInr, variantName, isEV }: { onR
       <Card className="space-y-5 p-6">
         <div className="flex items-center gap-2"><Landmark className="h-5 w-5 text-accent" /><p className="font-semibold text-ink">EMI for {variantName}</p></div>
         <div><Label>On-road price</Label><p className="font-mono text-lg font-bold text-ink">{inr(onRoadPriceInr)}</p></div>
-        <div><Label hint="(₹)">Down payment</Label><Input inputMode="numeric" value={down} onChange={(e) => setDown(e.target.value)} /></div>
+        <div><Label hint="(₹)">Down payment</Label><Input inputMode="numeric" value={down} placeholder={String(Math.round(onRoadPriceInr * 0.2))} onChange={(e) => setDown(e.target.value)} /></div>
         <div>
           <Label hint="(% a year)">Interest rate</Label>
           <Input inputMode="decimal" value={rate} placeholder="Pick a bank on the right, or type your offer" onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ""))} />
@@ -61,7 +63,7 @@ export function BankLoansComparison({ onRoadPriceInr, variantName, isEV }: { onR
       </Card>
 
       <Card className="p-6">
-        <p className="font-semibold text-ink">Car-loan rates published by banks</p>
+        <p className="font-semibold text-ink">{isBike ? "Two-wheeler loans" : "Car-loan rates published by banks"}</p>
         <p className="mt-1 text-xs text-mute">Read daily from each bank&apos;s own rate page. Your rate within the range depends on your credit score and profile.</p>
         <div className="mt-4 divide-y divide-line">
           {list.map((x) => (
@@ -69,17 +71,18 @@ export function BankLoansComparison({ onRoadPriceInr, variantName, isEV }: { onR
               className={cn("flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left", Number(rate) === x.min_pct && "text-accent")}>
               <span>
                 <span className="block text-sm font-medium text-ink">{x.product}</span>
-                <span className="block text-xs text-mute">{x.min_pct}% – {x.max_pct}% a year · read {ago(x.fetched_at)} ·{" "}
+                <span className="block text-xs text-mute">{x.max_pct ? `${x.min_pct}% – ${x.max_pct}%` : `from ${x.min_pct}%`} a year · read {ago(x.fetched_at)} ·{" "}
                   <a href={x.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-accent-2 hover:underline">source</a></span>
               </span>
               <span className="text-right font-mono text-sm text-ink">
-                {inr(emi(principal, x.min_pct, months))} – {inr(emi(principal, x.max_pct, months))}<span className="block text-[11px] font-sans text-mute">EMI a month</span>
+                {x.max_pct ? `${inr(emi(principal, x.min_pct, months))} – ${inr(emi(principal, x.max_pct, months))}` : `from ${inr(emi(principal, x.min_pct, months))}`}<span className="block text-[11px] font-sans text-mute">EMI a month</span>
               </span>
             </button>
           ))}
-          {rates && list.length === 0 && <p className="py-3 text-sm text-mute">No bank rates could be read today.</p>}
+          {isBike && <p className="py-3 text-sm text-mute">Banks don&apos;t publish two-wheeler loan rates in a form we can read reliably. Ask your bank or the showroom&apos;s finance desk for the rate, enter it on the left, and compare.</p>}
+          {!isBike && rates && list.length === 0 && <p className="py-3 text-sm text-mute">No bank rates could be read today.</p>}
         </div>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-mute">Check rates directly</p>
+        <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-mute">{isBike ? "Two-wheeler loans at" : "Check rates directly"}</p>
         <ul className="mt-1 grid gap-x-6 sm:grid-cols-2">
           {OTHER_BANKS.map((b) => (
             <li key={b.name}><a href={b.url} target="_blank" rel="noreferrer" className="flex items-center justify-between py-1.5 text-sm text-ink hover:text-accent">{b.name}<ExternalLink className="h-3.5 w-3.5 text-mute" /></a></li>

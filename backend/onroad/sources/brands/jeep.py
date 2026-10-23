@@ -159,6 +159,38 @@ class JeepAdapter(BrandAdapter):
             raise NotSupported("no ModelWalk trim prices found on jeep-india.com model pages")
         return out
 
+    def specs(self):
+        """The model page's ModelWalk lists, per trim, the feature bullets Jeep shows for that trim
+        (vehicleHighlights[i].feature.bullets). Each bullet becomes equipment of every priced variant of that trim;
+        bullets that are technical data (engine, gearbox, dimensions) are not turned into equipment, and the walk
+        carries no spec values, so no specs."""
+        from ._spec_kit import TECH, SpecSink, spec_key
+        priced = self.prices("Hyderabad")
+        feats = []
+        for m in self.models():
+            page = self._get(m["url"]).text
+            for walk in _props(page, "ModelWalk"):
+                labels = (walk.get("tabGroup") or {}).get("label") or []
+                for i, h in enumerate(walk.get("vehicleHighlights") or []):
+                    trim = _plain(labels[i]["label"]) if i < len(labels) else _plain(h.get("vehicleName")).split("change")[-1]
+                    bullets = [_plain(b.get("text")) for b in ((h.get("feature") or {}).get("bullets") or [])]
+                    for v in (x for x in priced if x.model == m["name"] and x.variant == _trim(trim)):
+                        sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                        for b in bullets:
+                            if b and not TECH.search(b) and not spec_key("", b):
+                                sink.feature(b, "✓", m["url"])      # "(AT Variants only)" qualifiers are honoured
+                        feats += sink.out()[1]
+        if not feats:
+            raise NotSupported("jeep-india.com ModelWalk carried no trim feature bullets")
+        # a trim can appear in two walks on one page: keep one row per (variant, label)
+        seen, out = set(), []
+        for f in feats:
+            k = (f.model, f.variant, f.label.lower())
+            if k not in seen:
+                seen.add(k)
+                out.append(f)
+        return [], out
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)
         data = self._get(DEALERS_JS).json()

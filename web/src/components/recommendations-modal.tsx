@@ -38,6 +38,8 @@ interface RecommendedModel {
   variants: number;
   match_score: number;
   reasons: string[];
+  variant?: string;
+  transmission?: string | null;
 }
 
 interface MatchModalProps {
@@ -52,6 +54,13 @@ export function RecommendationsModal({ isOpen, onClose, defaultVehicleType = "ca
   const [usage, setUsage] = useState<"commute" | "family" | "performance">("commute");
   const [budget, setBudget] = useState<number | "any">(vehicleType === "car" ? 1500000 : 200000);
   const [fuel, setFuel] = useState<string>("any");
+  const [seats, setSeats] = useState(0);
+  const [km, setKm] = useState(1000);
+  const [prio, setPrio] = useState<string[]>(["value", "safety"]);
+  const PRIOS = vehicleType === "car"
+    ? [["value", "Value for money"], ["safety", "Safety"], ["mileage", "Mileage"], ["features", "Features"], ["performance", "Performance"], ["popular", "Resale & service"]]
+    : [["value", "Value for money"], ["mileage", "Mileage"], ["features", "Features"], ["performance", "Performance"], ["popular", "Resale & service"]];
+  const togglePrio = (k: string) => setPrio((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
   // Fetch recommendations dynamically from the backend API
   const queryParams = new URLSearchParams({
@@ -60,6 +69,9 @@ export function RecommendationsModal({ isOpen, onClose, defaultVehicleType = "ca
     usage,
     ...(budget !== "any" ? { budget: String(budget) } : {}),
     ...(fuel !== "any" ? { fuel } : {}),
+    seats: String(seats),
+    monthly_km: String(km),
+    priorities: prio.join(","),
   }).toString();
 
   const { data: recommendations, isLoading } = useSWR<RecommendedModel[]>(
@@ -200,6 +212,26 @@ export function RecommendationsModal({ isOpen, onClose, defaultVehicleType = "ca
               </select>
             </div>
           </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {vehicleType === "car" && (
+              <select value={seats} onChange={(e) => setSeats(Number(e.target.value))} className="h-9 w-full rounded-xl border border-line bg-panel-soft px-3 text-xs text-ink">
+                <option value={0}>Any seating</option><option value={5}>5 people</option><option value={7}>6–7 people</option>
+              </select>
+            )}
+            <select value={km} onChange={(e) => setKm(Number(e.target.value))} className="h-9 w-full rounded-xl border border-line bg-panel-soft px-3 text-xs text-ink">
+              <option value={500}>Under 500 km a month</option><option value={1000}>About 1,000 km a month</option>
+              <option value={2000}>About 2,000 km a month</option><option value={3500}>3,000+ km a month</option>
+            </select>
+          </div>
+          <p className="mt-3 text-xs text-mute">What matters most? (in order you tap)</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {PRIOS.map(([k, l]) => (
+              <button key={k} type="button" onClick={() => togglePrio(k)}
+                className={cn("rounded-full border px-3 py-1 text-xs", prio.includes(k) ? "border-accent bg-accent text-white" : "border-line text-mute")}>
+                {prio.includes(k) ? `${prio.indexOf(k) + 1}. ` : ""}{l}
+              </button>
+            ))}
+          </div>
 
           {/* Results List */}
           <div>
@@ -255,7 +287,7 @@ export function RecommendationsModal({ isOpen, onClose, defaultVehicleType = "ca
                             {m.name}
                           </h3>
                           <p className="mt-1 font-mono text-sm font-semibold text-ink">
-                            {range(m.from_inr, m.to_inr)}
+                            {lakh(m.from_inr)} on-road{m.variant ? ` · ${m.variant}` : ""}
                           </p>
                           <p className="text-[11px] text-mute">
                             Ex-showroom · {m.variants} variants

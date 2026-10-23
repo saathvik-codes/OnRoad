@@ -19,23 +19,28 @@ import { TopTenLeaderboard } from "@/components/top-ten-leaderboard";
 const CarStage = dynamic(() => import("@/components/three/car-stage").then((m) => m.CarStage), { ssr: false,
   loading: () => <div className="h-full w-full bg-[#05060a]" /> });
 
+// r = the slice of the scroll each chapter owns, lined up with the camera path in car-stage.tsx
 const CHAPTERS = [
-  { k: "01", title: <>The price on the brochure<br /><span className="text-gradient">isn&apos;t what you pay.</span></>,
-    body: "Every car sold in India, every variant, with the manufacturer's own ex-showroom price for your city." },
-  { k: "02", title: <>Road tax. RTO. Insurance.<br />Cess. TCS.</>,
+  { k: "01", r: [0, 0.2], title: <>The price on the brochure<br /><span className="text-gradient">isn&apos;t what you pay.</span></>,
+    body: "Every car and bike sold in India, every variant, with the manufacturer's own ex-showroom price for your city." },
+  { k: "02", r: [0.2, 0.36], title: <>Road tax. RTO. Insurance.<br />Cess. TCS.</>,
     body: "We take the price apart, line by line, using your state's official transport rules, so you know the real on-road number before you walk in." },
-  { k: "03", title: <>Spot the padding<br /><span className="text-gradient">in any quote.</span></>,
-    body: "Handling charges, number-plate fees and ‘essential kits’ are not part of the legal price. We flag every one." },
-  { k: "04", title: <>Then let dealers<br />compete for you.</>,
-    body: "Ask once. Nearby showrooms send their best on-road price with offers and waiting time, ranked from lowest." },
-];
+  { k: "03", r: [0.36, 0.52], title: <>Take the<br /><span className="text-gradient">driver&apos;s seat.</span></>,
+    body: "What each variant actually gives you, from the manufacturer's own equipment list, so you know what the extra lakh buys." },
+  { k: "04", r: [0.52, 0.78], title: <>Under the bonnet,<br /><span className="text-gradient">real numbers.</span></>,
+    body: "Engine, power, torque and certified mileage from official spec sheets. Petrol, diesel, CNG or electric, compared fairly." },
+  { k: "05", r: [0.78, 0.92], title: <>Spot the padding<br /><span className="text-gradient">in any quote.</span></>,
+    body: "Handling charges, number-plate fees and ‘essential kits’ are not part of the legal price. We flag every one, then nearby showrooms compete for you." },
+  { k: "06", r: [0.92, 1], title: <>Cars or bikes,<br /><span className="text-gradient">same honesty.</span></>,
+    body: "Scooters, commuters and superbikes from every major maker, with the same on-road breakdown and nearest showrooms." },
+] as const;
 
 function Chapter({ i, progress, children }: { i: number; progress: MotionValue<number>; children: React.ReactNode }) {
   const n = CHAPTERS.length;
-  const start = i / n, end = (i + 1) / n;
+  const [start, end] = CHAPTERS[i].r;
   // the first chapter is visible before any scrolling; the last one stays up at the end
-  const opacity = useTransform(progress, [start, start + 0.06, end - 0.06, end], [i === 0 ? 1 : 0, 1, 1, i === n - 1 ? 1 : 0]);
-  const y = useTransform(progress, [start, start + 0.08], [i === 0 ? 0 : 40, 0]);
+  const opacity = useTransform(progress, [start, start + 0.03, end - 0.03, end], [i === 0 ? 1 : 0, 1, 1, i === n - 1 ? 1 : 0]);
+  const y = useTransform(progress, [start, start + 0.04], [i === 0 ? 0 : 40, 0]);
   return <motion.div style={{ opacity, y }} className="absolute inset-0 flex items-center">{children}</motion.div>;
 }
 
@@ -43,7 +48,7 @@ function Story() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   return (
-    <section ref={ref} data-invert className="relative h-[520vh] bg-[#05060a]">
+    <section ref={ref} data-invert className="relative h-[900vh] bg-[#05060a]">
       <div className="sticky top-0 h-screen overflow-hidden bg-[#05060a]">
         <CarStage progress={scrollYProgress} lookOffset={1.6} className="absolute inset-0" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#05060a] via-[#05060a]/60 to-transparent" />
@@ -57,10 +62,10 @@ function Story() {
                 <p className="mt-6 max-w-md text-lg text-white/70">{c.body}</p>
                 {i === 0 && (
                   <div className="pointer-events-auto mt-9 flex flex-wrap gap-3">
-                    <Link href="/cars" className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 font-medium text-white shadow-[0_0_40px_-6px_rgba(255,77,46,0.8)]">
+                    <Link href="/cars?finder=1" className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 font-medium text-white shadow-[0_0_40px_-6px_rgba(255,77,46,0.8)]">
                       Find my car <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <Link href="/calculator" className="inline-flex h-12 items-center gap-2 rounded-full border border-white/20 px-7 text-white hover:bg-white/5">
+                    <Link href="/calculator?quote=1" className="inline-flex h-12 items-center gap-2 rounded-full border border-white/20 px-7 text-white hover:bg-white/5">
                       <Calculator className="h-4 w-4" /> Check a quote
                     </Link>
                   </div>

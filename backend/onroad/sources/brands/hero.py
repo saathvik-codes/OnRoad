@@ -127,6 +127,56 @@ class HeroAdapter(BrandAdapter):
             raise NotSupported(f"Hero publishes no price pages for {city!r}")
         return out
 
+    def specs(self):
+        """Model page (/en-in/<motorcycles|scooters>/<model>.html) "Specifications" popup: a <p> holding a JSON sheet
+        {"Engine": {...}, "Dimensions": {...}, "Brakes": {...}, ..., "Additional Features": {...}}. Hero publishes one
+        sheet per model page, so it is attached to every priced variant of that model; a page with more than one
+        sheet is skipped (sheets are labelled only 'variant1', 'variant2'). "Additional Features" and the ABS row
+        become equipment; everything else is read as specs."""
+        import json as _json
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, feature_key_2w, feature_label
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+        for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+            r = self.s.get(url, ok=(200, 404))
+            if r.status_code != 200:
+                continue
+            sheets = []
+            for pop in BeautifulSoup(r.text, "html.parser").select(".specifications-popup"):
+                for para in pop.find_all("p"):
+                    txt = para.get_text(" ", strip=True)
+                    if txt.startswith("{"):
+                        try:
+                            sheets.append(_json.loads(txt))
+                        except ValueError:
+                            pass
+            if len(sheets) != 1:
+                continue
+            sheet = sheets[0]
+            for v in (x for x in priced if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                for group, rows in sheet.items():
+                    if not isinstance(rows, dict):
+                        continue
+                    for lab, val in rows.items():
+                        val = clean(str(val))
+                        if not val or val.lower() in ("no", "na", "-", "n/a"):
+                            continue
+                        if group.lower() == "additional features" or lab.strip().upper() == "ABS":
+                            text = feature_label(lab, val)
+                            sink.feature(text, "✓", url, key=feature_key_2w(text))
+                        elif "seat height" in lab.lower():
+                            sink.spec("Dimensions", "seat_height", lab, val, url)    # not seating capacity
+                        else:
+                            sink.row(group if lab.lower() in ("front", "rear", "type") else "", lab, val, url, "spec")
+                s_, f_ = sink.out()
+                specs += s_
+                feats += f_
+        if not specs and not feats:
+            raise NotSupported("heromotocorp.com model pages carried no single specifications sheet")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad"):
         g = geo(city)
         if not g:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { AlertTriangle, BadgeCheck } from "lucide-react";
 import { fetcher, type Breakdown, type Variant } from "@/lib/api";
@@ -13,6 +13,12 @@ import { Card, Input, Label, SectionTitle, Select, Skeleton } from "@/components
 type State = { code: string; name: string; coverage: string | null };
 
 export default function CalculatorPage() {
+  useEffect(() => {          // "Check a quote" on the home page links here with ?quote=1: jump to the quote box
+    if (new URLSearchParams(window.location.search).get("quote") === "1") {
+      const el = document.getElementById("dealer-quote");
+      el?.scrollIntoView({ block: "center" }); el?.focus();
+    }
+  }, []);
   const [mode, setMode] = useState<"car" | "price">("car");
   const [variant, setVariant] = useState<(Variant & { model: string; brand: string }) | null>(null);
   const [price, setPrice] = useState("1000000");
@@ -73,7 +79,7 @@ export default function CalculatorPage() {
           </label>
           <div className="border-t border-line pt-5">
             <Label hint="(optional)">Dealer&apos;s on-road quote (₹)</Label>
-            <Input inputMode="numeric" value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="e.g. 1312000" />
+            <Input id="dealer-quote" inputMode="numeric" value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="e.g. 1312000" />
           </div>
         </Card>
 

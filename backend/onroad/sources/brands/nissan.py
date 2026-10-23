@@ -210,6 +210,9 @@ class NissanAdapter(BrandAdapter):
                     out.append(o)
         return out
 
+    def specs(self):
+        raise NotSupported('nissan.in publishes no spec or equipment table on its pages (checked 2026-10-23: model pages, sitemap, /specifications.html 404); specs exist only in brochure PDFs (/vehicles/brochures.html) not parsed')
+
 
 def _nissan_note(note: str):
     mm = re.search(r"Applicable Market\s*:?\s*(.*?)(?=\s*(?:Variant |Note:|Click here|$))", note)

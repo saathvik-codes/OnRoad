@@ -13,6 +13,7 @@ import base64
 import hashlib
 import hmac
 import math
+import logging
 import os
 import re
 import secrets
@@ -300,7 +301,7 @@ def _engine_cc(v: dict) -> int | None:
     """Engine size for the insurance band: published cc, else read from the variant name ("1.5 MPi" -> 1497 cc band)."""
     if v.get("engine_cc"):
         return v["engine_cc"]
-    m = re.search(r"(?<![\d.])([0-4]\.\d)\s?(?:l|litre|mpi|crdi|turbo|tsi|tgdi|gdi|dsl|diesel|petrol|vtvt|k|ecoboost|[a-z]|$)", (v.get("name") or "").lower())
+    m = re.search(r"(?<![\d.])([0-4]\.\d)\s?(?:l\b|litre|mpi|crdi|turbo|tsi|tgdi|gdi|dsl|diesel|petrol|vtvt|k|ecoboost|[a-z]|$)", (v.get("name") or "").lower())
     if not m:
         return None
     litres = float(m.group(1))
@@ -331,8 +332,21 @@ METRO_CLUSTERS = {
 
 
 def _dealers_for(brand_slug: str, city: str, lat: float | None = None, lng: float | None = None) -> list[dict]:
+    if lat is not None and lng is not None:
+        # the buyer shared their location (works for any village / town): nearest showrooms of this brand anywhere,
+        # by straight-line distance from that exact point, using the coordinates from the brand's own dealer locator
+        near = q("SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 AND lat IS NOT NULL AND lng IS NOT NULL", (brand_slug,))
+        for d in near:
+            d["distance_km"] = _km(lat, lng, d["lat"], d["lng"])
+            d["near_you"] = True
+        near.sort(key=lambda d: d["distance_km"])
+        if near:
+            return near[:25]
     city_norm = (city or "").strip().lower()
-    aliases = METRO_CLUSTERS.get(city_norm, [city_norm])
+    st_city = onroad_calc.STATE_OF_CITY.get(city_norm)
+    # metro aliases only within the same state (Gurugram is Haryana: Delhi / Noida showrooms register in other states)
+    aliases = [a for a in METRO_CLUSTERS.get(city_norm, [city_norm])
+               if onroad_calc.STATE_OF_CITY.get(a, st_city) == st_city] or [city_norm]
     placeholders = ",".join("?" for _ in aliases)
     rows = q(f"SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 AND lower(city) IN ({placeholders})",
              (brand_slug, *aliases))
@@ -345,9 +359,12 @@ def _dealers_for(brand_slug: str, city: str, lat: float | None = None, lng: floa
             rows = q("""SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 AND
                         (upper(state) = ? OR lower(state) LIKE ? OR lower(state) LIKE ?)""",
                      (brand_slug, st.upper(), f"%{state_name.lower()}%", f"%{city_norm}%"))
+            # trust the showroom's city over its state field (some brand locators mislabel the state)
+            rows = [d for d in rows if onroad_calc.STATE_OF_CITY.get((d.get("city") or "").strip().lower(), st) == st]
+            for d in rows:
+                d["outside_city"] = True       # same state, different city: the UI labels these as nearest in the state
 
-    if not rows:
-        rows = q("SELECT * FROM dealers WHERE brand_slug = ? AND active = 1 LIMIT 12", (brand_slug,))
+    # no showroom in this city or state: say so (never show another region's showrooms as if they were local)
 
     c_coords = CITIES.get(city.title()) or CITIES.get(city)
     ref_lat = lat if lat is not None else (c_coords[0] if c_coords else None)
@@ -362,6 +379,21 @@ def _dealers_for(brand_slug: str, city: str, lat: float | None = None, lng: floa
     if ref_lat and ref_lng:
         rows.sort(key=lambda d: d["distance_km"] if d["distance_km"] is not None else 1e9)
 
+    try:                                   # OnRoad buyers' rating summary
+        own = {r["dealer_id"]: r for r in q("""SELECT dealer_id, AVG(rating) AS avg, COUNT(*) AS n,
+                     AVG(CASE WHEN no_forced_addons THEN 1.0 ELSE 0 END) AS no_addons FROM dealer_reviews GROUP BY dealer_id""")}
+        for d in rows:
+            if d["id"] in own:
+                d["onroad_rating"], d["onroad_count"], d["no_addons_share"] = own[d["id"]]["avg"], own[d["id"]]["n"], own[d["id"]]["no_addons"]
+    except Exception:
+        pass
+    try:                                   # Google rating where matched (onroad/places.py; empty without GOOGLE_PLACES_KEY)
+        rated = {r["dealer_id"]: r for r in q("SELECT dealer_id, rating, rating_count, maps_uri FROM dealer_places WHERE rating IS NOT NULL")}
+        for d in rows:
+            if d["id"] in rated:
+                d["google_rating"], d["google_count"], d["google_maps_uri"] = (rated[d["id"]][k] for k in ("rating", "rating_count", "maps_uri"))
+    except Exception:
+        pass
     return rows
 
 
@@ -497,6 +529,23 @@ def loan_rates():
         return []
 
 
+@app.get("/api/model-features")
+def model_features(model_id: str):
+    """Every equipment item listed on ANY variant of this model (manufacturer data), how many variants have it,
+    and the model's own photo of it where we have one. Drives the per-model feature guide."""
+    total = one("SELECT COUNT(*) AS n FROM variants WHERE model_id = ? AND active = 1", (model_id,))["n"]
+    rows = q("""SELECT f.key, MIN(f.label) AS label, COUNT(DISTINCT f.variant_id) AS variants
+                FROM features f JOIN variants v ON v.id = f.variant_id
+                WHERE v.model_id = ? AND v.active = 1 GROUP BY f.key ORDER BY variants DESC""", (model_id,))
+    try:
+        photos = {r["key"]: r["image_url"] for r in q("SELECT key, image_url FROM feature_images WHERE model_id = ?", (model_id,))}
+    except Exception:
+        photos = {}
+    for r in rows:
+        r["photo"] = photos.get(r["key"])
+    return {"total_variants": total, "features": rows}
+
+
 @app.get("/api/feature-photos")
 def feature_photos():
     """One manufacturer photo per equipment key (for the feature guide), with the brand it came from."""
@@ -538,6 +587,67 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
         except Exception as e:
             raise HTTPException(502, f"Image unavailable ({type(e).__name__})")
     return Response(f.read_bytes(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
+
+
+@app.get("/api/recommendations")
+def recommendations(city: str = "Hyderabad", vehicle_type: str = "car", usage: str = "mixed", budget: int | None = None,
+                    fuel: str | None = None, transmission: str | None = None, seats: int = 0, monthly_km: int = 1000,
+                    home_charging: bool = False, priorities: str = "value,safety", limit: int = 6):
+    """Profile-based picks (onroad/recommender.py): every priced variant scored on the buyer's own on-road budget,
+    seats, fuel / gearbox, usage, mileage, official crash ratings, equipment and sales rank. Best variant per model."""
+    from .recommender import Profile, recommend
+    usage = {"commute": "city", "family": "mixed", "performance": "highway"}.get(usage, usage)
+    pr = [x.strip() for x in priorities.split(",") if x.strip()]
+    if usage == "highway" and "performance" not in pr:
+        pr.append("performance")
+    prof = Profile(vehicle_type="bike" if vehicle_type in ("bike", "two_wheeler") else "car", city=city, budget=budget, usage=usage,
+                   monthly_km=monthly_km, seats=seats, fuel=fuel if fuel and fuel != "any" else None,
+                   transmission=transmission if transmission and transmission != "any" else None,
+                   home_charging=home_charging, priorities=pr or ["value"])
+    out = []
+    for r in recommend(prof, limit):
+        brand_slug, slug = r["model_id"].split("/", 1)
+        m = one("SELECT body_type FROM models WHERE id = ?", (r["model_id"],)) or {}
+        out.append({"id": r["model_id"], "name": r["model"], "slug": slug, "brand_slug": brand_slug, "brand": r["brand"],
+                    "body_type": m.get("body_type"), "image_url": r["image_url"], "logo": _logo_url(brand_slug),
+                    "from_inr": r["onroad_inr"], "to_inr": r["onroad_inr"], "fuels": r["fuel"], "variants": 1,
+                    "match_score": r["score"], "reasons": r["reasons"], "variant": r["variant"], "variant_id": r["variant_id"],
+                    "transmission": r["transmission"], "crash_stars": r["crash_stars"], "efficiency": r["efficiency"]})
+    return out
+
+
+class DealerReviewIn(BaseModel):
+    dealer_id: str
+    rating: int = Field(ge=1, le=5)
+    price_honesty: int | None = Field(default=None, ge=1, le=5)      # quoted price matched the final bill
+    no_forced_addons: bool | None = None                              # no pressure for accessories / insurance / handling
+    delivery_on_time: bool | None = None
+    visit: str = Field(default="purchase", pattern="^(purchase|enquiry|service)$")
+    text: str = Field(default="", max_length=1200)
+
+
+@app.post("/api/dealer-reviews")
+def add_dealer_review(body: DealerReviewIn, acc: dict = Depends(account)):
+    """One review per buyer per showroom (editing replaces it). Free, first-party data; no rating is ever invented."""
+    if not one("SELECT 1 AS x FROM dealers WHERE id = ?", (body.dealer_id,)):
+        raise HTTPException(404, "Unknown showroom")
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""INSERT OR REPLACE INTO dealer_reviews (dealer_id, account_id, rating, price_honesty, no_forced_addons,
+                        delivery_on_time, visit, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                     (body.dealer_id, acc["id"], body.rating, body.price_honesty, body.no_forced_addons,
+                      body.delivery_on_time, body.visit, body.text.strip()))
+    return {"ok": True}
+
+
+@app.get("/api/dealer-reviews")
+def dealer_reviews(dealer_id: str):
+    """OnRoad buyers' reviews of a showroom (+ live Google reviews when GOOGLE_PLACES_KEY is set)."""
+    from . import places
+    own = q("""SELECT r.rating, r.price_honesty, r.no_forced_addons, r.delivery_on_time, r.visit, r.text, r.created, a.name
+               FROM dealer_reviews r JOIN accounts a ON a.id = r.account_id WHERE r.dealer_id = ? ORDER BY r.created DESC LIMIT 50""", (dealer_id,))
+    for r in own:
+        r["name"] = (r["name"] or "Buyer").split()[0]                  # first name only
+    return {"onroad": own, "google": places.reviews(dealer_id) if places.key() else None}
 
 
 @app.get("/api/cities")
@@ -601,12 +711,16 @@ def _popularity() -> dict:
     return {(norm(m["brand"]), norm(m["model"])): m for m in data.get("models", [])}
 
 
-def _pop_for(pop: dict, brand: str, name: str):
-    """Exact (brand, model) match, else a prefix match ('Amaze - 2nd Gen' ~ 'Amaze', 'Innova Hycross' ~ 'Innova (Hycross + Crysta)')."""
+def _pop_for(pop: dict, brand: str, name: str, raw: str = ""):
+    """Exact (brand, model) match, else a family / prefix match ('Pulsar' ranks the Pulsar range, 'Innova Hycross' ~
+    'Innova (Hycross + Crysta)'). An electric offshoot never inherits a petrol family's rank ('Activa e:' != 'Activa')."""
     if (brand, name) in pop:
         return pop[(brand, name)]
+    electric = re.search(r"\be:|\bev\b|\.ev\b|electric|\be-", (raw or "").lower())
     for (b, m), row in pop.items():
         if b == brand and len(min(m, name, key=len)) >= 4 and (name.startswith(m) or m.startswith(name)):
+            if electric and not re.search(r"ev|electric|iqube|chetak|rizta|vida", m):
+                continue
             return row
     return None
 
@@ -637,7 +751,7 @@ def explore(city: str = "Hyderabad", body: str | None = None, fuel: str | None =
     norm = lambda t: re.sub(r"[^a-z0-9]", "", (t or "").lower())
     out = []
     for r in rows:
-        p = _pop_for(pop, norm(r["brand"]), norm(r["name"]))
+        p = _pop_for(pop, norm(r["brand"]), norm(r["name"]), r["name"])
         r["six_month_units"] = p["six_month_units"] if p else None
         r["sales_rank"] = p["rank"] if p else None
         r["band"] = _band(r["from_inr"])
@@ -851,7 +965,10 @@ def dealer_search(brand: str, city: str | None = None, text: str = ""):
     city_norm = (city or "").strip().lower()
     
     if city_norm and city_norm != "all":
-        aliases = METRO_CLUSTERS.get(city_norm, [city_norm])
+        st_city = onroad_calc.STATE_OF_CITY.get(city_norm)
+        # metro aliases only within the same state (Gurugram is Haryana: Delhi / Noida showrooms register in other states)
+        aliases = [a for a in METRO_CLUSTERS.get(city_norm, [city_norm])
+                   if onroad_calc.STATE_OF_CITY.get(a, st_city) == st_city] or [city_norm]
         placeholders = ",".join("?" for _ in aliases)
         rows = q(f"""SELECT id, name, address, city, pincode, phone, lat, lng, claimed_by IS NOT NULL AS on_onroad FROM dealers
                     WHERE brand_slug = ? AND lower(city) IN ({placeholders})
@@ -953,114 +1070,6 @@ def campaigns(city: str = "Hyderabad"):
         if len(out) == 4:
             break
     return out
-
-@app.get("/api/recommendations")
-def recommendations(
-    city: str = "Hyderabad",
-    vehicle_type: str = "car",
-    usage: str = "commute",
-    budget: int | None = None,
-    fuel: str | None = None,
-    limit: int = 6
-):
-    """
-    Intelligent curation based on buyer profile, intended usage, and budget.
-    """
-    v_type = "bike" if vehicle_type in ("bike", "two_wheeler") else "car"
-    
-    sql = """
-        SELECT m.id, m.name, m.slug, m.brand_slug, b.name as brand, b.logo, m.body_type, m.image_url,
-               min(p.ex_showroom_inr) as from_inr, max(p.ex_showroom_inr) as to_inr,
-               group_concat(distinct v.fuel) as fuels, count(distinct v.id) as variants
-        FROM models m
-        JOIN brands b ON b.slug = m.brand_slug
-        JOIN variants v ON v.model_id = m.id
-        LEFT JOIN prices p ON p.variant_id = v.id AND p.city = ?
-        WHERE (m.vehicle_type = ? OR (? = 'car' AND m.vehicle_type IS NULL))
-        GROUP BY m.id
-        HAVING min(p.ex_showroom_inr) IS NOT NULL
-    """
-    rows = q(sql, (city, v_type, v_type))
-    if not rows:
-        sql_fallback = """
-            SELECT m.id, m.name, m.slug, m.brand_slug, b.name as brand, b.logo, m.body_type, m.image_url,
-                   min(p.ex_showroom_inr) as from_inr, max(p.ex_showroom_inr) as to_inr,
-                   group_concat(distinct v.fuel) as fuels, count(distinct v.id) as variants
-            FROM models m
-            JOIN brands b ON b.slug = m.brand_slug
-            JOIN variants v ON v.model_id = m.id
-            LEFT JOIN prices p ON p.variant_id = v.id
-            WHERE (m.vehicle_type = ? OR (? = 'car' AND m.vehicle_type IS NULL))
-            GROUP BY m.id
-            HAVING min(p.ex_showroom_inr) IS NOT NULL
-        """
-        rows = q(sql_fallback, (v_type, v_type))
-
-    scored = []
-    for r in rows:
-        score = 80
-        reasons = []
-        name_lower = (r["name"] or "").lower()
-        body_lower = (r["body_type"] or "").lower()
-        fuels_lower = (r["fuels"] or "").lower()
-        from_price = r["from_inr"] or 0
-        to_price = r["to_inr"] or from_price
-
-        # Budget scoring
-        if budget:
-            if from_price <= budget <= to_price:
-                score += 15
-                reasons.append(f"Fits your ₹{budget/100000:.1f}L target perfectly across trim options")
-            elif from_price <= budget * 1.15:
-                score += 8
-                reasons.append("Base variant starts well within your spending plan")
-            elif from_price > budget * 1.3:
-                score -= 20
-
-        # Usage scoring
-        if usage == "commute":
-            if "cng" in fuels_lower or "electric" in fuels_lower:
-                score += 12
-                reasons.append("Ultra-low running cost for daily urban commute")
-            if any(k in body_lower for k in ["hatchback", "commuter", "scooter", "compact"]):
-                score += 8
-                reasons.append("Effortless city parking and nimble maneuverability")
-            if any(b in r["brand_slug"] for b in ["maruti_suzuki", "hero", "honda_2wheelers", "tata_motors"]):
-                score += 5
-                reasons.append("India-wide authorized service footprint and low maintenance")
-        elif usage == "family":
-            if any(k in body_lower for k in ["suv", "mpv", "sedan"]):
-                score += 12
-                reasons.append("Spacious cabin ergonomics, generous boot, and comfortable rear seating")
-            if any(b in name_lower for b in ["nexon", "creta", "brezza", "scorpio", "innova", "activa", "jupiter"]):
-                score += 10
-                reasons.append("High crash safety score & proven long-distance family comfort")
-        elif usage == "performance":
-            if any(k in body_lower for k in ["sports", "cruiser", "adventure", "lifestyle"]):
-                score += 14
-                reasons.append("Enthusiast-tuned dynamics, robust chassis, and punchy power output")
-            if any(b in r["brand_slug"] for b in ["royal_enfield", "yamaha", "bajaj", "volkswagen", "skoda", "bmw"]):
-                score += 8
-                reasons.append("Superior high-speed highway stability and rider engagement")
-
-        # Fuel filtering
-        if fuel and fuel.lower() != "any":
-            if fuel.lower() in fuels_lower:
-                score += 10
-                reasons.append(f"Available with factory {fuel} powertrain")
-            else:
-                score -= 30
-
-        if not reasons:
-            reasons.append(f"Top-rated value in {city} with verified transparent showroom pricing")
-
-        r["match_score"] = min(99, max(65, score))
-        r["reasons"] = reasons[:3]
-        scored.append(r)
-
-    scored.sort(key=lambda x: x["match_score"], reverse=True)
-    return scored[:limit]
-
 
 @app.get("/api/opinions")
 def get_opinions(model_id: str | None = None, vehicle_type: str | None = None, limit: int = 12):
@@ -1211,3 +1220,30 @@ def sync_status():
 def health():
     return {"ok": True}
 
+
+# ── Self-refresh when deployed (Render etc.): set REFRESH_EVERY_HOURS, e.g. 6 ────────────────────────────
+def _refresh_loop(hours: float) -> None:
+    import threading, time as _t
+    def run():
+        from . import fill_images, ingest, loan_rates
+        cities = [c for c in CITIES if c != "Hyderabad"]
+        k = 0
+        while True:
+            _t.sleep(60)                                  # let the server finish starting
+            try:
+                ingest.run(None, city="Hyderabad")        # every brand, launch city: prices, offers, dealers, specs
+                for c in cities[k:k + 3]:                  # three more cities per cycle, round-robin
+                    ingest.run(None, city=c)
+                k = (k + 3) % len(cities)
+                loan_rates.refresh()
+                fill_images.run()
+                from . import places
+                places.match_and_rate(300)
+            except Exception as e:                         # never kill the API because a site was down
+                logging.getLogger("onroad.refresh").warning("refresh failed: %s", e)
+            _t.sleep(hours * 3600)
+    threading.Thread(target=run, name="onroad-refresh", daemon=True).start()
+
+
+if os.getenv("REFRESH_EVERY_HOURS"):
+    _refresh_loop(float(os.getenv("REFRESH_EVERY_HOURS")))

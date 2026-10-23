@@ -194,6 +194,36 @@ class HondaAdapter(BrandAdapter):
                     image_url=(car.get("webUrlLink") or [None])[0]))
         return out
 
+    # ---------------------------------------------------------------- specs
+    def specs(self):
+        """/<slug>/tech-specs __NEXT_DATA__.techAndSpecsData: a 'specification' block (columns = fuel types) and a
+        'feature' block (columns = grades, cells TnSIsTrue 'Y' / '-' or a text value)."""
+        from ._spec_kit import PubTable, SpecSink, apply_tables, grade_tokens, strip_colour
+        variants = self.prices("Hyderabad")
+        specs, feats = [], []
+        for url in dict.fromkeys(v.model_url for v in variants if v.model_url):
+            src = url + "/tech-specs"
+            try:
+                data = _next_data(self._get(src[len(BASE):]).text).get("techAndSpecsData") or []
+            except Exception:
+                continue
+            tables, vocab = _honda_tables(data, src)
+            for v in (x for x in variants if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                g = grade_tokens(strip_colour(v.variant), vocab)
+                for t in tables:
+                    if t.kind == "feature":
+                        if len(g) == 1:
+                            apply_tables(sink, [t], next(iter(g)), vocab)
+                    else:
+                        apply_tables(sink, [t])
+                s, f = sink.out()
+                specs += s
+                feats += f
+        if not specs and not feats:
+            raise NotSupported("hondacarindia.com tech-specs pages carried no techAndSpecsData")
+        return specs, feats
+
     # ---------------------------------------------------------------- dealers
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         d = self._get("/api/getStateCheck", params={"cityName": city}).json()
@@ -257,5 +287,34 @@ class HondaAdapter(BrandAdapter):
                              source_url=page_url))
         return out
 
+
+
+def _honda_tables(data: list, src: str):
+    """techAndSpecsData -> ([PubTable], grade vocabulary of the feature block)."""
+    from ._spec_kit import PubTable
+    tables, vocab = [], set()
+    for blk in data:
+        cols = [_clean(c or "") for c in blk.get("TnSCarModels") or []]
+        kind = "feature" if blk.get("TnSTypeName") == "feature" else "spec"
+        if kind == "feature":
+            vocab |= {c for c in cols if c}
+        rows = []
+        for sec in blk.get("TnSTypeData") or []:
+            section = _clean(sec.get("TnSType") or "")
+            for r in sec.get("TnSTypeData") or []:
+                label = _clean(r.get("TnSDataTitle") or "")
+                if section.lower() == "transmission" and label.lower() in ("manual", "automatic", "cvt", "e-cvt"):
+                    label = f"Transmission ({label})"       # a row per gearbox: the qualifier keeps it to that gearbox
+                cells = []
+                for c in r.get("TnSDataArr") or []:
+                    if c.get("TnSIsTrue") == "Y":
+                        cells.append("✓")
+                    else:
+                        cells.append(_clean(" ".join(x for x in (c.get("TnSItemTitle"), c.get("TnSItemVal"),
+                                                                 c.get("TnSItemSubVal")) if x)))
+                rows.append((section, label, cells))
+        if cols and rows:
+            tables.append(PubTable(cols, rows, src, kind))
+    return tables, vocab
 
 ADAPTER = HondaAdapter()

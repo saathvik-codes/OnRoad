@@ -31,7 +31,14 @@ export function TopTenLeaderboard() {
     fetcher
   );
 
-  const activeList = (vehicleTab === "cars" ? cars : bikes)?.slice(0, 10);
+  // Only models with a sourced sales rank, one per rank (so a family like Creta / Creta N Line can't take two slots)
+  const ranked = (vehicleTab === "cars" ? cars : bikes)?.filter((m) => (m as ModelSummary & { sales_rank?: number }).sales_rank);
+  const seen = new Set<number>();
+  const activeList = ranked?.filter((m) => {
+    const r = (m as ModelSummary & { sales_rank?: number }).sales_rank!;
+    if (seen.has(r)) return false;
+    seen.add(r); return true;
+  }).sort((a, b) => ((a as ModelSummary & { sales_rank?: number }).sales_rank! - (b as ModelSummary & { sales_rank?: number }).sales_rank!)).slice(0, 10);
   const isLoading = vehicleTab === "cars" ? carsLoading : bikesLoading;
 
   return (
@@ -87,7 +94,9 @@ export function TopTenLeaderboard() {
                 <Skeleton className="mt-3 h-4 w-28" />
               </div>
             ))
-          : activeList.map((m, index) => {
+          : !activeList?.length ? (
+            <p className="col-span-full py-8 text-center text-sm text-mute">Sales rankings for {vehicleTab} are being compiled from manufacturer and industry sales reports.</p>
+          ) : activeList.map((m, index) => {
               const rank = index + 1;
               const isTop1 = rank === 1;
               const isTop3 = rank <= 3;

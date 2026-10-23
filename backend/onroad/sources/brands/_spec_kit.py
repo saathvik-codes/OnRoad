@@ -506,3 +506,34 @@ def apply_tables(sink: SpecSink, tables: list[PubTable], grade: str | None = Non
             if len(vs) != 1:
                 continue
             sink.row(sec, label, vs.pop(), t.src, t.kind)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# two-wheelers
+
+_FEAT_2W = [
+    (r"\babs\b.*\b(dual|two)[ -]?channel|(dual|two)[ -]?channel.*\babs\b", "abs_dual"),
+    (r"\babs\b.*\bsingle[ -]?channel|single[ -]?channel.*\babs\b", "abs_single"),
+    (r"\bcbs\b|combi(ned)? brak|\bibs\b|integrated brak|synchroni[sz]ed brak", "cbs"),
+    (r"traction control|\btcs\b|\bhstc\b|\bttc\b", "traction_control"),
+    (r"slipper|assist (and|&) slipper", "slipper_clutch"),
+    (r"rid(e|ing) modes?", "ride_modes"),
+    (r"\btft\b", "tft_display"),
+    (r"bluetooth|smartxonnect|\bconnected\b|navigation|turn[- ]by[- ]turn", "bluetooth_console"),
+    (r"\busb\b", "usb_charging"),
+]
+_FEAT_2W_RX = [(re.compile(rx, re.I), k) for rx, k in _FEAT_2W]
+
+
+def feature_key_2w(text: str) -> str:
+    """Two-wheeler equipment key for the manufacturer's wording (falls back to the car rules, then 'other')."""
+    t = norm_space(text)
+    for rx, k in _FEAT_2W_RX:
+        if rx.search(t):
+            return k
+    if re.search(r"(head ?lamp|headlight|tail ?lamp|winkers?|indicators?|position lamps?)\b.*\bled\b|\bled\b.*(head ?lamp|headlight)", t, re.I):
+        return "led_lamps_2w"
+    if re.search(r"front.*\bdisc\b|\bdisc\b.*front", t, re.I):
+        return "front_disc"
+    k = feature_key(t)
+    return k if k in FEATURE_KEYS and k not in ("rear_disc_brakes",) else "other"

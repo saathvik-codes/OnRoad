@@ -8,7 +8,7 @@ import useSWR from "swr";
 import { BookOpen, CheckCircle2, ExternalLink, Info, Search } from "lucide-react";
 import { fetcher, type Variant } from "@/lib/api";
 import { ago } from "@/lib/format";
-import { EquipmentArt, ART_KEYS } from "@/components/equipment-art";
+import { EquipmentArt } from "@/components/equipment-art";
 import { imgSrc } from "@/components/car-image";
 import { cn, Skeleton } from "@/components/ui";
 
@@ -85,13 +85,14 @@ const rank = (g: string) => (GROUP_ORDER.includes(g) ? GROUP_ORDER.indexOf(g) : 
 
 interface Props { variant: Variant; modelName: string; brandName: string; bodyType?: string | null; vehicleType?: string | null }
 
-export function VariantSpecs({ variant, modelName, brandName }: Props) {
+export function VariantSpecs({ variant, modelName, brandName, vehicleType }: Props) {
+  const isBike = vehicleType === "bike";
   const [tab, setTab] = useState<"equipment" | "specs" | "guide">("equipment");
   const [cat, setCat] = useState<Cat | "all">("all");
   const [q, setQ] = useState("");
   const { data, isLoading } = useSWR<Payload>(`/variant-specs?variant_id=${encodeURIComponent(variant.id)}`, fetcher);
-  const { data: guidePhotos } = useSWR<Photo[]>(tab === "guide" ? "/feature-photos" : null, fetcher);
-  const guideByKey = Object.fromEntries((guidePhotos ?? []).map((p) => [p.key, p]));
+  const { data: mf } = useSWR<{ total_variants: number; features: { key: string; label: string; variants: number; photo: string | null }[] }>(
+    tab === "guide" ? `/model-features?model_id=${encodeURIComponent(variant.model_id)}` : null, fetcher);
 
   const known = useMemo(() => (data?.features ?? []).filter((f) => FEATURE_INFO[f.key]), [data]);
   const other = useMemo(() => (data?.features ?? []).filter((f) => !FEATURE_INFO[f.key]), [data]);
@@ -213,17 +214,18 @@ export function VariantSpecs({ variant, modelName, brandName }: Props) {
 
       {tab === "guide" && (
         <>
-          <p className="text-sm text-mute">What common equipment means. Photos come from manufacturers&apos; own websites and may show a different model; the Equipment tab shows what this variant actually has.</p>
+          <p className="text-sm text-mute">Equipment {brandName} lists across the {modelName} range, with how many of its {mf?.total_variants ?? "…"} variants include each item. The Equipment tab shows exactly what this variant has.</p>
+          {mf && mf.features.length === 0 && <p className="text-sm text-mute">{brandName}&apos;s equipment lists for the {modelName} aren&apos;t loaded yet.</p>}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ART_KEYS.filter((k) => FEATURE_INFO[k]).sort((a, b) => Number(!guideByKey[a]) - Number(!guideByKey[b])).map((k) => (
-              <div key={k} className="overflow-hidden rounded-3xl border border-line bg-panel">
-                {guideByKey[k]
-                  ? <img src={imgSrc(guideByKey[k].image_url, 640)} alt={FEATURE_INFO[k].title} loading="lazy" referrerPolicy="no-referrer" className="h-36 w-full bg-panel-soft object-cover" />
-                  : <div className="grid h-36 place-items-center bg-panel-soft"><EquipmentArt k={k} className="h-24 w-36 text-ink/60" /></div>}
+            {(mf?.features ?? []).filter((f) => FEATURE_INFO[f.key] || f.photo).map((f) => (
+              <div key={f.key} className="overflow-hidden rounded-3xl border border-line bg-panel">
+                {f.photo
+                  ? <img src={imgSrc(f.photo, 640)} alt={f.label} loading="lazy" referrerPolicy="no-referrer" className="h-36 w-full bg-panel-soft object-cover" />
+                  : <div className="grid h-36 place-items-center bg-panel-soft"><EquipmentArt k={f.key} className="h-24 w-36 text-ink/60" /></div>}
                 <div className="p-4 pt-3">
-                <p className="text-sm font-semibold text-ink">{FEATURE_INFO[k].title}</p>
-                <p className="mt-1 text-xs text-mute">{FEATURE_INFO[k].what}</p>
-                {guideByKey[k]?.brand && <p className="mt-1.5 text-[11px] text-mute/80">Photo: {guideByKey[k].brand}</p>}
+                  <p className="text-sm font-semibold text-ink">{f.label}</p>
+                  {FEATURE_INFO[f.key] && <p className="mt-1 text-xs text-mute">{FEATURE_INFO[f.key].what}</p>}
+                  <p className="mt-1.5 text-[11px] text-mute/80">On {f.variants} of {mf?.total_variants} variants</p>
                 </div>
               </div>
             ))}

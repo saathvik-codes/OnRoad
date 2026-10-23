@@ -267,5 +267,8 @@ class MGAdapter(BrandAdapter):
             "/vehicles/mghector-campaign and /tools/corporate-sales carry no discount/benefit/validity text; "
             "mgselect.co.in sitemap and /m9 have none either. BaaS per-km pricing is a price plan, not an offer.")
 
+    def specs(self):
+        raise NotSupported('mgmotor.co.in publishes specs/equipment only inside brochure PDFs whose tables lose their row/column structure in text extraction (ticks are graphics), so no value can be read without guessing (checked 2026-10-23)')
+
 
 ADAPTER = MGAdapter()

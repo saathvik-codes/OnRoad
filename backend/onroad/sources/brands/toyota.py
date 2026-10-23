@@ -166,6 +166,62 @@ class ToyotaAdapter(BrandAdapter):
             "amounts), /buynow/?exchange=1 (lead form) and /online-booking/ (its JS calls only states/cities/dealers/"
             "models/carbooking APIs; T&C says promotions 'will be specified separately') show no offer amounts.")
 
+    def specs(self):
+        """Showroom page section #specifications: nested tabs (powertrain -> grade, e.g. 'HYBRID' -> 'HYBRID - S'), each
+        leaf tab a list of <span class=featureName>/<span class=featureData> rows under <h2> section titles (a tick
+        image = fitted, '-' = not fitted). A priced grade gets a tab's rows only when exactly one leaf tab names its
+        grade and no other powertrain / gearbox."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, apply_tables, column_matches, grade_tokens, html_tables, strip_colour
+        variants = self.prices("Hyderabad")
+        specs, feats = [], []
+        with Polite(self.client()) as h:
+            for url in dict.fromkeys(v.model_url for v in variants if v.model_url and "/showroom/" in v.model_url):
+                page = h.get(url).text
+                mine = [x for x in variants if x.model_url == url]
+                leaves = _toyota_leaves(page)
+                tables = []
+                if not leaves:
+                    for t in BeautifulSoup(page, "html.parser").find_all("table"):
+                        first = t.find("tr")
+                        cells = [clean(c.get_text(" ", strip=True)).lower() for c in first.find_all(["td", "th"])] if first else []
+                        tables += html_tables([t], url, label_cols=2 if cells[1:2] == ["details"] else 1,
+                                              kind="feature" if cells[:1] == ["features"] else "auto")
+                    if not tables:
+                        continue
+                firsts = {strip_colour(x.variant).split()[0] for x in mine}
+                vocab = {t.split(" - ")[-1].strip() for t, _ in leaves} or firsts
+                for v in mine:
+                    name = strip_colour(v.variant)
+                    sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                    if tables:
+                        apply_tables(sink, tables, name.split()[0], vocab)
+                    else:
+                        g = grade_tokens(name, vocab)
+                        if len(g) != 1:
+                            continue
+                        grade = g.pop()
+                        vtext = _toyota_pt(f"{name} {v.fuel}")
+                        hits = [rows for title, rows in leaves
+                                if grade in grade_tokens(title, vocab) and column_matches(title, sink.vd)
+                                and _toyota_pt(title) <= vtext]
+                        if len(hits) != 1:
+                            continue
+                        for sec, lab, val in hits[0]:
+                            feature_sec = sec.lower() in ("exterior", "interior", "safety & security", "comfort & convenience")
+                            if not feature_sec and val == "✓":
+                                continue
+                            # the section title only disambiguates bare labels ("Front" under "Brakes"); otherwise "Engine | Fuel Type"
+                            # would be keyed as the engine type
+                            ctx = sec if lab.lower() in ("front", "rear", "type") else ""
+                            sink.row(ctx, lab, val, url + "#specifications", "feature" if feature_sec else "spec")
+                    s, f = sink.out()
+                    specs += s
+                    feats += f
+        if not specs and not feats:
+            raise NotSupported("toyotabharat.com showroom pages exposed no grade spec tabs")
+        return specs, feats
+
 
 def _trans(grade: str, details: str) -> str:
     g = grade.upper()
@@ -183,6 +239,52 @@ def _trans(grade: str, details: str) -> str:
     if d.startswith("auto"):
         return "Automatic"
     return details or ""
+
+
+_PT_WORDS = ("CNG", "HYBRID", "NEODRIVE", "TURBO", "DIESEL", "PETROL", "4X4", "4X2", "2WD", "AWD", "AMT", "MT", "AT",
+             "FLT", "7S", "8S")
+
+
+def _toyota_pt(text: str) -> set[str]:
+    """Powertrain / layout words named in a tab title or a priced grade name."""
+    t = re.sub(r"NEO\s*DRIVE", "NEODRIVE", text.upper().replace("E-DRIVE", "HYBRID").replace("STRONG HYBRID", "HYBRID"))
+    return {w for w in _PT_WORDS if re.search(r"(?<![\w-])" + re.escape(w) + r"(?![\w-])", t)}
+
+
+def _toyota_leaves(text: str) -> list[tuple[str, list[tuple[str, str, str]]]]:
+    """[(tab title chain, [(section, label, value)])] for each innermost tab of the #specifications block."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(text, "html.parser")
+    root = soup.find(id="specifications")
+    if not root:
+        return []
+    titles = {a["href"][1:]: clean(a.get_text(" ", strip=True)) for a in root.select('ul.nav a[href^="#"]')}
+    out = []
+    for pane in root.select(".tab-pane[id]"):
+        if not pane.select(".featureName") or any(p.select(".featureName") for p in pane.select(".tab-pane")):
+            continue
+        chain, p = [], pane
+        while p is not None and p is not root:
+            if p.get("id") in titles and "tab-pane" in (p.get("class") or []):
+                chain.insert(0, titles[p["id"]])
+            p = p.parent
+        rows = []
+        for li in pane.select("li"):
+            nm, dv = li.select_one(".featureName"), li.select_one(".featureData")
+            if not nm or not dv:
+                continue
+            hd = li.find_previous(["h2", "h3"])
+            sec = clean(hd.get_text(" ", strip=True)) if hd else ""
+            if dv.select_one("img.tick-icon, img[src*=tick]"):
+                val = "✓"
+            else:
+                for br in dv.find_all("br"):
+                    br.replace_with(" ; ")
+                val = clean(dv.get_text(" ", strip=True)).strip(" ;")
+            rows.append((sec, clean(nm.get_text(" ", strip=True)), val))
+        if chain and rows:
+            out.append((" ".join(chain), rows))
+    return out
 
 
 ADAPTER = ToyotaAdapter()

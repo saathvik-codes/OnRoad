@@ -40,7 +40,8 @@ export type Offer = { id: number; brand_slug: string; model_name: string | null;
 
 export type Dealer = { id: string; brand_slug: string; name: string; address: string; city: string; state: string; pincode: string | null;
   phone: string | null; email: string | null; lat: number | null; lng: number | null; kind: string; website: string | null;
-  source_url: string; distance_km?: number | null; claimed_by: number | null };
+  source_url: string; distance_km?: number | null; claimed_by: number | null; outside_city?: boolean; near_you?: boolean;
+  google_rating?: number | null; onroad_rating?: number | null; onroad_count?: number | null; no_addons_share?: number | null; google_count?: number | null; google_maps_uri?: string | null };
 
 export type ModelSummary = { id: string; name: string; slug: string; brand_slug: string; brand: string; segment?: string; body_type: string | null;
   image_url: string | null; from_inr: number | null; to_inr: number | null; fuels: string | null; transmissions: string | null; variants?: number; offers: number; logo?: string | null;

@@ -33,7 +33,7 @@ import { api, ApiError, fetcher, type Account, type Breakdown, type ModelDetail,
 import { ago, inr, lakh, range } from "@/lib/format";
 import { BreakdownView } from "@/components/breakdown";
 import { Gallery } from "@/components/gallery";
-import { useCity, withCity } from "@/components/city";
+import { useCity, useGeoQuery, withCity } from "@/components/city";
 import { Button, Card, cn, Input, Label, Pill, Select, Skeleton } from "@/components/ui";
 import { VariantSpecs } from "@/components/variant-specs";
 import { ShowroomMap } from "@/components/dealer-map";
@@ -99,7 +99,8 @@ function ModelInner() {
   const [fuel, setFuel] = useState("");
   const [trans, setTrans] = useState("");
   const [sel, setSel] = useState<string | null>(null);
-  const { data: m } = useSWR<ModelDetail>(withCity(`/models/${brand}/${model}`, city), fetcher);
+  const geo = useGeoQuery();
+  const { data: m } = useSWR<ModelDetail>(withCity(`/models/${brand}/${model}`, city) + geo, fetcher);
   const variants = useMemo(() => (m?.variants ?? []).filter((v) => (!fuel || v.fuel === fuel) && (!trans || v.transmission === trans)), [m, fuel, trans]);
   const chosen = variants.find((v) => v.id === sel) ?? variants.find((v) => v.ex_showroom_inr) ?? variants[0] ?? null;
   const { data: bd } = useSWR<Breakdown>(chosen ? withCity(`/onroad?variant_id=${encodeURIComponent(chosen.id)}`, city) : null, fetcher);
@@ -223,6 +224,7 @@ function ModelInner() {
             <span>Equipment & specs</span>
           </button>
 
+          {vehicleType !== "bike" && (
           <button
             onClick={() => setActiveTab("safety")}
             className={cn(
@@ -235,6 +237,7 @@ function ModelInner() {
             <ShieldCheck className="h-3.5 w-3.5" />
             <span>Safety rating</span>
           </button>
+          )}
 
           <button
             onClick={() => setActiveTab("showrooms")}
@@ -477,6 +480,7 @@ function ModelInner() {
 
                 {/* Full-width Bank Loans Comparison Component */}
                 <BankLoansComparison
+                  vehicleType={vehicleType}
                   onRoadPriceInr={bd.total_inr}
                   variantName={chosen.name}
                   isEV={chosen.fuel?.toLowerCase().includes("electric") || Boolean(chosen.battery_kwh)}
@@ -510,7 +514,7 @@ function ModelInner() {
         )}
 
         {/* Official crash-test results (Bharat NCAP / Global NCAP), each linked to its source */}
-        {activeTab === "safety" && (
+        {activeTab === "safety" && vehicleType !== "bike" && (
           <div className="space-y-5">
             {m.crash_tests && m.crash_tests.length > 0 ? m.crash_tests.map((t) => (
               <Card key={t.source_url + t.protocol} className="p-5 sm:p-7">

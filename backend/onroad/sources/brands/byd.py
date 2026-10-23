@@ -186,6 +186,57 @@ class BYDAdapter(BrandAdapter):
             raise NotSupported("BYD model pages no longer contain '(Ex-showroom price)' variant cards")
         return out
 
+    def specs(self):
+        """The model page's spec table (header row 'Dimensions | <variant> | <variant> ...', colspans expanded): every
+        row is read for the priced variant's column (matched to the price card name the same way prices() does).
+        Section rows (one value across the table) set the section; tick / '-' cells mark equipment."""
+        from ._spec_kit import SpecSink
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+        for label, sku in self._model_skus():
+            info = self._model_info(label, sku)
+            header, rows, sec = None, [], ""
+            for b in self._page(sku)["blocks"]:
+                if "battery capacity (kwh)" not in b.lower():
+                    continue
+                for tr in re.findall(r"<tr.*?</tr>", b, re.S):
+                    cells = _cells(tr)
+                    if not cells:
+                        continue
+                    if header is None:
+                        if cells[0].lower() == "dimensions":
+                            header, sec = [norm(c) for c in cells[1:]], "Dimensions"
+                        continue
+                    if len(set(cells)) == 1:
+                        sec = cells[0]
+                        continue
+                    rows.append((sec, cells[0], cells[1:]))
+                if header:
+                    break
+            if not header:
+                continue
+            for v in (x for x in priced if x.model == info["name"]):
+                key = norm(re.sub(r"\s*\d+\s*Seater$", "", v.variant, flags=re.I).split("(")[0])
+                idx = [i for i, h in enumerate(header) if h == key] or [i for i, h in enumerate(header) if h and key.startswith(h)]
+                if not idx:
+                    continue
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                for section, lab, vals in rows:
+                    vs = {vals[i] for i in idx if i < len(vals)}
+                    if len(vs) != 1:
+                        continue
+                    val = vs.pop()
+                    if val in ("⬤", "●"):                    # BYD's "fitted" dot: equipment, never a spec value
+                        sink.feature(lab, "✓", f"{API}page/{sku}")
+                    else:
+                        sink.row(section, lab, val, f"{API}page/{sku}")
+                s_, f_ = sink.out()
+                specs += s_
+                feats += f_
+        if not specs and not feats:
+            raise NotSupported("BYD model pages carried no spec table for the priced variants")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)
         data = self._get("dealers")["data"]

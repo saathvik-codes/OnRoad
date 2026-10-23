@@ -45,3 +45,8 @@ tunnel.log
 test_models.py
 check_*.py
 scripts/
+
+# Private working files
+data/outreach_drafts.csv
+data/rebuild.json
+data/image_credits.md

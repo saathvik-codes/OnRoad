@@ -205,6 +205,11 @@ class SkodaAdapter(BrandAdapter):
             raise NotSupported("skoda-auto.co.in shows no Fan Fest / offer tiles and no corporate special offers")
         return out
 
+    def specs(self):
+        raise NotSupported("skoda-auto.co.in publishes no per-variant spec/feature table (checked 2026-10-23: model pages "
+                           "carry only an engine/gearbox slideshow, /pricelist-table has prices only, brochures sit "
+                           "behind a lead form)")
+
 
 def _module_props(page: str, container: str) -> list[dict]:
     """data-props JSON of every <div data-modulecontainer="<container>"> module on an (unescaped) Skoda page."""

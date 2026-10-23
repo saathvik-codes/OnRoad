@@ -258,6 +258,56 @@ class VolkswagenAdapter(BrandAdapter):
             raise NotSupported("VW current-offers page lists no model offer layers")
         return out
 
+    def specs(self):
+        """/en/models/<model>.html links the 'Technical Specifications' layer
+        /en/models/<model>.html/__layer/layers/specifications/<model>/master.layer: <table>s whose columns are the
+        engine + gearbox lines ('1.0L TSI MT', '1.5L TSI DSG'), each under a <b> section title (Brakes, Tyres ...).
+        A column applies to a priced trim when its engine size and gearbox agree with the trim name. VW publishes
+        no per-trim equipment table there, so no features."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, apply_tables, column_matches, html_tables
+        variants = self.prices("Hyderabad")
+        specs = []
+        for url in dict.fromkeys(v.model_url for v in variants if v.model_url):
+            try:
+                page = self._get(url).text
+            except Exception:
+                continue
+            path = url[len(BASE):]
+            m = re.search("(" + re.escape(path) + r"/__layer/layers/[\w./-]*specifications[\w./-]*\.layer)", page)
+            if not m:
+                continue
+            src = BASE + m.group(1)
+            soup = BeautifulSoup(self._get(src).text, "html.parser")
+            tables = []
+            for t in soup.find_all("table"):
+                b = t.find_previous("b")
+                for pt in html_tables([t], src, section=b.get_text(" ", strip=True) if b else ""):
+                    # the section title only qualifies bare labels ("Front" under "Brakes"); "Power Train | Engine
+                    # type" would otherwise be keyed as max power
+                    pt.rows = [(sec if lab.lower() in ("front", "rear", "size", "type") else "", lab, vals)
+                               for sec, lab, vals in pt.rows]
+                    tables.append(pt)
+            for v in (x for x in variants if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                eng = _vw_engine(v.variant)
+
+                def col_ok(h, sink=sink, eng=eng):
+                    he = _vw_engine(h)
+                    # a trim priced as "Automatic" whose name has no gearbox is VW's DSG when the column says DSG
+                    return (not he or not eng or he == eng) and (column_matches(h, sink.vd) or (
+                        sink.transmission == "Automatic" and "DSG" in h and not re.search(r"\b(AT|MT|DSG)\b", sink.variant)))
+                apply_tables(sink, tables, col_ok=col_ok)
+                specs += sink.out()[0]
+        if not specs:
+            raise NotSupported("volkswagen.co.in model pages exposed no technical-specifications layer tables")
+        return specs, []
+
+
+def _vw_engine(text: str) -> str | None:
+    m = re.search(r"(\d\.\d)\s*L?\s*TSI", text or "")
+    return m.group(1) if m else None
+
 
 def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())

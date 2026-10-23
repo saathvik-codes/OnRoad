@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS features (
     variant_id TEXT, key TEXT, label TEXT, source_url TEXT, fetched_at TEXT,
     PRIMARY KEY (variant_id, key, label)
 );
+CREATE TABLE IF NOT EXISTS dealer_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, dealer_id TEXT, account_id INTEGER, rating INTEGER,
+    price_honesty INTEGER, no_forced_addons INTEGER, delivery_on_time INTEGER, visit TEXT, text TEXT,
+    created TEXT DEFAULT (datetime('now')), UNIQUE (dealer_id, account_id)
+);
 """
 
 

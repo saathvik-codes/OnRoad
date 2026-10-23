@@ -33,4 +33,4 @@ EXPOSE 8100
 COPY docker-entrypoint-backend.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["uvicorn", "onroad.api:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "2"]
+CMD ["uvicorn", "onroad.api:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "1"]

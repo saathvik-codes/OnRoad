@@ -71,7 +71,7 @@ export function CityPicker({ className, onDone }: { className?: string; onDone?:
     if (!navigator.geolocation || !cities) return toast.error("Location isn't available in this browser");
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { const c = nearest(cities, pos.coords.latitude, pos.coords.longitude); setLocating(false); pick(c.name); toast.success(`Showing prices for ${c.name}, ${c.state_name}`); },
+      (pos) => { const c = nearest(cities, pos.coords.latitude, pos.coords.longitude); setLocating(false); setGeo(pos.coords.latitude, pos.coords.longitude); pick(c.name); toast.success(`Showing prices for ${c.name}, ${c.state_name}`); },
       () => { setLocating(false); toast.error("Couldn't get your location. Pick your city instead."); },
       { timeout: 10000, maximumAge: 600000 },
     );
@@ -111,4 +111,25 @@ export function CityPicker({ className, onDone }: { className?: string; onDone?:
       )}
     </div>
   );
+}
+
+// ── The buyer's exact location (only after they tap "Use my location"): nearest showrooms + real distances ──
+const GEO_KEY = "onroad.geo";
+const geoListeners = new Set<() => void>();
+let geoMem: string | null | undefined;
+const readGeo = () => {
+  if (geoMem === undefined) { try { geoMem = localStorage.getItem(GEO_KEY); } catch { geoMem = null; } }
+  return geoMem ?? "";
+};
+export function setGeo(lat: number, lng: number) {
+  geoMem = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  try { localStorage.setItem(GEO_KEY, geoMem); } catch { /* storage blocked */ }
+  geoListeners.forEach((f) => f());
+}
+/** "&lat=..&lng=.." when the buyer shared their location, else "". */
+export function useGeoQuery() {
+  const g = useSyncExternalStore((f) => { geoListeners.add(f); return () => { geoListeners.delete(f); }; }, readGeo, () => "");
+  if (!g) return "";
+  const [lat, lng] = g.split(",");
+  return `&lat=${lat}&lng=${lng}`;
 }

@@ -138,6 +138,43 @@ class CitroenAdapter(BrandAdapter):
             raise NotSupported("Citroën price list returned no variants")
         return out
 
+    def specs(self):
+        """The variant-comparison page (embed.citroenindia.com/variant-comparison/<model>, a citroen.in iframe) reads
+        GET api.citroenindia.com/api/vehicles/variant-comparisons?modelName=<API modelName>&limit=2000 -> one row per
+        (grade, category, item) with value "Yes" / "-" / text. Grades are named without engine or gearbox ("SHINE",
+        "FEEL(O)"), so a priced name gets a grade's rows only when it is that grade plus Turbo / NA / AT / MT / seat
+        words. Only equipment is published there (no technical data)."""
+        from ._spec_kit import SpecSink
+        priced = self.prices("Hyderabad")
+        api_names = {m["id"]: m.get("modelName") for m in self._api("/api/vehicles/models", page=1, limit=500).get("data") or []}
+        feats = []
+        for m in self.models():
+            mn = api_names.get(m["id"])
+            if not mn:
+                continue
+            src = f"{EMBED}/variant-comparison/{mn}"
+            rows = self._api("/api/vehicles/variant-comparisons", modelName=mn, limit=2000).get("data") or []
+            by_grade: dict[str, list[dict]] = {}
+            for r in rows:
+                if r.get("status") is not False:
+                    by_grade.setdefault(_citroen_grade(r.get("variantName") or ""), []).append(r)
+            for v in (x for x in priced if x.model == m["name"]):
+                grade = _citroen_grade(re.sub(r"\b(TURBO|NA|AT|MT)\b|-\s*[57]S\b", " ", v.variant.upper()))
+                if grade not in by_grade:
+                    continue
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                for r in by_grade[grade]:
+                    val = (r.get("value") or "").strip()
+                    if r.get("category", "").upper() == "VARIANTS" or "optional" in (r.get("category") or "").lower():
+                        continue
+                    if re.match(r"(optional|with |only )", val, re.I):
+                        continue
+                    sink.feature(r.get("subCategory") or "", "✓" if val.lower() == "yes" else val, src)
+                feats += sink.out()[1]
+        if not feats:
+            raise NotSupported("api.citroenindia.com variant-comparisons returned no rows for the priced grades")
+        return [], feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)
         if not g:
@@ -178,5 +215,10 @@ class CitroenAdapter(BrandAdapter):
             raise NotSupported("citroen.in/buy/offers.html shows no 'Additional benefits of up to' cards")
         return out
 
+
+
+def _citroen_grade(name: str) -> str:
+    """'Live (O)' / 'LIVE(O)' -> 'LIVE(O)'."""
+    return re.sub(r"\s+", " ", re.sub(r"\s*\(\s*", "(", name.upper())).strip(" -")
 
 ADAPTER = CitroenAdapter()

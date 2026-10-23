@@ -204,6 +204,77 @@ class MahindraAdapter(BrandAdapter):
         raise NotSupported("auto.mahindra.com and mahindraelectricsuv.com publish no offers page or offers feed "
                            "(checked sitemaps on 2026-10-19).")
 
+    # ------------------------------------------------------------------ specs
+    def specs(self):
+        """ICE: each variant card on the model page links ("View all specifications") to the variant's own page
+        /suv/<model>/<slug>/<VARIANT_ID>.html, whose Specifications / Features tabs are 'spec-grid' rows comparing that
+        variant (first column) with the top variant (second column); only the first column is used.
+        EV (mahindraelectricsuv.com): the variant links served a PDF, not a spec page on 2026-10-23 -> not covered."""
+        from ._spec_kit import SpecSink
+        specs, feats = [], []
+        with Polite(self.client()) as h:
+            for m in self._ice_models(h):
+                page = _unescape_page(h.get(m["url"]).text)
+                links = {vid: AUTO + path for path, vid in re.findall(
+                    r'href="(?:https?://auto\.mahindra\.com)?(/[^"]*/([A-Z0-9]+)\.html)"[^>]*class="specification-button', page)}
+                for c in _cards(page):
+                    url = links.get(c["id"])
+                    if not url:
+                        continue
+                    fuel_raw, trans_raw, seats_raw = (c["values"] + ["", "", ""])[:3]
+                    fuel = FUEL.get(fuel_raw.upper(), fuel_raw.title())
+                    trans = TRANS.get(trans_raw.upper().replace(" ", ""), trans_raw.title())
+                    label = c["name"]
+                    if trans and trans.upper() not in label.upper():
+                        label += f" {trans}"
+                    if seats_raw.isdigit():
+                        label += f" {int(seats_raw)}-seater"
+                    sink = SpecSink(_disp(m["name"]), label, fuel, trans)
+                    try:
+                        r = h.get(url)
+                    except Exception:
+                        continue                 # some "specifications" links point at a brochure PDF that 404s
+                    if "html" not in r.headers.get("content-type", ""):
+                        continue
+                    for sec, lab, val, kind in _mahindra_spec_rows(r.text):
+                        sink.row(sec, lab, val, url, kind)
+                    s, f = sink.out()
+                    specs += s
+                    feats += f
+        if not specs and not feats:
+            raise NotSupported("Mahindra variant pages exposed no spec-grid rows")
+        return specs, feats
+
+
+def _mahindra_spec_rows(text: str) -> list[tuple[str, str, str, str]]:
+    """(section id, label, value of this variant's column, kind) from a variant page's spec-grid rows."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(text, "html.parser")
+    out = []
+    for tab, kind in (("Specifications-tab", "spec"), ("Features-tab", "feature")):
+        pane = soup.find(id=tab)
+        if not pane:
+            continue
+        for body in pane.select(".spec-accordion-body"):
+            for g in body.select("div.spec-grid"):
+                label = g.get("data-grid-feature")
+                items = g.select(".spec-grid-item")
+                if not label or not items:
+                    continue
+                it = items[0]
+                use = it.select_one("use")
+                if use is not None:
+                    ref = use.get("xlink:href") or use.get("href") or ""
+                    value = "✓" if ref.endswith("checktrue") else ""
+                else:
+                    for lab in it.select("label"):
+                        lab.extract()
+                    value = clean(it.get_text(" ", strip=True))
+                if value and not (kind == "spec" and value == "✓"):
+                    # section ids ("engineAndTransmission") would mis-key every row of the section, so none is passed
+                    out.append(("", clean(label), value, kind))
+    return out
+
 
 def _disp(name: str) -> str:
     """'SCORPIO-N' -> 'Scorpio-N', 'XUV 7XO' stays, 'THAR OG' -> 'Thar OG'."""

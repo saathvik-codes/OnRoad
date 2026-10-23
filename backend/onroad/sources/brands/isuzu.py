@@ -122,6 +122,50 @@ class IsuzuAdapter(BrandAdapter):
             raise NotSupported(f"Isuzu getprice.js {state} list has no MU-X / V-Cross / Hi-Lander rows")
         return out
 
+    def specs(self):
+        """/vcross, /hilander, /mux: spec and feature <table>s whose header row is 'Model | <full variant name> ...'
+        (tables without a header row continue the previous one). A column applies to a priced variant only when its
+        name, without the model prefix, is the variant's name less the price list's Standard / Premium suffix."""
+        from bs4 import BeautifulSoup
+        from ._spec_kit import SpecSink, html_tables, is_tick, spec_key
+        priced = self.prices("Hyderabad")
+        specs, feats = [], []
+
+        def bare(n):
+            return re.sub(r"\s+", " ", re.sub(r"(?i)^(mu-?x|v-?cross|hi-?lander)\s*", "", n or "")).strip().lower()
+        for url in dict.fromkeys(v.model_url for v in priced if v.model_url):
+            tables = html_tables(BeautifulSoup(self._get(url), "html.parser").find_all("table"), url)
+            for v in (x for x in priced if x.model_url == url):
+                sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                # the price list splits each spec-table trim into "... Standard" / "... Premium" (paint) lines
+                trim = re.sub(r"\s+(standard|premium)$", "", bare(v.variant))
+                done = set()
+                for t in tables:
+                    # a column applies when it names this trim; an unheaded single-column table is the whole model's
+                    idx = [i for i, h in enumerate(t.cols) if bare(h) == trim or (not h and len(t.cols) == 1)]
+                    for sec, lab, vals in t.rows:
+                        vs = {vals[i] for i in idx if i < len(vals)}
+                        if len(vs) != 1:
+                            continue
+                        val = vs.pop()
+                        k = spec_key(sec, lab)
+                        if re.search(r"(?i)\bdeck\b", lab):
+                            continue          # "Deck Inner (LxWxH)" is the load bed, not the vehicle's length/width/height
+                        if is_tick(val):
+                            sink.feature(lab, val, url)
+                        elif k and k[1] in done:
+                            continue          # first published value of a spec key wins
+                        else:
+                            if k:
+                                done.add(k[1])
+                            sink.row(sec, lab, val, url)
+                s_, f_ = sink.out()
+                specs += s_
+                feats += f_
+        if not specs and not feats:
+            raise NotSupported("isuzu.in model pages had no spec column matching a priced variant")
+        return specs, feats
+
     def dealers(self, city: str = "Hyderabad") -> list[Dealer]:
         g = geo(city)
         if not g:

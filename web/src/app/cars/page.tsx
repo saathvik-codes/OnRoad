@@ -525,6 +525,10 @@ function Filtered({ onOpenAdvisor }: { onOpenAdvisor: () => void }) {
 function CarsInner() {
   const sp = useSearchParams();
   const [advisorOpen, setAdvisorOpen] = useState(false);
+  // "Find my car" on the home page links here with ?finder=1: open the profile-based finder straight away
+  const finderParam = useSearchParams().get("finder") === "1";
+  const [finderSeen, setFinderSeen] = useState(false);
+  if (finderParam && !finderSeen && !advisorOpen) { setFinderSeen(true); setAdvisorOpen(true); }
   const brand = sp.get("brand");
   const vt = sp.get("vehicle_type") ?? "car";
 

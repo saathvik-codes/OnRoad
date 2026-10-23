@@ -13,6 +13,7 @@ import {
   Compass
 } from "lucide-react";
 import { type Dealer } from "@/lib/api";
+import { RateShowroom, RatingSummary } from "@/components/dealer-review";
 import { Card, cn, Input } from "@/components/ui";
 
 interface ShowroomMapProps {
@@ -80,10 +81,10 @@ export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line p-5 sm:p-6">
         <div>
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-ink sm:text-2xl">
-            Authorized {brandName} Showrooms in {city}
+            {dealers[0]?.near_you ? `${brandName} showrooms nearest to you` : dealers[0]?.outside_city ? `Nearest ${brandName} showrooms in your state` : `Authorized ${brandName} showrooms in ${city}`}
           </h2>
           <p className="mt-1 text-xs text-mute sm:text-sm">
-            {dealers.length} showroom{dealers.length === 1 ? "" : "s"} serving {city} & nearby region. Live Google Map navigation & phone direct lines.
+            {dealers[0]?.near_you ? `Sorted by straight-line distance from your location, from ${brandName}'s own dealer locator.` : dealers[0]?.outside_city ? `${brandName} lists no showroom in ${city}; these are the nearest in the same state, from ${brandName}'s own dealer locator.` : `${dealers.length} showroom${dealers.length === 1 ? "" : "s"} in ${city}, from ${brandName}'s own dealer locator.`}
           </p>
         </div>
 
@@ -173,7 +174,7 @@ export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
                         </p>
                       </div>
 
-                      {d.distance_km != null && d.distance_km < 150 && (
+                      {d.distance_km != null && (d.near_you || d.distance_km < 150) && (
                         <span className="shrink-0 rounded-full bg-panel-soft px-2 py-0.5 text-[10px] font-mono text-mute border border-line">
                           {d.distance_km} km
                         </span>
@@ -184,10 +185,18 @@ export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
                       <span className="rounded-md border border-line bg-panel-soft px-2 py-0.5">
                         {d.kind === "sales+service" ? "Sales & service" : d.kind === "service" ? "Service only" : "Sales"}
                       </span>
+                      <RatingSummary rating={d.onroad_rating} count={d.onroad_count} noAddons={d.no_addons_share} />
+                      {d.google_rating != null && (
+                        <a href={d.google_maps_uri ?? undefined} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                          className="rounded-md border border-line bg-panel-soft px-2 py-0.5 text-ink hover:border-accent">
+                          ★ {d.google_rating.toFixed(1)} <span className="text-mute">({(d.google_count ?? 0).toLocaleString("en-IN")} on Google)</span>
+                        </a>
+                      )}
                       {d.email && <a href={`mailto:${d.email}`} onClick={(e) => e.stopPropagation()} className="truncate hover:text-ink">{d.email}</a>}
                     </div>
 
-                    <div className="mt-3 flex items-center justify-end border-t border-line/60 pt-3">
+                    <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
+                      <RateShowroom dealerId={d.id} />
                       <div className="flex items-center gap-2">
                         {d.phone && (
                           <a

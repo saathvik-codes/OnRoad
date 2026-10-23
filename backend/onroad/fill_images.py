@@ -64,7 +64,24 @@ def commons(client: httpx.Client, brand: str, name: str) -> tuple[str, str] | No
     return None
 
 
+def dedupe() -> int:
+    """No two models share one picture: keep a shared image on the model whose slug best matches the file name
+    (else the shortest name) and clear it on the others, so they get their own image below."""
+    cleared = 0
+    with closing(db.connect()) as conn, conn:
+        for (url,) in conn.execute("""SELECT image_url FROM models WHERE active = 1 AND image_url IS NOT NULL
+                                      GROUP BY image_url HAVING COUNT(*) > 1""").fetchall():
+            ids = [r[0] for r in conn.execute("SELECT id FROM models WHERE active = 1 AND image_url = ?", (url,))]
+            fname = url.split("?")[0].rsplit("/", 1)[-1].lower()
+            keep = max(ids, key=lambda i: (i.split("/", 1)[1].replace("-", "") in fname.replace("-", "").replace("_", ""), -len(i)))
+            for i in ids:
+                if i != keep:
+                    conn.execute("UPDATE models SET image_url = NULL WHERE id = ?", (i,)); cleared += 1
+    return cleared
+
+
 def run() -> dict:
+    cleared = dedupe()
     with closing(db.connect()) as conn:
         todo = conn.execute("SELECT id, name, url FROM models WHERE active = 1 AND (image_url IS NULL OR image_url = '') AND url LIKE 'http%'").fetchall()
         used = {r[0] for r in conn.execute("SELECT image_url FROM models WHERE image_url IS NOT NULL")}
@@ -101,7 +118,7 @@ def run() -> dict:
                     f.write(f"- {mid}: {got[1]}" + chr(10))
                 used.add(got[0]); filled.append(mid)
             time.sleep(0.5)
-    return {"missing": len(todo), "filled": len(filled), "still_missing": [m for m, _, _ in todo if m not in filled]}
+    return {"deduped": cleared, "missing": len(todo), "filled": len(filled), "still_missing": [m for m, _, _ in todo if m not in filled]}
 
 
 if __name__ == "__main__":

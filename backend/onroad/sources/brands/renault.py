@@ -208,6 +208,40 @@ class RenaultAdapter(BrandAdapter):
                                  BASE + path, city, state)
         return out
 
+    def specs(self):
+        """Each model page's window.APP_STATE.page.data.modelParams.data.engines[] carries the engine sheet Renault shows
+        per powertrain (label "1L turbo CVT": maximumPower, torque, engineSize, gearboxType, fuelType - each a
+        {label, value} pair); a version's engineName names its engine. The per-grade equipment list there is only
+        option codes, and the /specifications.html tables are filled client-side from the configurator, so no
+        features."""
+        from ._spec_kit import SpecSink
+        fields = (("maximumPower", "Engine", "max_power"), ("torque", "Engine", "max_torque"),
+                  ("engineSize", "Engine", "displacement"), ("gearboxType", "Performance", "gearbox"))
+        priced = {(v.model, v.variant): v for v in self.prices("Hyderabad")}
+        specs, done = [], set()
+        for m in self.models():
+            st = _state(self._get(m["url"]).text)
+            data = (((st.get("page") or {}).get("data") or {}).get("modelParams") or {}).get("data") or {}
+            name = data.get("label") or m["name"]
+            engines = {e.get("label"): e for e in data.get("engines") or []}
+            for g in data.get("grades") or []:
+                for ver in g.get("versions") or []:
+                    v = priced.get((name, (ver.get("label") or "").strip()))
+                    e = engines.get(ver.get("engineName"))
+                    if not v or not e or (v.model, v.variant) in done:
+                        continue
+                    done.add((v.model, v.variant))
+                    sink = SpecSink(v.model, v.variant, v.fuel, v.transmission)
+                    for f, grp, key in fields:
+                        x = e.get(f) or {}
+                        val = str(x.get("value") or "").strip()
+                        if val and val != "NC" and x.get("label") and x.get("label") != "NC":
+                            sink.spec(grp, key, x["label"], val, m["url"], check=False)
+                    specs += sink.out()[0]
+        if not specs:
+            raise NotSupported("renault.co.in model pages carried no engine sheets")
+        return specs, []
+
 
 def _clauses(tc: list[str], rx: str) -> list[str]:
     return [c for c in tc if re.search(rx, c, re.I)]
