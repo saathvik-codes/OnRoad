@@ -1,4 +1,4 @@
-# OnRoad 🚗🏍️
+# OnRoad
 
 > **India's Transparent Automotive Intelligence & On-Road Price Discovery Platform**  
 > Calculate exact state-by-state on-road prices, compare vehicle specs & official crash test safety, find verified authorized dealerships, and receive transparent showroom quotes.
