@@ -14,13 +14,16 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
   const incomingUrl = new URL(request.url);
   targetUrl.search = incomingUrl.search;
 
-  // Forward incoming headers (except host)
+  // Forward incoming headers (except host, connection, content-length, accept-encoding)
   const headers = new Headers();
   request.headers.forEach((value, key) => {
-    if (!["host", "content-length", "connection"].includes(key.toLowerCase())) {
+    const k = key.toLowerCase();
+    if (!["host", "content-length", "connection", "accept-encoding"].includes(k)) {
       headers.set(key, value);
     }
   });
+  // Request uncompressed response from upstream so we can accurately measure Content-Length
+  headers.set("accept-encoding", "identity");
 
   const method = request.method;
   const hasBody = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
@@ -42,15 +45,18 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
       cache: "no-store",
     });
 
+    const resData = await upstreamRes.arrayBuffer();
     const responseHeaders = new Headers();
     upstreamRes.headers.forEach((value, key) => {
-      // Don't forward transfer-encoding or content-encoding so Next can handle streaming
-      if (!["transfer-encoding", "content-encoding"].includes(key.toLowerCase())) {
+      const k = key.toLowerCase();
+      if (!["transfer-encoding", "content-encoding", "content-length"].includes(k)) {
         responseHeaders.set(key, value);
       }
     });
 
-    const resData = await upstreamRes.arrayBuffer();
+    // Explicitly set Content-Length from the full buffer size so Cloudflare / browser never prematurely terminates the body
+    responseHeaders.set("Content-Length", resData.byteLength.toString());
+
     return new NextResponse(resData, {
       status: upstreamRes.status,
       statusText: upstreamRes.statusText,

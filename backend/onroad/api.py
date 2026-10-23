@@ -1216,6 +1216,11 @@ def sync_status():
     }
 
 
+@app.get("/")
+def root():
+    return {"name": "OnRoad API", "status": "online", "docs": "/api/docs", "health": "/api/health"}
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
