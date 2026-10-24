@@ -62,7 +62,7 @@ def match_and_rate(limit: int = 200) -> dict:
         for did, name, addr, lat, lng, place_id in todo:
             try:
                 if place_id:
-                    r = c.get(f"{BASE}/places/{place_id}", headers={**hdr, "X-Goog-FieldMask": "id,rating,userRatingCount,googleMapsUri,photos"}).json()
+                    r = c.get(f"{BASE}/places/{place_id}", headers={**hdr, "X-Goog-FieldMask": "id,rating,userRatingCount,googleMapsUri"}).json()
                     if "error" in r:                      # quota / key problem: not an answer, try again next run
                         if r["error"].get("code") == 429:
                             break
@@ -72,7 +72,7 @@ def match_and_rate(limit: int = 200) -> dict:
                     body = {"textQuery": f"{name} {addr}"[:200], "maxResultCount": 3,
                             "locationBias": {"circle": {"center": {"latitude": lat, "longitude": lng}, "radius": 1000.0}}}
                     res = c.post(f"{BASE}/places:searchText", json=body, headers={**hdr,
-                                 "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos"}).json()
+                                 "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.googleMapsUri"}).json()
                     if "error" in res:                    # daily quota used up: stop; nothing is recorded as "no match"
                         if res["error"].get("code") == 429:
                             break
