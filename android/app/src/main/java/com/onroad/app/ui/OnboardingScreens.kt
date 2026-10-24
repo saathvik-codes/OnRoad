@@ -109,12 +109,8 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
         HorizontalPager(pager, Modifier.weight(1f)) { i ->
             val sl = SLIDES[i]
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-                Box(Modifier.size(132.dp).clip(RoundedCornerShape(40.dp))
-                    .background(Brush.linearGradient(listOf(sl.tint.copy(alpha = 0.35f), sl.tint.copy(alpha = 0.05f))))
-                    .border(1.dp, sl.tint.copy(alpha = 0.4f), RoundedCornerShape(40.dp)), contentAlignment = Alignment.Center) {
-                    Icon(sl.icon, null, tint = sl.tint, modifier = Modifier.size(60.dp))
-                }
-                Spacer(Modifier.height(36.dp))
+                when (i) { 0 -> PriceArt(); 1 -> ReceiptArt(); else -> MapArt() }
+                Spacer(Modifier.height(24.dp))
                 Text(sl.title, style = MaterialTheme.typography.displaySmall)
                 Spacer(Modifier.height(14.dp))
                 Text(sl.body, color = Mute, style = MaterialTheme.typography.bodyLarge)

@@ -99,10 +99,16 @@ class MainActivity : ComponentActivity() {
                 val enc = { s: String -> URLEncoder.encode(s, "UTF-8") }
                 val start = remember { if (prefs.onboarded) "home" else "welcome" }
                 val route = nav.currentBackStackEntryAsState().value?.destination?.route
+                androidx.compose.runtime.LaunchedEffect(route) {
+                    if (route == "home" && android.os.Build.VERSION.SDK_INT >= 33 && !prefs.askedNotify) {
+                        prefs.askedNotify = true
+                        kotlinx.coroutines.delay(1500)            // let Home render first
+                        askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
                 // opened from an alert: jump to that screen once the app is past onboarding
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     intent?.getStringExtra("route")?.let { r -> if (prefs.onboarded) nav.navigate(if (r.startsWith("model/")) "model/${enc(r.removePrefix("model/"))}" else r) }
-                    if (android.os.Build.VERSION.SDK_INT >= 33) askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                 }
                 val tabs = listOf(Triple("home", "Home", Icons.Outlined.Home), Triple("explore", "Explore", Icons.Outlined.Explore),
                     Triple("offers", "Offers", Icons.Outlined.LocalOffer), Triple("calc", "Calculator", Icons.Outlined.Calculate),

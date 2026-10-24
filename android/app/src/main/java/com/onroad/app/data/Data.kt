@@ -160,6 +160,9 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var lng: Double?
         get() = sp.getString("lng", null)?.toDoubleOrNull()
         set(v) { sp.edit().putString("lng", v?.toString()).apply() }
+    var askedNotify: Boolean
+        get() = sp.getBoolean("asked_notify", false)
+        set(v) { sp.edit().putBoolean("asked_notify", v).apply() }
     var alerts: Boolean
         get() = sp.getBoolean("alerts", true)
         set(v) { sp.edit().putBoolean("alerts", v).apply() }
