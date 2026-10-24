@@ -483,6 +483,8 @@ def apply(conn, model_id: str, parsed: dict, url: str, fetched: str, fill_only: 
     rows, columns = rows_for(parsed), parsed["columns"]
     variants = [dict(r) for r in conn.execute("SELECT id, name, fuel, transmission, engine_cc FROM variants WHERE model_id = ? AND COALESCE(active, 1) = 1",
                                               (model_id,))]
+    vt = (conn.execute("SELECT COALESCE(b.vehicle_type, 'car') FROM models m JOIN brands b ON b.slug = m.brand_slug WHERE m.id = ?",
+                       (model_id,)).fetchone() or ["car"])[0]
     n = 0
     for v in variants:
         mine = "" if fill_only else "AND key NOT LIKE 'brochure_%'"
@@ -503,7 +505,7 @@ def apply(conn, model_id: str, parsed: dict, url: str, fetched: str, fill_only: 
                     value = " · ".join(f"{columns[i]}: {vals[i]}" for i in use)
                 else:
                     continue                                     # several values and no column names: can't say which
-            if not value or r["label"] in have:
+            if not value or r["label"] in have or not plausible(r["label"], value, vt):
                 continue
             ev = (v.get("fuel") or "").lower() in ("electric", "ev")
             if r["label"] in ("Range", "Battery capacity") and not ev or r["label"] in ("Displacement", "Fuel tank", "Cylinders") and ev:
@@ -714,3 +716,18 @@ def html_specs(html: str) -> dict:
                 break
     rows = [{"grp": groups[k], "label": k, "values": [next(iter(v))]} for k, v in found.items() if len(v) == 1]
     return {"columns": [], "rows": rows, "pages": [], "text": ""}
+
+
+# what a car or a two-wheeler can physically measure; anything outside is a mis-read cell, never written
+PLAUSIBLE = {"car": {"Length": (2900, 5800), "Width": (1400, 2300), "Height": (1200, 2200), "Wheelbase": (1900, 3700),
+                     "Kerb weight": (600, 3800), "Fuel tank": (20, 120), "Ground clearance": (110, 320)},
+             "bike": {"Length": (1500, 2800), "Width": (550, 1150), "Height": (850, 1650), "Wheelbase": (1100, 1800),
+                      "Kerb weight": (60, 460), "Fuel tank": (3, 32), "Ground clearance": (100, 300), "Seat height": (600, 950)}}
+
+
+def plausible(label: str, value: str, vehicle_type: str) -> bool:
+    lim = PLAUSIBLE.get(vehicle_type or "car", {}).get(label)
+    if not lim or "·" in value:
+        return True
+    m = re.match(r"([\d.]+)", value)
+    return not m or lim[0] <= float(m.group(1)) <= lim[1]

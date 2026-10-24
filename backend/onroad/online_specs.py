@@ -22,7 +22,7 @@ import time
 import httpx
 
 from . import db
-from .brochure_specs import UA, _canon_label, canon
+from .brochure_specs import UA, _canon_label, canon, plausible
 
 BRAND = {"maruti_suzuki": "maruti", "tata_motors": "tata", "land_rover": "land-rover", "force_motors": "force-motors",
          "mercedes_benz": "mercedes-benz", "honda_2wheelers": "honda", "suzuki_2wheelers": "suzuki", "royal_enfield": "royal-enfield",
@@ -69,7 +69,7 @@ def run_model(c: httpx.Client, conn, model_id: str, vehicle_type: str) -> dict:
     brand, slug = model_id.split("/", 1)
     name = (conn.execute("SELECT name FROM models WHERE id = ?", (model_id,)).fetchone() or [""])[0]
     site = "https://www.bikedekho.com" if vehicle_type == "bike" else "https://www.cardekho.com"
-    url = f"{site}/{BRAND.get(brand, brand.replace('_', '-'))}/{slug}/specs"
+    url = f"{site}/{BRAND.get(brand, brand.replace('_', '-'))}/{slug}/{'specifications' if vehicle_type == 'bike' else 'specs'}"
     r = c.get(url)
     if r.status_code != 200:
         return {"model": model_id, "url": url, "status": r.status_code}
@@ -87,7 +87,7 @@ def run_model(c: httpx.Client, conn, model_id: str, vehicle_type: str) -> dict:
                       (not v[2] or not page_cc or abs(v[2] - page_cc) <= 60)
         ev = _fuel(v[1]) == "electric"
         for label, (grp, value) in specs.items():
-            if label not in KEEP or label in have or (label in ENGINE and not same_engine):
+            if label not in KEEP or label in have or (label in ENGINE and not same_engine) or not plausible(label, value, vehicle_type):
                 continue
             if label in ("Range", "Battery capacity") and not ev or label in ("Displacement", "Fuel tank", "Cylinders") and ev:
                 continue
