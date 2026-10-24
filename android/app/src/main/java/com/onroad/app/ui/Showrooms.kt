@@ -80,7 +80,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     LaunchedEffect(cityNow) { vm.prefs.lat?.let { la -> vm.prefs.lng?.let { lo -> if (here != la to lo) here = la to lo } } }
     var tick by remember { mutableIntStateOf(0) }
     var rating by remember { mutableStateOf<NearDealer?>(null) }
-    val city = vm.prefs.city.value
+    val city = cityNow
     var locOff by remember { mutableStateOf(false) }
     val locate = rememberLocator(vm.prefs) { loc, problem ->
         locOff = problem == com.onroad.app.data.LocationProblem.Off
@@ -90,7 +90,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
         else err = (problem ?: com.onroad.app.data.LocationProblem.NoFix).message
     }
     LaunchedEffect(Unit) { if (here == null) locate() }
-    LaunchedEffect(type) { brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models } }
+    LaunchedEffect(type, cityNow) { brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models } }
     LaunchedEffect(here, type, brand, tick) {
         val h = here ?: return@LaunchedEffect
         list = null; err = null

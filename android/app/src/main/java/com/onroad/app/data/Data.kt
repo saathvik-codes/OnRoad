@@ -75,7 +75,7 @@ import javax.inject.Singleton
 @Serializable data class Reco(val id: String, val name: String, val brand: String = "", val brandSlug: String = "", val bodyType: String? = null,
     val imageUrl: String? = null, val fromInr: Long? = null, val matchScore: Int = 0, val reasons: List<String> = emptyList(),
     val variant: String? = null, val variantId: String? = null, val transmission: String? = null, val crashStars: Int? = null,
-    val warnings: List<String> = emptyList())
+    val warnings: List<String> = emptyList(), val fuels: String? = null, val pool: Int = 0, val efficiency: Double? = null)
 @Serializable data class SaveIn(val variantId: String, val city: String, val targetInr: Long? = null)
 @Serializable data class SavedCar(val variantId: String, val variant: String = "", val model: String = "", val modelId: String = "",
     val brand: String = "", val imageUrl: String? = null, val city: String = "")
@@ -107,7 +107,8 @@ interface Api {
     @GET("api/recommendations") suspend fun recommendations(@Query("city") city: String, @Query("vehicle_type") type: String,
         @Query("budget") budget: Long, @Query("usage") usage: String, @Query("seats") seats: Int, @Query("fuel") fuel: String?,
         @Query("transmission") transmission: String?, @Query("monthly_km") monthlyKm: Int, @Query("priorities") priorities: String,
-        @Query("limit") limit: Int = 8): List<Reco>
+        @Query("limit") limit: Int = 8, @Query("body") body: String? = null, @Query("brands") brands: String? = null,
+        @Query("budget_min") budgetMin: Long? = null): List<Reco>
     @GET("api/me/saved") suspend fun saved(): List<SavedCar>
     @POST("api/me/saved") suspend fun save(@Body body: SaveIn): Ok
     @POST("api/quotes/request") suspend fun requestQuote(@Body body: QuoteRequestIn): kotlinx.serialization.json.JsonObject

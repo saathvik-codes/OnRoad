@@ -98,7 +98,7 @@ export function CityPicker({ className, onDone }: { className?: string; onDone?:
           </div>
           <div data-lenis-prevent className="max-h-72 overflow-auto p-1.5 scroll-thin">
             {list.map((c) => (
-              <button key={c.name} onClick={() => pick(c.name)} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition cursor-pointer", c.name === city ? "bg-accent/10 border border-accent/20" : "hover:bg-panel-soft")}>
+              <button key={c.name} onClick={() => { setGeo(c.lat, c.lng); pick(c.name); }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition cursor-pointer", c.name === city ? "bg-accent/10 border border-accent/20" : "hover:bg-panel-soft")}>
                 <span>
                   <span className="block text-sm font-semibold text-ink">{c.name}</span>
                   <span className="block text-xs text-mute">{c.state_name}{c.city_prices ? ` · city prices for ${c.city_prices} variants` : ""}</span>

@@ -70,11 +70,11 @@ import com.onroad.app.data.Brand
 import com.onroad.app.data.ModelSummary
 
 // Filter values exactly as the API stores them
-private val CAR_BODIES = listOf("SUV", "Hatchback", "Sedan", "MUV", "Coupe", "Convertible", "Pickup")
-private val BIKE_BODIES = listOf("Commuter", "Scooter", "Street", "Sports", "Adventure", "Cruiser", "Electric Scooter")
-private val CAR_FUELS = listOf("Petrol", "Diesel", "CNG", "Hybrid", "Electric")
-private val BIKE_FUELS = listOf("Petrol", "Electric")
-private val GEARBOX = listOf("Manual", "Automatic")
+internal val CAR_BODIES = listOf("SUV", "Hatchback", "Sedan", "MUV", "Coupe", "Convertible", "Pickup")
+internal val BIKE_BODIES = listOf("Commuter", "Scooter", "Street", "Sports", "Adventure", "Cruiser", "Electric Scooter")
+internal val CAR_FUELS = listOf("Petrol", "Diesel", "CNG", "Hybrid", "Electric")
+internal val BIKE_FUELS = listOf("Petrol", "Electric")
+internal val GEARBOX = listOf("Manual", "Automatic")
 private data class Budget(val id: String, val label: String, val hint: String, val min: Long?, val max: Long?)
 private val BIKE_BUDGETS = listOf(
     Budget("b1", "Under ₹1 lakh", "Commuters, scooters", null, 100_000), Budget("b2", "₹1–2 lakh", "Most popular", 100_000, 200_000),
@@ -233,10 +233,10 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
     }
 }
 
-private fun <T> Set<T>.toggle(x: T) = if (x in this) this - x else this + x
+internal fun <T> Set<T>.toggle(x: T) = if (x in this) this - x else this + x
 
 @Composable
-private fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, modifier: Modifier, badge: Int = 0, onClick: () -> Unit) = Row(
+internal fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, modifier: Modifier, badge: Int = 0, onClick: () -> Unit) = Row(
     modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 16.dp),
     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
 ) {
@@ -252,7 +252,7 @@ private fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
 }
 
 @Composable
-private fun BrandLogo(b: Brand, on: Boolean, logo: String?, onClick: () -> Unit) = Column(
+internal fun BrandLogo(b: Brand, on: Boolean, logo: String?, onClick: () -> Unit) = Column(
     Modifier.width(72.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally,
 ) {
     Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(Color.White)
@@ -348,11 +348,11 @@ private fun FilterSheet(all: List<ModelSummary>, f0: Filters, budgets: List<Budg
 }
 
 @Composable
-private fun OptionCard(title: String, hint: String?, count: Int, on: Boolean, radio: Boolean = false,
+internal fun OptionCard(title: String, hint: String?, count: Int?, on: Boolean, radio: Boolean = false,
                        icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) = Row(
     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (on) Ignition.copy(alpha = 0.12f) else Panel2)
         .border(1.dp, if (on) Ignition else Color.Transparent, RoundedCornerShape(16.dp))
-        .clickable(enabled = count > 0 || on, onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        .clickable(enabled = count == null || count > 0 || on, onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
 ) {
     Box(Modifier.size(22.dp).clip(if (radio) CircleShape else RoundedCornerShape(6.dp)).background(if (on) Ignition else Color.Transparent)
@@ -365,5 +365,5 @@ private fun OptionCard(title: String, hint: String?, count: Int, on: Boolean, ra
         Text(title, fontWeight = FontWeight.SemiBold, color = if (count == 0 && !on) Mute.copy(alpha = 0.5f) else Ink)
         hint?.let { Text(it, color = Mute, style = MaterialTheme.typography.bodySmall) }
     }
-    Text("$count", color = Mute, style = MaterialTheme.typography.labelLarge)
+    count?.let { Text("$it", color = Mute, style = MaterialTheme.typography.labelLarge) }
 }

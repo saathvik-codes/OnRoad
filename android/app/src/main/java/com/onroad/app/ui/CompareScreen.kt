@@ -56,8 +56,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** One compared vehicle: the model, the chosen variant and that variant's spec sheet. */
-private class Slot(val model: ModelDetail) {
-    var variantId by mutableStateOf(model.variants.filter { it.exShowroomInr != null }.minByOrNull { it.exShowroomInr!! }?.id ?: model.variants.firstOrNull()?.id)
+private class Slot(first: ModelDetail, var city: String) {
+    var model by mutableStateOf(first)
+    var variantId by mutableStateOf(first.variants.filter { it.exShowroomInr != null }.minByOrNull { it.exShowroomInr!! }?.id ?: first.variants.firstOrNull()?.id)
     var specs by mutableStateOf<VariantSpecs?>(null)
     val variant get() = model.variants.firstOrNull { it.id == variantId }
 }
@@ -72,6 +73,12 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
     val scope = rememberCoroutineScope()
     // (re)load prices when the city changes and specs when a variant changes
     slots.forEach { s -> LaunchedEffect(s.variantId) { s.specs = s.variantId?.let { runCatching { vm.api.specs(it) }.getOrNull() } } }
+    LaunchedEffect(city) {
+        slots.filter { it.city != city }.forEach { s ->
+            val (b, m) = s.model.id.split("/", limit = 2)
+            runCatching { vm.api.model(b, m, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { s.model = it; s.city = city }
+        }
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ScreenHeader("Compare", "Up to 3 · on-road prices for $city", onBack)
@@ -125,7 +132,7 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
                         picking = false
                         scope.launch {
                             val (b, m) = h.id.split("/", limit = 2)
-                            runCatching { vm.api.model(b, m, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { slots.add(Slot(it)) }
+                            runCatching { vm.api.model(b, m, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { slots.add(Slot(it, city)) }
                         }
                     }.padding(vertical = 14.dp)) {
                         Text("${h.brand} ${h.name}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)

@@ -27,8 +27,11 @@ class Profile:
     usage: str = "mixed"                         # city | highway | mixed
     monthly_km: int = 1000
     seats: int = 0                               # people to carry regularly (0 = don't care)
-    fuel: str | None = None                      # Petrol | Diesel | CNG | Electric | Hybrid
-    transmission: str | None = None              # Manual | Automatic
+    fuel: str | None = None                      # Petrol | Diesel | CNG | Electric | Hybrid; several: "Petrol,CNG"
+    transmission: str | None = None              # Manual | Automatic (both = either)
+    body_types: list[str] = field(default_factory=list)   # SUV, Hatchback ... (empty = any)
+    brands: list[str] = field(default_factory=list)       # brand slugs (empty = any)
+    budget_min: int | None = None                # lowest on-road price wanted
     home_charging: bool = False
     priorities: list[str] = field(default_factory=lambda: ["value", "safety"])   # value safety mileage features performance popular
 
@@ -84,11 +87,24 @@ def recommend(p: Profile, limit: int = 6) -> list[dict]:
                 and (m.startswith(_norm(r.get("model"))) or _norm(r.get("model")).startswith(m)) and r.get("adult_stars") is not None]
         return max(best) if best else None
 
+    fuels = [f.strip().lower() for f in (p.fuel or "").split(",") if f.strip() and f.strip().lower() != "any"]
+    gears = {g.strip().lower() == "manual" for g in (p.transmission or "").split(",") if g.strip() and g.strip().lower() != "any"}
+    bodies = {b.strip().lower() for b in p.body_types if b.strip()}
+    brands = {b.strip() for b in p.brands if b.strip()}
+
+    def fuel_ok(f: str) -> bool:
+        f = (f or "").lower()
+        return not fuels or any(f == x or (x == "hybrid" and "hybrid" in f)
+                                for x in fuels)
     cands = []
     for r in rows:
-        if p.fuel and (r["fuel"] or "").lower() != p.fuel.lower():
+        if not fuel_ok(r["fuel"]):
             continue
-        if p.transmission and ((r["transmission"] or "").lower() == "manual") != (p.transmission.lower() == "manual"):
+        if len(gears) == 1 and ((r["transmission"] or "").lower() == "manual") != next(iter(gears)):
+            continue                                  # both gearboxes picked = either
+        if bodies and (r["body_type"] or "").lower() not in bodies:
+            continue
+        if brands and r["brand_slug"] not in brands:
             continue
         seats = r["seats"] or seats_spec.get(r["id"])
         if p.seats > 5 and not (seats or 0) >= p.seats and not (seats is None and (r["body_type"] or "") == "MUV"):
@@ -98,11 +114,13 @@ def recommend(p: Profile, limit: int = 6) -> list[dict]:
         name_seats = re.search(r"\((\d+)\s*\+\s*D\)", r["name"] or "")     # Force-style "(12+D)" = 12 passengers + driver
         if p.vehicle_type == "car" and name_seats and int(name_seats.group(1)) + 1 > max(p.seats, 7) + 2:
             continue
-        if (r["fuel"] or "").lower() == "electric" and not p.home_charging and p.vehicle_type == "car" and p.fuel != "Electric":
+        if (r["fuel"] or "").lower() == "electric" and not p.home_charging and p.vehicle_type == "car" and "electric" not in fuels:
             continue                                  # EV without home charging: only when explicitly asked for
         b = onroad_calc.estimate(r["ex"], city=p.city, fuel=r["fuel"], engine_cc=_engine_cc(r), battery_kwh=r["battery_kwh"])
         r["onroad"] = b.total_inr - b.refundable_inr
-        if p.budget and r["onroad"] > p.budget * 1.05:
+        if p.budget and r["onroad"] > p.budget:
+            continue                                  # every match fits the budget the buyer set
+        if p.budget_min and r["onroad"] < p.budget_min:
             continue
         r["feats"] = feats.get(r["id"], set())
         r["eff"] = eff.get(r["id"])
@@ -200,9 +218,10 @@ def recommend(p: Profile, limit: int = 6) -> list[dict]:
         first = re.sub(r"[^a-z0-9]", "", (c["model"] or "").lower().split()[0] if c["model"] else "")
         return (c["brand_slug"], re.sub(r"[a-z]+$", "", first) or first)     # "cb350c" -> "cb350", "xuv700" stays
     ranked, fams, per_brand = [], set(), {}
-    for c in sorted(best.values(), key=lambda c: -c["score"]):
+    cap = limit if brands else _BRAND_CAP                 # brands picked by the buyer: show all their models
+    for c in sorted(best.values(), key=lambda c: (-c["score"], c["onroad"])):
         f = family(c)
-        if f in fams or per_brand.get(c["brand_slug"], 0) >= _BRAND_CAP:
+        if f in fams or per_brand.get(c["brand_slug"], 0) >= cap:
             continue
         fams.add(f); per_brand[c["brand_slug"]] = per_brand.get(c["brand_slug"], 0) + 1
         ranked.append(c)
@@ -211,5 +230,5 @@ def recommend(p: Profile, limit: int = 6) -> list[dict]:
     return [{"model_id": c["model_id"], "brand": c["brand"], "model": c["model"], "variant": c["name"], "variant_id": c["id"],
              "fuel": c["fuel"], "transmission": c["transmission"], "onroad_inr": c["onroad"], "image_url": c["v_image"] or c["image_url"],
              "score": c["score"], "reasons": c["why"], "warnings": c["warn"], "crash_stars": c["stars"], "efficiency": c["eff"],
-             "features": len(c["feats"])}
+             "features": len(c["feats"]), "pool": len(best)}
             for c in ranked]
