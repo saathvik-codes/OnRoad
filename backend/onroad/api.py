@@ -1401,7 +1401,7 @@ def _refresh_loop(hours: float) -> None:
         slugs = sorted(m.__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
         out: list[tuple[str, object]] = [("brands", slugs[i:i + 2]) for i in range(0, len(slugs), 2)]
         out += [("city", c) for c in CITIES if c != "Hyderabad"]
-        out += [("loans", None), ("images", None), ("places", None), ("crash", None)]
+        out += [("loans", None), ("images", None), ("places", None), ("crash", None), ("sales", None)]
         return out
 
     def cursor(set_to: int | None = None) -> int:
@@ -1434,6 +1434,10 @@ def _refresh_loop(hours: float) -> None:
                 elif kind == "crash":
                     from . import crash_tests_sync
                     crash_tests_sync.sync()                     # new / revised Bharat NCAP ratings
+                elif kind == "sales":
+                    from . import popularity_sync
+                    if _t.time() - popularity_sync.FILE.stat().st_mtime > 86400:   # new monthly figures: check daily
+                        popularity_sync.run()
                 elif kind == "places":
                     from . import places
                     places.match_and_rate(300)
