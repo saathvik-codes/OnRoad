@@ -77,11 +77,13 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     var tick by remember { mutableIntStateOf(0) }
     var rating by remember { mutableStateOf<NearDealer?>(null) }
     val city = vm.prefs.city.value
-    val locate = rememberLocator(vm.prefs) { loc ->
+    var locOff by remember { mutableStateOf(false) }
+    val locate = rememberLocator(vm.prefs) { loc, problem ->
+        locOff = problem == com.onroad.app.data.LocationProblem.Off
         if (loc != null && (loc.latitude !in 6.0..37.5 || loc.longitude !in 68.0..97.5))
             err = "Your phone reports a location outside India, so there are no showrooms to show. Turn on precise location and try again."
         else if (loc != null) here = loc.latitude to loc.longitude
-        else err = "Location is off or not allowed. Turn it on to see showrooms near you."
+        else err = (problem ?: com.onroad.app.data.LocationProblem.NoFix).message
     }
     LaunchedEffect(Unit) { if (here == null) locate() }
     LaunchedEffect(type) { brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models } }
@@ -104,7 +106,13 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
         }
         val l = list
         when {
-            err != null -> item { ErrorState(err!!) { err = null; if (here == null) locate() else tick++ } }
+            err != null -> item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    ErrorState(err!!) { err = null; if (here == null) locate() else tick++ }
+                    if (locOff) Text("Open location settings", color = Ignition, style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.clickable { com.onroad.app.data.openLocationSettings(ctx) })
+                }
+            }
             here == null -> item {
                 Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(color = Ignition); Text("Finding your location…", color = Mute)

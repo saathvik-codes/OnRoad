@@ -66,4 +66,6 @@ dependencies {
     implementation(libs.coil.svg)
     implementation(libs.androidx.work)
     implementation(libs.androidx.browser)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
 }

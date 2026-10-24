@@ -18,8 +18,12 @@ work = "2.10.2"
 browser = "1.8.0"
 splash = "1.0.1"
 coil = "3.2.0"
+playServicesLocation = "21.3.0"
+coroutinesPlayServices = "1.10.2"
 
 [libraries]
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }

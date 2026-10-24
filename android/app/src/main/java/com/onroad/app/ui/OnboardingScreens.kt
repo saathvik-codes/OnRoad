@@ -91,9 +91,9 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     val last = pager.currentPage == SLIDES.lastIndex
     var locMsg by remember { mutableStateOf<String?>(null) }
-    val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc ->
+    val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc, problem ->
         scope.launch {
-            if (loc == null) { locMsg = "Location is off. Pick your city instead."; return@launch }
+            if (loc == null) { locMsg = (problem ?: com.onroad.app.data.LocationProblem.NoFix).message; return@launch }
             val cities = runCatching { vm.api.cities() }.getOrElse { emptyList() }
             val near = cities.minByOrNull { com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, it.lat, it.lng) }
             if (near != null) { vm.prefs.setCity(near.name); locMsg = "Showrooms will be sorted by distance from you." }

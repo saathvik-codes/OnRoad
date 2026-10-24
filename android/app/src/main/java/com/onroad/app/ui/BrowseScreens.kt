@@ -46,6 +46,7 @@ import com.onroad.app.data.ModelSummary
 import com.onroad.app.data.Prefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -125,13 +126,20 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     var status by remember { mutableStateOf<String?>(null) }
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { cities = runCatching { vm.api.cities() }.getOrDefault(emptyList()) }
-    val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc ->
-        if (loc == null) { status = "Couldn't get your location. Turn on location, or pick your city below."; return@rememberLocator }
-        val near = cities.minByOrNull { com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, it.lat, it.lng) }
-        if (near == null) { status = "City list didn't load. Check your connection."; return@rememberLocator }
-        val km = com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, near.lat, near.lng)
-        vm.prefs.setCity(near.name)
-        status = "Prices for ${near.name}, ${near.stateName} (${"%.0f".format(km)} km from you). Showrooms are sorted by distance from where you are."
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var locOff by remember { mutableStateOf(false) }
+    val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc, problem ->
+        locOff = problem == com.onroad.app.data.LocationProblem.Off
+        if (loc == null) { status = problem?.message ?: com.onroad.app.data.LocationProblem.NoFix.message; return@rememberLocator }
+        scope.launch {
+            if (cities.isEmpty()) cities = runCatching { vm.api.cities() }.getOrDefault(emptyList())
+            val near = cities.minByOrNull { com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, it.lat, it.lng) }
+            if (near == null) { status = "Couldn't load the city list. Check your internet connection."; return@launch }
+            val km = com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, near.lat, near.lng)
+            vm.prefs.setCity(near.name)
+            status = "Prices for ${near.name}, ${near.stateName} (${"%.0f".format(km)} km from you). Showrooms are sorted by distance from where you are."
+        }
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -144,6 +152,8 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     Text(status ?: "Nearest city for prices, nearest showrooms by distance", color = Mute, style = MaterialTheme.typography.bodySmall)
                 }
             }
+            if (locOff) Text("Turn on location", color = Ignition, style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(start = 20.dp, bottom = 8.dp).clickable { com.onroad.app.data.openLocationSettings(ctx) })
             OutlinedTextField(q, { q = it }, placeholder = { Text("Search city or state") }, singleLine = true, shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         }
