@@ -55,6 +55,7 @@ import javax.inject.Singleton
     val bodyType: String? = null, val imageUrl: String? = null, val logo: String? = null, val url: String? = null,
     val variants: List<Variant> = emptyList(), val dealers: List<Dealer> = emptyList(), val offers: List<Offer> = emptyList(),
     val crashTests: List<CrashTest> = emptyList(), val gallery: List<GalleryItem> = emptyList(), val vehicleType: String? = null,
+    val priceHistory: List<PricePoint> = emptyList(),
     val brandVehicleType: String? = null)
 @Serializable data class GalleryItem(val url: String, val label: String = "", val kind: String = "model")
 
@@ -76,6 +77,7 @@ import javax.inject.Singleton
     val imageUrl: String? = null, val fromInr: Long? = null, val matchScore: Int = 0, val reasons: List<String> = emptyList(),
     val variant: String? = null, val variantId: String? = null, val transmission: String? = null, val crashStars: Int? = null,
     val warnings: List<String> = emptyList(), val fuels: String? = null, val pool: Int = 0, val efficiency: Double? = null)
+@Serializable data class PricePoint(val variantId: String, val city: String, val exShowroomInr: Long, val fetchedAt: String)
 @Serializable data class SaveIn(val variantId: String, val city: String, val targetInr: Long? = null)
 @Serializable data class SavedCar(val variantId: String, val variant: String = "", val model: String = "", val modelId: String = "",
     val brand: String = "", val imageUrl: String? = null, val city: String = "")
@@ -84,7 +86,16 @@ import javax.inject.Singleton
 @Serializable data class Ok(val ok: Boolean = true)
 @Serializable data class NearDealer(val id: String, val brandSlug: String = "", val brandName: String = "", val name: String = "",
     val address: String = "", val city: String? = null, val phone: String? = null, val lat: Double? = null, val lng: Double? = null,
-    val kind: String = "", val distanceKm: Double? = null, val rating: Double? = null, val ratingCount: Int = 0)
+    val kind: String = "", val distanceKm: Double? = null, val rating: Double? = null, val ratingCount: Int = 0,
+    val googleRating: Double? = null, val googleCount: Int? = null, val googleMapsUri: String? = null, val photoUrl: String? = null,
+    val photoCredit: String? = null, val website: String? = null)
+@Serializable data class OwnReview(val rating: Int = 0, val priceHonesty: Int? = null, val noForcedAddons: Int? = null,
+    val deliveryOnTime: Int? = null, val visit: String? = null, val text: String? = null, val created: String? = null, val name: String? = null)
+@Serializable data class GReview(val author: String? = null, val rating: Int? = null,
+    @kotlinx.serialization.SerialName("when") val whenText: String? = null, val text: String = "")
+@Serializable data class GBlock(val rating: Double? = null, val count: Int? = null, val mapsUri: String? = null,
+    val reviews: List<GReview> = emptyList(), val note: String? = null)
+@Serializable data class DealerReviews(val onroad: List<OwnReview> = emptyList(), val google: GBlock? = null)
 @Serializable data class DealerReviewIn(val dealerId: String, val rating: Int, val priceHonesty: Int? = null, val noForcedAddons: Boolean? = null,
     val deliveryOnTime: Boolean? = null, val visit: String = "purchase", val text: String = "")
 @Serializable data class Band(val id: String, val label: String, val hint: String = "", val min: Long? = null, val max: Long? = null)
@@ -119,6 +130,7 @@ interface Api {
         @Query("fuel") fuel: String? = null, @Query("min_inr") minInr: Long? = null, @Query("max_inr") maxInr: Long? = null): List<ModelSummary>
     @GET("api/bands") suspend fun bands(): List<Band>
     @POST("api/dealer-reviews") suspend fun rateDealer(@Body body: DealerReviewIn): kotlinx.serialization.json.JsonObject
+    @GET("api/dealer-reviews") suspend fun dealerReviews(@Query("dealer_id") dealerId: String): DealerReviews
     @GET("api/dealers/near") suspend fun dealersNear(@Query("lat") lat: Double, @Query("lng") lng: Double, @Query("brand") brand: String? = null,
         @Query("vehicle_type") type: String? = null, @Query("limit") limit: Int = 40): List<NearDealer>
     @GET("api/me/quotes") suspend fun myQuotes(): List<MyRequest>

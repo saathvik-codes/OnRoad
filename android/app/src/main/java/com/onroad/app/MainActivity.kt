@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
                         BrandScreen(e.arguments!!.getString("slug")!!, URLDecoder.decode(e.arguments!!.getString("name")!!, "UTF-8"),
                             onModel = { nav.navigate("model/${enc(it)}") }, onBack = { nav.popBackStack() })
                     }
-                    composable("model/{id}") { e -> ModelScreen(URLDecoder.decode(e.arguments!!.getString("id")!!, "UTF-8"), onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("auth") }) }
+                    composable("model/{id}") { e -> ModelScreen(URLDecoder.decode(e.arguments!!.getString("id")!!, "UTF-8"), onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("auth") }, onModel = { nav.navigate("model/${enc(it)}") }) }
                     composable("offers") { OffersScreen(onBack = { nav.popBackStack() }) }
                     composable("finder") { FinderScreen(onBack = { nav.popBackStack() }, onModel = { nav.navigate("model/${enc(it)}") }) }
                     composable("search") { SearchScreen(onModel = { nav.navigate("model/${enc(it)}") }, onBack = { nav.popBackStack() }) }

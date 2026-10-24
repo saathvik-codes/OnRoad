@@ -9,6 +9,7 @@ A price row is written only when the price is new or changed, so the prices tabl
 A brand that fails keeps its previous data (marked with the error), so one broken site never empties the catalogue.
 """
 
+import os
 import argparse
 import datetime as dt
 import importlib
@@ -91,7 +92,11 @@ def adapters(only: list[str] | None = None) -> list:
         try:
             m = importlib.import_module(f"{brand_pkg.__name__}.{mod.name}")
             if hasattr(m, "ADAPTER"):
-                out.append(m.ADAPTER)
+                a = m.ADAPTER
+                from .sources.brands._bd_fill import BD_BRAND, WithBikeDekho
+                if getattr(a, "vehicle_type", "car") == "bike" and a.slug in BD_BRAND and os.environ.get("BIKEDEKHO_FILL", "1") != "0":
+                    a = WithBikeDekho(a)             # models the maker's site doesn't give us, from BikeDekho
+                out.append(a)
         except Exception as e:  # a broken adapter must not stop the others
             log.warning("cannot load adapter %s: %s", mod.name, e)
     return out

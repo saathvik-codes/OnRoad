@@ -261,6 +261,11 @@ def _gallery(m: dict, variants: list[dict]) -> list[dict]:
     add(img, m.get("name"), "model")
     for v in variants:
         add(v.get("image_url"), v.get("name"), "variant")
+    try:                                   # model photo galleries (onroad/gallery_sync.py): exterior first, then interior
+        for r in q("SELECT url, label, kind FROM model_gallery WHERE model_id = ? ORDER BY kind = 'Interior', rowid", (m["id"],)):
+            add(r["url"], r["label"], (r["kind"] or "photo").lower())
+    except Exception:
+        pass
     try:
         alt_id1 = m["id"].replace('-', '_')
         alt_id2 = m["id"].replace('_', '-')
@@ -434,14 +439,51 @@ def _dealers_for(brand_slug: str, city: str, lat: float | None = None, lng: floa
                 d["onroad_rating"], d["onroad_count"], d["no_addons_share"] = own[d["id"]]["avg"], own[d["id"]]["n"], own[d["id"]]["no_addons"]
     except Exception:
         pass
-    try:                                   # Google rating where matched (onroad/places.py; empty without GOOGLE_PLACES_KEY)
-        rated = {r["dealer_id"]: r for r in q("SELECT dealer_id, rating, rating_count, maps_uri FROM dealer_places WHERE rating IS NOT NULL")}
-        for d in rows:
-            if d["id"] in rated:
-                d["google_rating"], d["google_count"], d["google_maps_uri"] = (rated[d["id"]][k] for k in ("rating", "rating_count", "maps_uri"))
-    except Exception:
-        pass
+    _google(rows)
     return rows
+
+
+def _google(rows: list[dict]) -> None:
+    """Google rating and showroom photo where the dealer is matched (onroad/places.py; nothing without GOOGLE_PLACES_KEY).
+    The photo is served live through /api/dealer-photo (Google's terms: photos are not stored), credited to its author."""
+    try:
+        rated = {r["dealer_id"]: r for r in q("SELECT * FROM dealer_places WHERE place_id IS NOT NULL")}
+    except Exception:
+        rated = {}
+    from urllib.parse import quote
+    from . import places
+    street = places.street_enabled()
+    for d in rows:
+        g = rated.get(d["id"])
+        if not g:
+            if street and d.get("lat") and d.get("lng"):        # no Places listing: the street-front photo, if any exists
+                d["photo_url"] = f"/api/dealer-photo?id={quote(d['id'], safe='')}"
+                d["photo_credit"] = "Street view of this address"
+            continue
+        if g.get("rating") is not None:
+            d["google_rating"], d["google_count"], d["google_maps_uri"] = g["rating"], g["rating_count"], g["maps_uri"]
+        if g.get("photo"):
+            d["photo_url"] = f"/api/dealer-photo?id={quote(d['id'], safe='')}"
+            d["photo_credit"] = f"Photo: {g.get('photo_by') or 'Google user'} · Google"
+        elif street and d.get("lat") and d.get("lng"):
+            d["photo_url"] = f"/api/dealer-photo?id={quote(d['id'], safe='')}"
+            d["photo_credit"] = "Street view of this address"
+
+
+@app.get("/api/dealer-photo")
+def dealer_photo(id: str, w: int = 800):
+    from fastapi.responses import RedirectResponse
+    from . import places
+    from fastapi.responses import Response
+    u = places.photo_uri(id, max(200, min(w, 1600)))
+    if u:
+        return RedirectResponse(u, status_code=302, headers={"Cache-Control": "public, max-age=3600"})
+    d = one("SELECT lat, lng FROM dealers WHERE id = ?", (id,))
+    got = places.street_photo(d["lat"], d["lng"], w) if d and d.get("lat") and d.get("lng") else None
+    if not got:
+        raise HTTPException(404, "No photo for this showroom")
+    body, ctype, credit = got                      # served live, not stored (Street View / Mapillary terms)
+    return Response(body, media_type=ctype, headers={"Cache-Control": "public, max-age=3600", "X-Photo-Credit": credit})
 
 
 
@@ -476,6 +518,10 @@ def model(brand: str, model: str, city: str = "Hyderabad", lat: float | None = N
     brand = m["brand_slug"]
     vt = m.get("vehicle_type") or m.get("brand_vehicle_type") or "car"
     variants = _variants(mid, city)
+    from .names import display_names                  # tidy names for buyers; the published one stays as published_name
+    display_names(m.get("brand_name") or "", m.get("name") or "", variants)
+    for v in variants:
+        v["published_name"], v["name"] = v["name"], v.pop("display_name")
     for v in variants:
         if v["ex_showroom_inr"]:
             v["onroad"] = onroad_calc.estimate(v["ex_showroom_inr"], city=city, fuel=v["fuel"], engine_cc=_engine_cc(v),
@@ -717,7 +763,7 @@ def recommendations(city: str = "Hyderabad", vehicle_type: str = "car", usage: s
         out.append({"id": r["model_id"], "name": r["model"], "slug": slug, "brand_slug": brand_slug, "brand": r["brand"],
                     "body_type": m.get("body_type"), "image_url": r["image_url"], "logo": _logo_url(brand_slug),
                     "from_inr": r["onroad_inr"], "to_inr": r["onroad_inr"], "fuels": r["fuel"], "variants": 1,
-                    "match_score": r["score"], "reasons": r["reasons"], "warnings": r.get("warnings", []), "variant": r["variant"], "variant_id": r["variant_id"],
+                    "match_score": r["score"], "reasons": r["reasons"], "warnings": r.get("warnings", []), "variant": __import__("onroad.names", fromlist=["pretty"]).pretty(r["brand"], r["model"], r["variant"]), "variant_id": r["variant_id"],
                     "transmission": r["transmission"], "crash_stars": r["crash_stars"], "efficiency": r["efficiency"],
                     "pool": r["pool"]})
     return out
@@ -1095,7 +1141,9 @@ def dealers_near(lat: float, lng: float, brand: str | None = None, vehicle_type:
     for r in rows:
         r["distance_km"] = round(_km(lat, lng, r["lat"], r["lng"]), 1)
     rows.sort(key=lambda r: r["distance_km"])
-    return rows[:limit]
+    rows = rows[:limit]
+    _google(rows)
+    return rows
 
 
 @app.get("/api/dealers/search")

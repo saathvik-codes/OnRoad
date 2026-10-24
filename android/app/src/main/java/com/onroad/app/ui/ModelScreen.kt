@@ -59,7 +59,7 @@ import com.onroad.app.data.VariantSpecs
 private enum class Tab(val label: String) { Price("On-road price"), Emi("EMI & loans"), Specs("Specs & features"), Safety("Safety"), Showrooms("Showrooms"), Offers("Offers") }
 
 @Composable
-fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: BrowseVM = hiltViewModel()) {
+fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onModel: (String) -> Unit = {}, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     var m by remember { mutableStateOf<ModelDetail?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
@@ -156,6 +156,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: B
                         }
                     }
                 }
+                variant?.let { v -> PriceTrend(model.priceHistory, v.id, v.priceCity ?: city) }
             }
             Tab.Emi -> item {
                 val total = variant?.onroad?.let { it.totalInr - it.refundableInr }
@@ -206,6 +207,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: B
                 }
             }
         }
+        item { SimilarRow(model, city, vm, onOpen = onModel) }
     }
     if (askQuote) variant?.let { v -> QuoteSheet(v.id, v.name, city, onClose = { askQuote = false }, vm = vm) }
 }

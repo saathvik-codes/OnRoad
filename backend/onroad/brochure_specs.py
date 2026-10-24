@@ -29,7 +29,8 @@ import httpx
 
 from . import db
 
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
+from .sources.brands._2w_common import USER_AGENT
+UA = {"User-Agent": USER_AGENT}
 
 SPEC_LABEL = re.compile(
     r"\b(?:length|width|height|wheel ?base|ground clearance|boot|luggage|cargo|tank|kerb|gross|seating|seats?|"
