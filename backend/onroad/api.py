@@ -568,10 +568,12 @@ def variant_specs(variant_id: str):
 
 
 @app.get("/api/loan-rates")
-def loan_rates():
-    """Car-loan rate ranges as each bank publishes them (onroad/loan_rates.py, refreshed daily)."""
+def loan_rates(vehicle_type: str = "car"):
+    """Car or two-wheeler loan rate ranges as each bank publishes them (onroad/loan_rates.py, refreshed with the data)."""
     try:
-        return q("SELECT bank, product, ev_only, min_pct, max_pct, source_url, fetched_at FROM loan_rates ORDER BY min_pct")
+        return q("""SELECT bank, product, ev_only, min_pct, max_pct, source_url, fetched_at, coalesce(vehicle_type, 'car') AS vehicle_type
+                    FROM loan_rates WHERE coalesce(vehicle_type, 'car') = ? ORDER BY min_pct""",
+                 ("bike" if vehicle_type in ("bike", "two_wheeler") else "car",))
     except Exception:
         return []
 
@@ -1399,7 +1401,7 @@ def _refresh_loop(hours: float) -> None:
         slugs = sorted(m.__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
         out: list[tuple[str, object]] = [("brands", slugs[i:i + 2]) for i in range(0, len(slugs), 2)]
         out += [("city", c) for c in CITIES if c != "Hyderabad"]
-        out += [("loans", None), ("images", None), ("places", None)]
+        out += [("loans", None), ("images", None), ("places", None), ("crash", None)]
         return out
 
     def cursor(set_to: int | None = None) -> int:
@@ -1429,6 +1431,9 @@ def _refresh_loop(hours: float) -> None:
                 elif kind == "images":
                     fill_images.run()
                     _warm_images()
+                elif kind == "crash":
+                    from . import crash_tests_sync
+                    crash_tests_sync.sync()                     # new / revised Bharat NCAP ratings
                 elif kind == "places":
                     from . import places
                     places.match_and_rate(300)

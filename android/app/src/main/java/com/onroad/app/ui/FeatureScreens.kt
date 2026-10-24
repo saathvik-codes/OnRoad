@@ -122,6 +122,13 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Offers & festive deals", "Live from manufacturers · $city", onBack)
+        // two-wheeler makers don't publish dated offers online; deals are given at the showroom
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(Panel2).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.LocalOffer, null, tint = Amber, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(10.dp))
+            Text("Bike and scooter makers don't publish offers online. Open a bike and tap Get dealer quotes to get showroom deals.",
+                color = Mute, style = MaterialTheme.typography.bodySmall)
+        }
         val l = list
         if (failed) ErrorState("Couldn't reach OnRoad. Check your connection.") { tick++ }
         else if (l == null) Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) }

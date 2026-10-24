@@ -54,7 +54,8 @@ import javax.inject.Singleton
 @Serializable data class ModelDetail(val id: String, val name: String, val brandName: String = "", val brandSlug: String = "",
     val bodyType: String? = null, val imageUrl: String? = null, val logo: String? = null, val url: String? = null,
     val variants: List<Variant> = emptyList(), val dealers: List<Dealer> = emptyList(), val offers: List<Offer> = emptyList(),
-    val crashTests: List<CrashTest> = emptyList(), val gallery: List<GalleryItem> = emptyList())
+    val crashTests: List<CrashTest> = emptyList(), val gallery: List<GalleryItem> = emptyList(), val vehicleType: String? = null,
+    val brandVehicleType: String? = null)
 @Serializable data class GalleryItem(val url: String, val label: String = "", val kind: String = "model")
 
 @Serializable data class Spec(val grp: String, val key: String, val label: String, val value: String, val sourceUrl: String = "")
@@ -102,7 +103,7 @@ interface Api {
     @POST("api/auth/logout") suspend fun logout()
     @GET("api/auth/me") suspend fun me(): Account
     @GET("api/offers") suspend fun offers(@Query("city") city: String, @Query("limit") limit: Int = 60): List<OfferItem>
-    @GET("api/loan-rates") suspend fun loanRates(): List<LoanRate>
+    @GET("api/loan-rates") suspend fun loanRates(@Query("vehicle_type") type: String = "car"): List<LoanRate>
     @GET("api/recommendations") suspend fun recommendations(@Query("city") city: String, @Query("vehicle_type") type: String,
         @Query("budget") budget: Long, @Query("usage") usage: String, @Query("seats") seats: Int, @Query("fuel") fuel: String?,
         @Query("transmission") transmission: String?, @Query("monthly_km") monthlyKm: Int, @Query("priorities") priorities: String,

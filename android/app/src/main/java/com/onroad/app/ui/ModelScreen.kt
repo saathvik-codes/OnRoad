@@ -70,7 +70,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: B
     val acc by vm.prefs.account.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askQuote by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { rates = runCatching { vm.api.loanRates() }.getOrElse { emptyList() } }
+    LaunchedEffect(m?.id) { m?.let { md -> rates = runCatching { vm.api.loanRates(md.brandVehicleType ?: md.vehicleType ?: "car") }.getOrElse { emptyList() } } }
     val ctx = LocalContext.current
     LaunchedEffect(id, city) {
         val (b, s) = id.split("/", limit = 2)

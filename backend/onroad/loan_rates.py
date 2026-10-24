@@ -1,8 +1,8 @@
 """
-Car-loan interest rates, read from each bank's OWN published rate page (no aggregators). A bank whose page can't be
+Car and two-wheeler loan interest rates, read from each bank's OWN published rate page (no aggregators). A bank whose page can't be
 read reliably is simply left out; nothing is assumed. Run daily (scripts/daily_refresh.cmd) or: python -m onroad.loan_rates
 
-Each row: bank, product, ev_only, min_pct, max_pct, source_url, fetched_at.
+Each row: bank, product, ev_only, min_pct, max_pct, source_url, fetched_at, vehicle_type ('car' | 'bike').
 """
 from __future__ import annotations
 
@@ -40,6 +40,13 @@ def sbi() -> list[dict]:
         r = _range(pat, t)
         if r:
             out.append({"bank": "State Bank of India", "product": product, "ev_only": ev, "min_pct": r[0], "max_pct": r[1], "source_url": url})
+    # two-wheelers, same official page
+    for product, pat in [("SBI Two-Wheeler Loan", r"SBI Two-Wheeler Loan \|? ?(\d+\.\d+)% to (\d+\.\d+)%"),
+                         ("SBI Super Bike Loan", r"Super Bike Loan Scheme \|? ?(\d+\.\d+)% to (\d+\.\d+)%")]:
+        r = _range(pat, t)
+        if r:
+            out.append({"bank": "State Bank of India", "product": product, "ev_only": False, "min_pct": r[0], "max_pct": r[1],
+                        "source_url": url, "vehicle_type": "bike"})
     return out
 
 
@@ -49,21 +56,25 @@ def axis() -> list[dict]:
     return [{"bank": "Axis Bank", "product": "Axis Bank Car Loan", "ev_only": False, "min_pct": r[0], "max_pct": r[1], "source_url": url}] if r else []
 
 
-def _starting(bank: str, product: str, url: str, pattern: str) -> list[dict]:
+def _starting(bank: str, product: str, url: str, pattern: str, vehicle_type: str = "car") -> list[dict]:
     """Banks that publish only a 'starting at x%' rate: min only, max unknown."""
     t, final = _text(url)
     m = re.search(pattern, t, re.I)
-    return [{"bank": bank, "product": product, "ev_only": False, "min_pct": float(m.group(1)), "max_pct": None, "source_url": final}] if m else []
+    return [{"bank": bank, "product": product, "ev_only": False, "min_pct": float(m.group(1)), "max_pct": None, "source_url": final,
+             "vehicle_type": vehicle_type}] if m else []
 
 
 def hdfc() -> list[dict]:
-    return _starting("HDFC Bank", "HDFC Bank Xpress Car Loan", "https://www.hdfcbank.com/personal/borrow/popular-loans/new-car-loan",
-                     r"Car Loan Interest rate starting[ |]*@[ |]*(\d+\.\d+)[ |]*%")
+    # HDFC moved to hdfc.bank.in (RBI's .bank.in domains); the car page says "Interest rate starting @8.25% p.a.*"
+    return (_starting("HDFC Bank", "HDFC Bank Car Loan", "https://www.hdfc.bank.in/car-loan", r"Interest rate starting[ |]*@[ |]*(\d+\.\d+)[ |]*%")
+            + _starting("HDFC Bank", "HDFC Bank Two-Wheeler Loan", "https://www.hdfc.bank.in/two-wheeler-loan", r"Starting at (\d+\.\d+)%", "bike"))
 
 
 def icici() -> list[dict]:
-    return _starting("ICICI Bank", "ICICI Bank Car Loan", "https://www.icicibank.com/personal-banking/loans/car-loan",
-                     r"interest rates starting at (\d+\.\d+)%")
+    return (_starting("ICICI Bank", "ICICI Bank Car Loan", "https://www.icicibank.com/personal-banking/loans/car-loan",
+                      r"interest rates starting at (\d+\.\d+)%")
+            + _starting("ICICI Bank", "ICICI Bank Two-Wheeler Loan", "https://www.icici.bank.in/personal-banking/loans/two-wheeler-loan",
+                        r"Interest rates starting at (\d+\.\d+)%", "bike"))
 
 
 def idfc() -> list[dict]:
@@ -90,12 +101,18 @@ def refresh() -> dict:
             failed.append(f"{fn.__name__}: {type(e).__name__}")
     with closing(db.connect()) as conn, conn:
         conn.execute("""CREATE TABLE IF NOT EXISTS loan_rates (bank TEXT, product TEXT, ev_only INTEGER, min_pct REAL, max_pct REAL,
-                        source_url TEXT, fetched_at TEXT, PRIMARY KEY (bank, product))""")
+                        source_url TEXT, fetched_at TEXT, vehicle_type TEXT DEFAULT 'car', PRIMARY KEY (bank, product))""")
+        try:
+            conn.execute("ALTER TABLE loan_rates ADD COLUMN vehicle_type TEXT DEFAULT 'car'")
+        except Exception:
+            pass                                             # column already there
         if got:                                              # today's read replaces yesterday's set
             conn.execute("DELETE FROM loan_rates")
         for r in got:
-            conn.execute("INSERT OR REPLACE INTO loan_rates VALUES (?, ?, ?, ?, ?, ?, ?)",
-                         (r["bank"], r["product"], int(r["ev_only"]), r["min_pct"], r["max_pct"], r["source_url"], now()))
+            conn.execute("""INSERT OR REPLACE INTO loan_rates (bank, product, ev_only, min_pct, max_pct, source_url, fetched_at, vehicle_type)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                         (r["bank"], r["product"], int(r["ev_only"]), r["min_pct"], r["max_pct"], r["source_url"], now(),
+                          r.get("vehicle_type", "car")))
     return {"rates": len(got), "failed": failed}
 
 
