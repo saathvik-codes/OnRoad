@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.automirrored.outlined.CompareArrows
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Storefront
@@ -78,12 +80,13 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
                 val offers = runCatching { api.offers(city, 40) }.getOrElse { emptyList() }.filter { it.brandSlug in bset }
                 _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, false)
             }
-            .onFailure { _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check the server in Settings.") }
+            .onFailure { _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check your internet connection.") }
     }
 }
 
 @Composable
-fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: () -> Unit, onCity: () -> Unit, onCalc: () -> Unit, onAccount: () -> Unit, onOffers: () -> Unit, onFinder: () -> Unit, onShowrooms: () -> Unit, vm: HomeVM = hiltViewModel()) {
+fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: () -> Unit, onCity: () -> Unit, onCalc: () -> Unit, onAccount: () -> Unit, onOffers: () -> Unit, onFinder: () -> Unit, onShowrooms: () -> Unit,
+               onCompare: () -> Unit, onGuide: () -> Unit, vm: HomeVM = hiltViewModel()) {
     val s by vm.s.collectAsStateWithLifecycle()
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
@@ -126,9 +129,9 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     QuickAction(Icons.Outlined.AutoAwesome, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
-                    QuickAction(Icons.Outlined.LocalOffer, "Offers &\ndeals", Good, Modifier.weight(1f), onOffers)
-                    QuickAction(Icons.Outlined.Calculate, "Check a\nquote", Electric, Modifier.weight(1f), onCalc)
                     QuickAction(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
+                    QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, "Compare", Electric, Modifier.weight(1f), onCompare)
+                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying\nguide", Good, Modifier.weight(1f), onGuide)
                 }
                 s.error?.let { ErrorState(it) { vm.retry() } }
                 Spacer(Modifier.height(22.dp))

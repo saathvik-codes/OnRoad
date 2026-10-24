@@ -38,7 +38,7 @@ import javax.inject.Singleton
 
 @Serializable data class Variant(val id: String, val name: String, val fuel: String? = null, val transmission: String? = null,
     val engineCc: Int? = null, val batteryKwh: Double? = null, val seats: Int? = null, val exShowroomInr: Long? = null,
-    val priceCity: String? = null, val priceSource: String? = null, val onroad: Breakdown? = null)
+    val priceCity: String? = null, val priceSource: String? = null, val onroad: Breakdown? = null, val imageUrl: String? = null)
 
 @Serializable data class Dealer(val id: String, val name: String, val address: String = "", val phone: String? = null,
     val lat: Double? = null, val lng: Double? = null, val kind: String = "", val distanceKm: Double? = null, val city: String? = null)
@@ -53,7 +53,8 @@ import javax.inject.Singleton
 @Serializable data class ModelDetail(val id: String, val name: String, val brandName: String = "", val brandSlug: String = "",
     val bodyType: String? = null, val imageUrl: String? = null, val logo: String? = null, val url: String? = null,
     val variants: List<Variant> = emptyList(), val dealers: List<Dealer> = emptyList(), val offers: List<Offer> = emptyList(),
-    val crashTests: List<CrashTest> = emptyList())
+    val crashTests: List<CrashTest> = emptyList(), val gallery: List<GalleryItem> = emptyList())
+@Serializable data class GalleryItem(val url: String, val label: String = "", val kind: String = "model")
 
 @Serializable data class Spec(val grp: String, val key: String, val label: String, val value: String, val sourceUrl: String = "")
 @Serializable data class Feature(val key: String, val label: String)
@@ -80,7 +81,9 @@ import javax.inject.Singleton
 @Serializable data class Ok(val ok: Boolean = true)
 @Serializable data class NearDealer(val id: String, val brandSlug: String = "", val brandName: String = "", val name: String = "",
     val address: String = "", val city: String? = null, val phone: String? = null, val lat: Double? = null, val lng: Double? = null,
-    val kind: String = "", val distanceKm: Double? = null)
+    val kind: String = "", val distanceKm: Double? = null, val rating: Double? = null, val ratingCount: Int = 0)
+@Serializable data class DealerReviewIn(val dealerId: String, val rating: Int, val priceHonesty: Int? = null, val noForcedAddons: Boolean? = null,
+    val deliveryOnTime: Boolean? = null, val visit: String = "purchase", val text: String = "")
 @Serializable data class Band(val id: String, val label: String, val hint: String = "")
 @Serializable data class DealerQuote(val dealer: String = "", val onRoadInr: Long? = null, val discountInr: Long? = null,
     val waitingWeeks: Int? = null, val validUntil: String? = null, val note: String? = null, val phone: String? = null)
@@ -111,6 +114,7 @@ interface Api {
         @Query("vehicle_type") type: String? = null, @Query("body") body: String? = null,
         @Query("fuel") fuel: String? = null, @Query("min_inr") minInr: Long? = null, @Query("max_inr") maxInr: Long? = null): List<ModelSummary>
     @GET("api/bands") suspend fun bands(): List<Band>
+    @POST("api/dealer-reviews") suspend fun rateDealer(@Body body: DealerReviewIn): kotlinx.serialization.json.JsonObject
     @GET("api/dealers/near") suspend fun dealersNear(@Query("lat") lat: Double, @Query("lng") lng: Double, @Query("brand") brand: String? = null,
         @Query("vehicle_type") type: String? = null, @Query("limit") limit: Int = 40): List<NearDealer>
     @GET("api/me/quotes") suspend fun myQuotes(): List<MyRequest>
@@ -160,7 +164,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getBoolean("alerts", true)
         set(v) { sp.edit().putBoolean("alerts", v).apply() }
 
-    fun server(): String = sp.getString("server", null) ?: BuildConfig.DEFAULT_SERVER
+    fun server(): String = if (BuildConfig.DEBUG) sp.getString("server", null) ?: BuildConfig.DEFAULT_SERVER else BuildConfig.DEFAULT_SERVER
     fun setServer(url: String) = sp.edit().putString("server", url.trim().trimEnd('/')).apply()
 
     /** Manufacturer images go through the API's resizing cache, exactly like the website. */

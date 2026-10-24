@@ -606,25 +606,39 @@ import os as _os_img
 IMG_CACHE = (_os_img.environ.get("IMG_CACHE") and __import__("pathlib").Path(_os_img.environ["IMG_CACHE"])) or db.ROOT / "data" / "img_cache"
 
 
-def _img_file(u: str, w: int):
-    """Downscaled WebP of a known manufacturer image, cached on disk (path), or None if it can't be fetched."""
-    import hashlib, io
-    IMG_CACHE.mkdir(parents=True, exist_ok=True)
-    f = IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
-    if f.exists():
-        return f
+def _img_path(u: str, w: int):
+    import hashlib
+    return IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
+
+
+def _render_images(u: str, widths) -> None:
+    """Download one manufacturer image once and write every missing width as WebP (atomic writes, small memory)."""
+    import io
     from PIL import Image
     import httpx as _httpx
+    todo = [w for w in widths if not _img_path(u, w).exists()]
+    if not todo:
+        return
+    IMG_CACHE.mkdir(parents=True, exist_ok=True)
     r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
                    timeout=30, follow_redirects=True)
     r.raise_for_status()
-    im = Image.open(io.BytesIO(r.content))
-    im = im.convert("RGBA") if im.mode in ("P", "LA", "RGBA") or "transparency" in im.info else im.convert("RGB")
-    if im.width > w:
-        im = im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
-    tmp = f.with_suffix(".tmp")
-    im.save(tmp, "WEBP", quality=84, method=4)
-    tmp.replace(f)                                   # atomic: a half-written file is never served
+    with Image.open(io.BytesIO(r.content)) as src:
+        src.draft("RGB", (max(todo), max(todo)))          # JPEGs decode straight at a smaller size
+        base = src.convert("RGBA") if src.mode in ("P", "LA", "RGBA") or "transparency" in src.info else src.convert("RGB")
+    for w in sorted(todo, reverse=True):
+        im = base if base.width <= w else base.resize((w, round(base.height * w / base.width)), Image.LANCZOS)
+        f = _img_path(u, w)
+        tmp = f.with_suffix(".tmp")
+        im.save(tmp, "WEBP", quality=84, method=4)
+        tmp.replace(f)                                    # a half-written file is never served
+
+
+def _img_file(u: str, w: int):
+    """Downscaled WebP of a known manufacturer image, cached on disk."""
+    f = _img_path(u, w)
+    if not f.exists():
+        _render_images(u, [w])
     return f
 
 
@@ -645,23 +659,30 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
 
 
 def _warm_images() -> None:
-    """At startup, pre-render every model / variant photo at the sizes the site and app ask for, so the first visitor
-    gets the cached copy (~0.3 s) instead of a fetch from the manufacturer (3-6 s). Runs in the background."""
-    import threading
-    from concurrent.futures import ThreadPoolExecutor
+    """Pre-render every model / variant / feature photo at the sizes the site and app use, so visitors get the cached
+    copy (~0.3 s) instead of a 3-6 s fetch from the manufacturer. Deliberately gentle for a small server: one image at a
+    time, each downloaded once for all its sizes, with a pause between images, starting after the server is up."""
+    import threading, time as _t
     def run():
-        jobs = [(r["image_url"], w) for r in q("SELECT DISTINCT image_url FROM models WHERE active = 1 AND image_url LIKE 'http%'")
-                for w in (480, 800, 1200)]
-        jobs += [(r["image_url"], 1200) for r in q("""SELECT DISTINCT v.image_url FROM variants v JOIN models m ON m.id = v.model_id
-                                                       WHERE v.active = 1 AND m.active = 1 AND v.image_url LIKE 'http%'""")]
-        def one_job(j):
+        _t.sleep(45)
+        jobs: dict[str, set[int]] = {}
+        for r in q("SELECT DISTINCT image_url FROM models WHERE active = 1 AND image_url LIKE 'http%'"):
+            jobs.setdefault(r["image_url"], set()).update((480, 800, 1200))
+        for r in q("""SELECT DISTINCT v.image_url FROM variants v JOIN models m ON m.id = v.model_id
+                      WHERE v.active = 1 AND m.active = 1 AND v.image_url LIKE 'http%'"""):
+            jobs.setdefault(r["image_url"], set()).add(1200)
+        for r in q("SELECT DISTINCT image_url FROM feature_images WHERE image_url LIKE 'http%'"):
+            jobs.setdefault(r["image_url"], set()).update((640, 1200))
+        done = 0
+        for u, widths in jobs.items():
             try:
-                _img_file(*j)
+                if any(not _img_path(u, w).exists() for w in widths):
+                    _render_images(u, widths)
+                    done += 1
+                    _t.sleep(0.5)
             except Exception:
-                pass                                   # unreachable image: the endpoint retries on demand
-        with ThreadPoolExecutor(max_workers=3) as ex:
-            list(ex.map(one_job, jobs))
-        logging.getLogger("onroad.img").info("image cache warmed: %d renditions", len(jobs))
+                pass                                       # unreachable image: the endpoint retries on demand
+        logging.getLogger("onroad.img").info("image cache warmed: %d new images (%d known)", done, len(jobs))
     threading.Thread(target=run, name="onroad-img-warm", daemon=True).start()
 
 
@@ -829,11 +850,24 @@ def explore(city: str = "Hyderabad", body: str | None = None, fuel: str | None =
                 WHERE m.active = 1 {vt_cond} GROUP BY m.id""", (*cp, *vt_params))
     pop = _popularity()
     norm = lambda t: re.sub(r"[^a-z0-9]", "", (t or "").lower())
-    out = []
     for r in rows:
         p = _pop_for(pop, norm(r["brand"]), norm(r["name"]), r["name"])
         r["six_month_units"] = p["six_month_units"] if p else None
         r["sales_rank"] = p["rank"] if p else None
+    # A published sales rank covers a model family ("Splendor" = Splendor+, Splendor+ Xtec, ...). Show it once, on the
+    # family's base model (cheapest, then shortest name), not on every version; decided before filtering so it never moves.
+    holders: dict[tuple, dict] = {}
+    for r in rows:
+        if r["sales_rank"] is not None:
+            k = (r["brand_slug"], r["sales_rank"])
+            score = lambda x: (x["from_inr"] is None, x["from_inr"] or 0, len(x["name"]))
+            if k not in holders or score(r) < score(holders[k]):
+                holders[k] = r
+    for r in rows:
+        if r["sales_rank"] is not None and holders[(r["brand_slug"], r["sales_rank"])] is not r:
+            r["sales_rank"] = r["six_month_units"] = None
+    out = []
+    for r in rows:
         r["band"] = _band(r["from_inr"])
         if band and r["band"] != band:
             continue
@@ -1048,7 +1082,9 @@ def dealers_near(lat: float, lng: float, brand: str | None = None, vehicle_type:
         cond.append("d.brand_slug = ?"); params.append(brand)
     if vehicle_type:
         cond.append("b.vehicle_type = ?"); params.append(vehicle_type)
-    rows = q(f"""SELECT d.id, d.brand_slug, b.name AS brand_name, d.name, d.address, d.city, d.state, d.pincode, d.phone, d.lat, d.lng, d.kind
+    rows = q(f"""SELECT d.id, d.brand_slug, b.name AS brand_name, d.name, d.address, d.city, d.state, d.pincode, d.phone, d.lat, d.lng, d.kind,
+                        (SELECT round(avg(r.rating), 1) FROM dealer_reviews r WHERE r.dealer_id = d.id) AS rating,
+                        (SELECT count(*) FROM dealer_reviews r WHERE r.dealer_id = d.id) AS rating_count
                  FROM dealers d JOIN brands b ON b.slug = d.brand_slug WHERE {' AND '.join(cond)}""", tuple(params))
     for r in rows:
         r["distance_km"] = round(_km(lat, lng, r["lat"], r["lng"]), 1)

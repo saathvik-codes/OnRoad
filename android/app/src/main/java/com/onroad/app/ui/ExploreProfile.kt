@@ -27,7 +27,6 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -41,11 +40,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,8 +79,6 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
     var saved by remember { mutableStateOf<List<SavedCar>>(emptyList()) }
     var quotes by remember { mutableStateOf<List<MyRequest>>(emptyList()) }
     var alerts by remember { mutableStateOf(vm.prefs.alerts) }
-    var editServer by remember { mutableStateOf(false) }
-    var server by remember { mutableStateOf(vm.prefs.server()) }
     LaunchedEffect(Unit) {
         if (vm.prefs.session != null) runCatching { vm.api.me() }.onSuccess { vm.prefs.setAccount(it) }.onFailure { vm.prefs.setAccount(null) }
     }
@@ -126,19 +121,6 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                             Stat("${quotes.size}", "Requests", Modifier.weight(1f))
                             Stat("${quotes.sumOf { it.quotes.size }}", "Replies", Modifier.weight(1f))
                         }
-                    }
-                }
-            }
-        }
-        item {
-            Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp), pad = 14) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text("Quick actions", style = MaterialTheme.typography.titleMedium)
-                    Row {
-                        Shortcut(Icons.Outlined.AutoAwesome, "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
-                        Shortcut(Icons.Outlined.LocalOffer, "Offers", Good, Modifier.weight(1f), onOffers)
-                        Shortcut(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
-                        Shortcut(Icons.Outlined.Calculate, "Check a\nquote", Electric, Modifier.weight(1f), onCalc)
                     }
                 }
             }
@@ -205,15 +187,10 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 SettingRow(Icons.Outlined.Verified, Good, "Where prices come from", "Manufacturers' own sites; taxes from your state's transport rules")
             }
         }
-        item { Section("Advanced", null, null) }
-        item {
+        if (acc != null) item {
+            Spacer(Modifier.height(14.dp))
             Group {
-                SettingRow(Icons.Outlined.Dns, Mute, "Server", server, onClick = { editServer = !editServer })
-                if (editServer) Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(server, { server = it }, Modifier.weight(1f), singleLine = true)
-                    TextButton({ vm.prefs.setServer(if (server.startsWith("http")) server else "https://$server"); editServer = false }) { Text("Save", color = Ignition) }
-                }
-                if (acc != null) SettingRow(Icons.AutoMirrored.Outlined.Logout, Color(0xFFFF5C7A), "Sign out", null, titleColor = Color(0xFFFF5C7A), onClick = {
+                SettingRow(Icons.AutoMirrored.Outlined.Logout, Color(0xFFFF5C7A), "Sign out", null, titleColor = Color(0xFFFF5C7A), onClick = {
                     scope.launch { runCatching { vm.api.logout() }; vm.prefs.session = null; vm.prefs.setAccount(null) }
                 })
             }

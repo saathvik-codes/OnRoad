@@ -100,8 +100,8 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, vm: B
                 IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
                 Text(model.brandName, color = Mute)
             }
-            AsyncImage(vm.prefs.img(model.imageUrl, 1200), model.name, contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().aspectRatio(16 / 9f).padding(horizontal = 12.dp))
+            Gallery(model.gallery.ifEmpty { listOfNotNull(model.imageUrl?.let { com.onroad.app.data.GalleryItem(it, model.name) }) },
+                variant?.imageUrl, variant?.name) { u -> vm.prefs.img(u, 1200) }
             Column(Modifier.padding(horizontal = 20.dp)) {
                 Text(model.name, style = MaterialTheme.typography.displaySmall)
                 Text(range(prices.minOrNull(), prices.maxOrNull()), style = MaterialTheme.typography.titleLarge, color = Ignition)

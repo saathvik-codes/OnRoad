@@ -72,10 +72,24 @@ private fun catOf(f: Feature): Cat {
     return CATS.firstOrNull { c -> c.words.any { w -> if (w.length <= 3) Regex("\\b$w\\b").containsMatchIn(t) else w in t } } ?: OTHER
 }
 
-// headline numbers, picked by the API's normalised spec keys
-private val KEY_SPECS = listOf("displacement" to "Engine", "max_power" to "Power", "max_torque" to "Torque", "mileage" to "Mileage",
-    "fuel_efficiency" to "Mileage", "range" to "Range", "battery_capacity" to "Battery", "seating_capacity" to "Seats",
-    "boot_space" to "Boot", "ground_clearance" to "Ground clearance", "kerb_weight" to "Weight")
+
+/** Headline specs, matched by the API's normalised key or by the manufacturer's own label (brands word them differently). */
+val HEADLINE_SPECS: List<Pair<String, Regex>> = listOf(
+    "Engine" to Regex("displacement|engine capacity|cubic capacity|engine \\(cc\\)|^capacity", RegexOption.IGNORE_CASE),
+    "Power" to Regex("max(imum)?[ _]?power|^power|peak power|motor power", RegexOption.IGNORE_CASE),
+    "Torque" to Regex("torque", RegexOption.IGNORE_CASE),
+    "Mileage" to Regex("mileage|fuel efficiency|fuel economy|arai", RegexOption.IGNORE_CASE),
+    "Range" to Regex("range|driving range", RegexOption.IGNORE_CASE),
+    "Battery" to Regex("battery (pack|capacity)|battery_capacity", RegexOption.IGNORE_CASE),
+    "Seats" to Regex("seating", RegexOption.IGNORE_CASE),
+    "Boot space" to Regex("boot|luggage|cargo", RegexOption.IGNORE_CASE),
+    "Ground clearance" to Regex("ground clearance", RegexOption.IGNORE_CASE),
+    "Kerb weight" to Regex("kerb weight|curb weight", RegexOption.IGNORE_CASE),
+    "Fuel tank" to Regex("fuel tank", RegexOption.IGNORE_CASE),
+)
+
+fun findSpec(specs: List<com.onroad.app.data.Spec>?, rx: Regex): String? =
+    specs?.firstOrNull { rx.containsMatchIn(it.key.replace('_', ' ')) || rx.containsMatchIn(it.label) }?.value
 
 /**
  * Specs & features for the selected variant. Features are checked against the full list from the model's top variant,
@@ -94,7 +108,7 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
     val all = sp.features.map { it to true } + missing.map { it to false }
     Column(Modifier.padding(horizontal = 16.dp)) {
         // headline specs
-        val keyVals = KEY_SPECS.mapNotNull { (k, label) -> sp.specs.firstOrNull { it.key == k }?.let { label to it.value } }.distinctBy { it.first }.take(6)
+        val keyVals = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(sp.specs, rx)?.let { label to it } }.take(6)
         if (keyVals.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
                 items(keyVals, key = { it.first }) { (l, v) ->
