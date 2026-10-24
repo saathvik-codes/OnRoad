@@ -6,6 +6,7 @@ services:
   # ── FastAPI Backend ────────────────────────────────────────────────────────
   - type: web
     name: onroad-backend
+    autoDeploy: true                  # redeploy on every push to main
     runtime: docker
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
@@ -33,6 +34,7 @@ services:
   # ── Next.js Frontend ──────────────────────────────────────────────────────
   - type: web
     name: onroad-web
+    autoDeploy: true
     runtime: docker
     dockerfilePath: ./Dockerfile.web
     dockerContext: .
