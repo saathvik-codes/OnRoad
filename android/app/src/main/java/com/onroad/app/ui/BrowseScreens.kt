@@ -98,7 +98,10 @@ fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = h
         }
         items(hits, key = { it.id }) { h ->
             Row(Modifier.fillMaxWidth().clickable { onModel(h.id) }.padding(horizontal = 20.dp, vertical = 14.dp)) {
-                Text("${h.brand} ${h.name}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Column(Modifier.weight(1f)) {
+                    Text("${h.brand} ${h.name}", style = MaterialTheme.typography.titleMedium)
+                    h.note?.let { Text(it, color = Ignition, style = MaterialTheme.typography.bodySmall) }
+                }
                 Text(lakh(h.fromInr), color = Mute)
             }
         }

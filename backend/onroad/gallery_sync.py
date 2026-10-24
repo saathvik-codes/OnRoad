@@ -191,7 +191,8 @@ def aggregator(c: httpx.Client, mid: str, name: str, vehicle_type: str, model_ur
             if any(t in folder.replace("-", "") for t in toks) and "/source/" in u or "/640X309/" in u and any(t in folder.replace("-", "") for t in toks):
                 out.append((u, name, "Photo", page))
     else:
-        page = f"https://www.cardekho.com/{BRAND.get(brand, brand.replace('_', '-'))}/{slug}/pictures"
+        from .online_specs import SLUG
+        page = f"https://www.cardekho.com/{BRAND.get(brand, brand.replace('_', '-'))}/{SLUG.get(mid, slug)}/pictures"
         r = c.get(page)
         if r.status_code != 200:
             return []

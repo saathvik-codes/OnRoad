@@ -67,7 +67,7 @@ import javax.inject.Singleton
     val photos: Map<String, Photo> = emptyMap(), val modelUrl: String? = null)
 
 @Serializable data class City(val name: String, val state: String, val stateName: String, val lat: Double, val lng: Double)
-@Serializable data class Hit(val id: String, val name: String, val brand: String, val brandSlug: String, val fromInr: Long? = null)
+@Serializable data class Hit(val id: String, val name: String, val brand: String, val brandSlug: String, val fromInr: Long? = null, val note: String? = null)
 
 @Serializable data class OfferItem(val id: Long = 0, val brandSlug: String = "", val modelName: String? = null, val title: String = "",
     val amountInr: Long? = null, val details: String = "", val validUntil: String? = null, val sourceUrl: String? = null,

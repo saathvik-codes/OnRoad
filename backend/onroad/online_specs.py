@@ -32,7 +32,10 @@ BRAND = {"maruti_suzuki": "maruti", "tata_motors": "tata", "land_rover": "land-r
 # left to the manufacturer
 KEEP = {"Length", "Width", "Height", "Wheelbase", "Ground clearance", "Seat height", "Boot space", "Fuel tank", "Kerb weight",
         "Seating capacity", "Displacement", "Max power", "Max torque", "Cylinders", "Top speed", "Range", "Battery capacity", "Tyre size"}
-ENGINE = {"Displacement", "Max power", "Max torque", "Cylinders", "Transmission", "Fuel tank", "Range", "Battery capacity", "Drive type"}
+# models CarDekho files under another name (our id -> their slug)
+SLUG = {"citroen/c3x": "c3", "citroen/basaltx": "basalt", "citroen/aircrossx": "aircross", "citroen/e-c3x": "ec3"}
+ENGINE = {"Displacement", "Max power", "Max torque", "Cylinders", "Transmission", "Fuel tank", "Range", "Battery capacity", "Drive type",
+          "Kerb weight", "Top speed"}
 
 
 def read(html: str) -> tuple[dict, str | None, str]:
@@ -69,24 +72,36 @@ def run_model(c: httpx.Client, conn, model_id: str, vehicle_type: str) -> dict:
     brand, slug = model_id.split("/", 1)
     name = (conn.execute("SELECT name FROM models WHERE id = ?", (model_id,)).fetchone() or [""])[0]
     site = "https://www.bikedekho.com" if vehicle_type == "bike" else "https://www.cardekho.com"
+    slug = SLUG.get(model_id, slug)
     url = f"{site}/{BRAND.get(brand, brand.replace('_', '-'))}/{slug}/{'specifications' if vehicle_type == 'bike' else 'specs'}"
     r = c.get(url)
     if r.status_code != 200:
         return {"model": model_id, "url": url, "status": r.status_code}
     specs, page_fuel, title = read(r.text)
     words = [w for w in re.findall(r"[a-z0-9]+", name.lower()) if len(w) >= 2]
-    if not words or not all(re.search(r"\b" + re.escape(w) + r"\b", title.lower()) for w in words):
+    flat = re.sub(r"[^a-z0-9]", "", title.lower())                    # "C3X" is the page's "C3 X"
+    if not words or not all(re.search(r"\b" + re.escape(w) + r"\b", title.lower()) or w in flat for w in words):
         return {"model": model_id, "url": url, "skipped": f"page title is not this model: {title[:60]}"}
     disp = specs.get("Displacement", (None, ""))[1]
     page_cc = int(m.group(1)) if (m := re.match(r"(\d+) cc", disp)) else None
     ts = time.strftime("%Y-%m-%dT%H:%M:%S")
     n = 0
-    for v in conn.execute("SELECT id, fuel, engine_cc FROM variants WHERE model_id = ? AND COALESCE(active, 1) = 1", (model_id,)).fetchall():
+    vs = conn.execute("""SELECT v.id, v.fuel, v.engine_cc, v.name, (SELECT ex_showroom_inr FROM prices p WHERE p.variant_id = v.id
+                         ORDER BY fetched_at DESC LIMIT 1) FROM variants v WHERE model_id = ? AND COALESCE(active, 1) = 1""", (model_id,)).fetchall()
+    # the page describes the base variant: the same displacement can still be another engine (1.2 vs 1.2 Turbo)
+    turbo = lambda n: bool(re.search(r"turbo|\btsi\b|t-?gdi|\bgdi\b|turbojet", (n or "").lower()))
+    # turbo and non-turbo versions of one engine size: the page doesn't say which it describes, so no engine figures
+    mixed = len({turbo(x[3]) for x in vs}) > 1
+    seat_trims = any(re.search(r"\b\d\s?s\b|seater|\dSTR|\(\d+\s?\+\s?D\)", x[3] or "", re.I) for x in vs)   # 5- and 7-seat versions
+    base = min((x for x in vs if x[4]), key=lambda x: x[4], default=None)
+    for v in vs:
         have = {_canon_label(x[0]) for x in conn.execute("SELECT label FROM specs WHERE variant_id = ?", (v[0],))}
         same_engine = (not page_fuel or _fuel(v[1]) == _fuel(page_fuel)) and \
-                      (not v[2] or not page_cc or abs(v[2] - page_cc) <= 60)
+                      (not v[2] or not page_cc or abs(v[2] - page_cc) <= 60) and not mixed
         ev = _fuel(v[1]) == "electric"
         for label, (grp, value) in specs.items():
+            if label == "Seating capacity" and seat_trims:
+                continue
             if label not in KEEP or label in have or (label in ENGINE and not same_engine) or not plausible(label, value, vehicle_type):
                 continue
             if label in ("Range", "Battery capacity") and not ev or label in ("Displacement", "Fuel tank", "Cylinders") and ev:

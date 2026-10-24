@@ -40,6 +40,10 @@ def pretty(brand: str, model: str, name: str) -> str:
         if prefix and re.match(re.escape(prefix) + r"\b", s, re.I) and len(s) > len(prefix) + 1:
             s = s[len(prefix):].strip()
     s = re.sub(r"^[-–:·,\s]+", "", s)
+    if re.search(r"citro", brand or "", re.I):                # Citroen's price list: "Comfort Edition - You", "Na Max", "- 7s"
+        s = re.sub(r"^Comfort Edition\s*-\s*(.+)$", r"\1 · Comfort Edition", s)
+        s = re.sub(r"^Na\s+(.+?)(\s*·|\s*-|$)", r"\1 · non-turbo\2", s)
+    s = re.sub(r"\s*-\s*(\d)\s?[sS]\b", r" · \1-seater", s)              # "Turbo Max - 7s" -> "Turbo Max · 7-seater"
     s = re.sub(r"\(?\b(?:BS-?VI(?:\.2)?|BS-?6(?:\.2)?|OBD-?2B?|ODB-?2B?|E20)\b\)?", " ", s, flags=re.I)  # on every new vehicle
     s = re.sub(r"^\(([^()]{2,12})\)\s*", r"\1 ", s)                       # "(2.7L) 4x2 AT" -> "2.7L 4x2 AT"
     s = re.sub(r"\b(?:NON[ -]?AC|NAC)\b", "Non-AC", s, flags=re.I)

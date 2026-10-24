@@ -828,16 +828,33 @@ def states():
             key=lambda kv: kv[1].get("name", kv[0]))]
 
 
+# names buyers still search for, now sold as their successor (the maker renamed or replaced the model)
+SUCCESSORS = {"xuv700": ("mahindra/xuv-7xo", "XUV700"), "xuv300": ("mahindra/xuv-3xo", "XUV300"),
+              "xuv400ev": ("mahindra/xuv400", "XUV400 EV")}
+
+
 @app.get("/api/search")
 def search(text: str = Query(default="", alias="q"), city: str = "Hyderabad"):
-    term = f"%{(text or '').strip().lower()}%"
-    if len(term) < 4:
+    raw = (text or "").strip().lower()
+    flat = re.sub(r"[^a-z0-9]", "", raw)                    # "xuv 700", "XUV-700", "xuv700" are one search
+    if len(flat) < 2:
         return []
-    return q("""SELECT m.id, m.name, m.brand_slug, b.name AS brand, m.body_type, m.image_url,
-                       (SELECT MIN(p.ex_showroom_inr) FROM variants v JOIN prices p ON p.variant_id = v.id WHERE v.model_id = m.id) AS from_inr
+    rows = q("""SELECT m.id, m.name, m.brand_slug, b.name AS brand, m.body_type, m.image_url,
+                       (SELECT MIN(p.ex_showroom_inr) FROM variants v JOIN prices p ON p.variant_id = v.id WHERE v.model_id = m.id AND v.active = 1) AS from_inr
                 FROM models m JOIN brands b ON b.slug = m.brand_slug
-                WHERE m.active = 1 AND (lower(m.name) LIKE ? OR lower(b.name) LIKE ? OR lower(b.name || ' ' || m.name) LIKE ?)
-                ORDER BY from_inr LIMIT 20""", (term, term, term))
+                WHERE m.active = 1 AND (lower(m.name) LIKE ? OR lower(b.name) LIKE ? OR lower(b.name || ' ' || m.name) LIKE ?
+                      OR replace(replace(replace(lower(b.name || m.name), ' ', ''), '-', ''), '.', '') LIKE ?
+                      OR replace(replace(replace(lower(m.name), ' ', ''), '-', ''), '.', '') LIKE ?)
+                ORDER BY from_inr LIMIT 20""", (f"%{raw}%", f"%{raw}%", f"%{raw}%", f"%{flat}%", f"%{flat}%"))
+    for old, (mid, label) in SUCCESSORS.items():
+        if flat and (old.startswith(flat) or flat.startswith(old)) and len(flat) >= 4 and not any(r["id"] == mid for r in rows):
+            hit = q("""SELECT m.id, m.name, m.brand_slug, b.name AS brand, m.body_type, m.image_url,
+                              (SELECT MIN(p.ex_showroom_inr) FROM variants v JOIN prices p ON p.variant_id = v.id WHERE v.model_id = m.id AND v.active = 1) AS from_inr
+                       FROM models m JOIN brands b ON b.slug = m.brand_slug WHERE m.id = ? AND m.active = 1""", (mid,))
+            for h in hit:
+                h["note"] = f"Successor to the {label}"
+            rows = hit + rows
+    return rows
 
 
 
