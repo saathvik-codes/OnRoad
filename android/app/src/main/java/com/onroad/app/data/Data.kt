@@ -28,7 +28,8 @@ import javax.inject.Singleton
 
 @Serializable data class ModelSummary(val id: String, val name: String, val brand: String = "", val brandSlug: String = "",
     val bodyType: String? = null, val imageUrl: String? = null, val fromInr: Long? = null, val toInr: Long? = null,
-    val fuels: String? = null, val variants: Int = 0, val offers: Int = 0, val salesRank: Int? = null)
+    val fuels: String? = null, val variants: Int = 0, val offers: Int = 0, val salesRank: Int? = null,
+    val transmissions: String? = null, val band: String? = null)
 
 @Serializable data class Line(val label: String, val amountInr: Long? = null, val basis: String = "", val source: kotlinx.serialization.json.JsonElement? = null,
     val verified: Boolean = true, val optional: Boolean = false, val refundable: Boolean = false)
@@ -85,7 +86,7 @@ import javax.inject.Singleton
     val kind: String = "", val distanceKm: Double? = null, val rating: Double? = null, val ratingCount: Int = 0)
 @Serializable data class DealerReviewIn(val dealerId: String, val rating: Int, val priceHonesty: Int? = null, val noForcedAddons: Boolean? = null,
     val deliveryOnTime: Boolean? = null, val visit: String = "purchase", val text: String = "")
-@Serializable data class Band(val id: String, val label: String, val hint: String = "")
+@Serializable data class Band(val id: String, val label: String, val hint: String = "", val min: Long? = null, val max: Long? = null)
 @Serializable data class DealerQuote(val dealer: String = "", val onRoadInr: Long? = null, val discountInr: Long? = null,
     val waitingWeeks: Int? = null, val validUntil: String? = null, val note: String? = null, val phone: String? = null)
 @Serializable data class MyRequest(val id: Long, val variant: String = "", val model: String = "", val brand: String = "", val city: String = "",

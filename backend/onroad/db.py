@@ -122,3 +122,5 @@ def init() -> None:
                 conn.execute(m)
             except sqlite3.OperationalError:   # column already there
                 pass
+        # an offer we can't link back to the manufacturer's page is never shown (removes seeded / unsourced rows)
+        conn.execute("UPDATE offers SET active = 0 WHERE source = 'brand_site' AND (source_url IS NULL OR source_url = '')")

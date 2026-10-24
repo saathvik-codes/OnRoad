@@ -214,6 +214,7 @@ def _offers(where: str, params: tuple, city: str) -> list[dict]:
                  GROUP BY o.brand_slug, ifnull(o.model_name, ''), o.title, ifnull(o.amount_inr, 0), ifnull(o.kind, ''), ifnull(o.variant, ''),
                           ifnull(o.dealer_id, '')
                  ORDER BY o.amount_inr IS NULL, o.amount_inr DESC""", (city, *params))
+    _link_offer_models(rows)
     today = __import__("datetime").date.today()
     for r in rows:
         r["days_left"] = ((__import__("datetime").date.fromisoformat(r["valid_until"]) - today).days
@@ -1117,6 +1118,29 @@ def dealer_search(brand: str, city: str | None = None, text: str = ""):
              (brand, text_pattern))
 
 
+def _link_offer_models(rows: list[dict]) -> None:
+    """Offers name cars loosely ("New City", "The new Taigun", or only in the title). Link each to the model's own page
+    and photo: same brand, name equal after dropping "new"/"the", else the longest model name found in the title."""
+    unmatched = [r for r in rows if not r.get("model_image")]
+    if not unmatched:
+        return
+    nm = lambda t: re.sub(r"[^a-z0-9]", "", re.sub(r"(the|new|all)", "", (t or "").lower()))
+    cat: dict[str, list[dict]] = {}
+    for m in q("SELECT id, brand_slug, name, image_url FROM models WHERE active = 1 AND image_url IS NOT NULL AND image_url != ''"):
+        cat.setdefault(m["brand_slug"], []).append(m)
+    for r in unmatched:
+        models = cat.get(r["brand_slug"], [])
+        key = nm(r.get("model_name"))
+        hit = next((m for m in models if key and nm(m["name"]) == key), None)
+        if not hit:
+            text = nm((r.get("model_name") or "") + " " + (r.get("title") or ""))
+            found = [m for m in models if len(nm(m["name"])) >= 3 and nm(m["name"]) in text]
+            hit = max(found, key=lambda m: len(nm(m["name"])), default=None)
+        if hit:
+            r["model_image"], r["model_id"] = hit["image_url"], hit["id"]
+            r["model_name"] = r.get("model_name") or hit["name"]
+
+
 @app.get("/api/offers")
 def offers(city: str = "Hyderabad", brand: str | None = None, model: str | None = None, limit: int = 50):
     """Live automotive offers: festive promotions, launch benefits, exchange bonuses, dealer discounts."""
@@ -1162,6 +1186,7 @@ def offers(city: str = "Hyderabad", brand: str | None = None, model: str | None 
             if nr["id"] not in seen_ids:
                 rows.append(nr)
 
+    _link_offer_models(rows)
     today = __import__("datetime").date.today()
     for r in rows:
         r["days_left"] = ((__import__("datetime").date.fromisoformat(r["valid_until"]) - today).days

@@ -68,23 +68,25 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
     Column {
         HorizontalPager(pager, pageSpacing = 12.dp) { i ->
             val o = offers[i]
-            Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(26.dp))
+            Column(Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(26.dp))
                 .background(Brush.linearGradient(listOf(Color(0xFF3B140E), Color(0xFF1A1020), Panel)))
-                .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }) {
-                VehicleImage(img(o.modelImage), o.modelName, Modifier.align(Alignment.BottomEnd).width(190.dp).height(120.dp).padding(end = 8.dp, bottom = 8.dp))
-                Column(Modifier.padding(18.dp).fillMaxWidth(0.62f)) {
+                .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }.padding(16.dp)) {
                     Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Bolt, null, tint = Ignition, modifier = Modifier.size(13.dp)); Spacer(Modifier.width(3.dp))
                         Text("MANUFACTURER OFFER", style = MaterialTheme.typography.labelSmall, color = Ignition)
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Text(listOfNotNull(o.brandName, o.modelName).joinToString(" "), style = MaterialTheme.typography.titleMedium, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                    o.amountInr?.let { Text("Up to ${rupees(it)}", style = MaterialTheme.typography.headlineSmall, color = Good, fontWeight = FontWeight.Bold) }
-                    Text(o.validUntil?.let { "Valid till $it" } ?: o.title, color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis)
-                }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(listOfNotNull(o.brandName, o.modelName).joinToString(" "), style = MaterialTheme.typography.titleMedium, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
+                            o.amountInr?.let { Text("Up to ${rupees(it)}", style = MaterialTheme.typography.titleLarge, color = Good, fontWeight = FontWeight.Bold, maxLines = 1) }
+                            Text(o.validUntil?.let { "Valid till $it" } ?: o.title, color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
+                        }
+                        OfferPhoto(o, img, Modifier.width(140.dp).height(100.dp))
+                    }
             }
         }
         if (offers.size > 1) Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
@@ -96,6 +98,15 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
             }
         }
     }
+}
+
+/** The offer's car on a light tile (manufacturer shots often have white backgrounds); the brand's logo for brand-wide offers. */
+@Composable
+fun OfferPhoto(o: OfferItem, img: (String?) -> String?, modifier: Modifier) = Box(
+    modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xFFF3F4F7)).padding(6.dp), contentAlignment = Alignment.Center,
+) {
+    if (o.modelImage != null) VehicleImage(img(o.modelImage), o.modelName, Modifier.fillMaxSize())
+    else coil3.compose.AsyncImage(img("/api/logos/${o.brandSlug}"), o.brandName, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(0.7f))
 }
 
 data class BudgetChip(val id: String, val label: String, val hint: String)

@@ -90,13 +90,10 @@ fun Pills(options: List<Pair<String, String>>, sel: String, onSel: (String) -> U
 
 // ---------------------------------------------------------------- offers
 @Composable
-fun OfferCard(o: OfferItem, img: String?, modifier: Modifier = Modifier, onOpen: () -> Unit) = Tile(modifier.clickable(onClick = onOpen), pad = 14) {
+fun OfferCard(o: OfferItem, img: (String?) -> String?, modifier: Modifier = Modifier, onOpen: () -> Unit) = Tile(modifier.clickable(onClick = onOpen), pad = 14) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (img != null) VehicleImage(img, o.modelName, Modifier.width(96.dp).aspectRatio(16 / 10f))
-            else Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(Ignition.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.LocalOffer, null, tint = Ignition)
-            }
+            OfferPhoto(o, img, Modifier.width(104.dp).height(72.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(listOfNotNull(o.brandName, o.modelName).joinToString(" "), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -134,7 +131,7 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { Pills(brands.take(12), brand) { brand = it } }
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(l.filter { brand == "all" || it.brandSlug == brand }, key = { it.id }) { o ->
-                    OfferCard(o, vm.prefs.img(o.modelImage, 480), Modifier.fillMaxWidth()) {
+                    OfferCard(o, { vm.prefs.img(it, 480) }, Modifier.fillMaxWidth()) {
                         o.sourceUrl?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
                 }
