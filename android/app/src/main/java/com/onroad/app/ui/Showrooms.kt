@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.onroad.app.data.Brand
 import com.onroad.app.data.NearDealer
 import com.onroad.app.data.rememberLocator
@@ -73,7 +74,10 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     var brands by remember { mutableStateOf<List<Brand>>(emptyList()) }
     var list by remember { mutableStateOf<List<NearDealer>?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    val cityNow by vm.prefs.city.collectAsStateWithLifecycle()
     var here by remember { mutableStateOf(vm.prefs.lat?.let { la -> vm.prefs.lng?.let { lo -> la to lo } }) }
+    // picking another city moves the search there (its centre), so showrooms always match the chosen city
+    LaunchedEffect(cityNow) { vm.prefs.lat?.let { la -> vm.prefs.lng?.let { lo -> if (here != la to lo) here = la to lo } } }
     var tick by remember { mutableIntStateOf(0) }
     var rating by remember { mutableStateOf<NearDealer?>(null) }
     val city = vm.prefs.city.value

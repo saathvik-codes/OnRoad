@@ -158,7 +158,7 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         }
         items(cities.filter { "${it.name} ${it.stateName}".contains(q, true) }, key = { it.name }) { c ->
-            Row(Modifier.fillMaxWidth().clickable { vm.prefs.setCity(c.name); onBack() }.padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { vm.prefs.lat = c.lat; vm.prefs.lng = c.lng; vm.prefs.setCity(c.name); onBack() }.padding(horizontal = 20.dp, vertical = 14.dp)) {
                 Column(Modifier.weight(1f)) { Text(c.name, style = MaterialTheme.typography.titleMedium); Text(c.stateName, color = Mute) }
                 if (c.name == city) Chip("Selected", Ignition)
             }
