@@ -1361,28 +1361,58 @@ def health():
 
 # ── Self-refresh when deployed (Render etc.): set REFRESH_EVERY_HOURS, e.g. 6 ────────────────────────────
 def _refresh_loop(hours: float) -> None:
-    import threading, time as _t
+    """Keeps prices, offers, dealers and specs current on a small server.
+
+    Work is a queue of small steps (2 brands at a time for the launch city, then a few other cities, then bank rates,
+    image fills and showroom ratings), spread evenly over `hours`. The position is stored in the database, so a restart
+    resumes where it stopped instead of starting the whole refresh again, and no single step needs much memory."""
+    import gc, threading, time as _t
+    log = logging.getLogger("onroad.refresh")
+
+    def steps() -> list[tuple[str, object]]:
+        from . import ingest
+        slugs = sorted(m.__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
+        out: list[tuple[str, object]] = [("brands", slugs[i:i + 2]) for i in range(0, len(slugs), 2)]
+        out += [("city", c) for c in CITIES if c != "Hyderabad"]
+        out += [("loans", None), ("images", None), ("places", None)]
+        return out
+
+    def cursor(set_to: int | None = None) -> int:
+        with closing(db.connect()) as conn, conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS app_state (k TEXT PRIMARY KEY, v TEXT)")
+            if set_to is not None:
+                conn.execute("INSERT OR REPLACE INTO app_state VALUES ('refresh_step', ?)", (str(set_to),))
+                return set_to
+            row = conn.execute("SELECT v FROM app_state WHERE k = 'refresh_step'").fetchone()
+            return int(row[0]) if row else 0
+
     def run():
         from . import fill_images, ingest, loan_rates
-        cities = [c for c in CITIES if c != "Hyderabad"]
-        k = 0
+        _t.sleep(90)                                          # let the server finish starting
+        plan = steps()
+        gap = max(60.0, hours * 3600 / max(1, len(plan)))     # one full pass every `hours`
         while True:
-            _t.sleep(60)                                  # let the server finish starting
+            i = cursor() % len(plan)
+            kind, arg = plan[i]
             try:
-                ingest.run(None, city="Hyderabad")        # every brand, launch city: prices, offers, dealers, specs
+                if kind == "brands":
+                    ingest.run(arg, city="Hyderabad")           # prices, offers, dealers, specs for these brands
+                elif kind == "city":
+                    ingest.run(None, city=arg)                  # city prices and dealers, every brand
+                elif kind == "loans":
+                    loan_rates.refresh()
+                elif kind == "images":
+                    fill_images.run()
+                    _warm_images()
+                elif kind == "places":
+                    from . import places
+                    places.match_and_rate(300)
                 _RESP_CACHE.clear()
-                for c in cities[k:k + 3]:                  # three more cities per cycle, round-robin
-                    ingest.run(None, city=c)
-                k = (k + 3) % len(cities)
-                loan_rates.refresh()
-                fill_images.run()
-                from . import places
-                places.match_and_rate(300)
-                _RESP_CACHE.clear()
-                _warm_images()                             # render photos of anything new
-            except Exception as e:                         # never kill the API because a site was down
-                logging.getLogger("onroad.refresh").warning("refresh failed: %s", e)
-            _t.sleep(hours * 3600)
+            except Exception as e:                            # never kill the API because a site was down
+                log.warning("refresh step %s %s failed: %s", kind, arg, e)
+            cursor(i + 1)
+            gc.collect()
+            _t.sleep(gap)
     threading.Thread(target=run, name="onroad-refresh", daemon=True).start()
 
 
