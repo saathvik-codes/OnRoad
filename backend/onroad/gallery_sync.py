@@ -164,13 +164,6 @@ def run(brands: list[str] | None = None, need_below: int = 4) -> dict:
     return {"models": done, "pictures": added}
 
 
-if __name__ == "__main__":
-    if sys.argv[1:] == ["--fallback"]:
-        print(run_fallback())
-    else:
-        print(run(sys.argv[1].split(",") if len(sys.argv) > 1 else None))
-
-
 def _label(u: str) -> str:
     f = re.sub(r"-\d+$", "", urlparse(u).path.rsplit("/", 1)[-1].rsplit(".", 1)[0])
     f = re.sub(r"[-_()]+", " ", f).strip()
@@ -236,3 +229,10 @@ def run_fallback(need_below: int = 4) -> dict:
             print(json.dumps({"model": mid, "added": len(got)}), flush=True)
             time.sleep(2)
     return {"models": n_models, "pictures": n_pics}
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--fallback"]:
+        print(run_fallback())
+    else:
+        print(run(sys.argv[1].split(",") if len(sys.argv) > 1 else None))
