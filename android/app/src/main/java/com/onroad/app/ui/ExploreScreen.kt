@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -112,7 +113,7 @@ private fun matches(m: ModelSummary, f: Filters, budgets: List<Budget>, skip: St
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: String = "car", initBudget: String? = null,
-                  vm: BrowseVM = hiltViewModel()) {
+                  brand: Pair<String, String>? = null, onBack: (() -> Unit)? = null, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     var type by remember { mutableStateOf(initType) }
     var f by remember { mutableStateOf(Filters(budget = initBudget)) }
@@ -126,6 +127,12 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
     val bike = type == "bike"
     val budgets = if (bike) BIKE_BUDGETS else bands.map { Budget(it.id, it.label, it.hint, it.min, it.max) }
 
+    // one brand's page: is it a car or a two-wheeler maker?
+    LaunchedEffect(brand?.first) {
+        val slug = brand?.first ?: return@LaunchedEffect
+        val bikeMaker = runCatching { vm.api.brands(city, "bike") }.getOrElse { emptyList() }.any { it.slug == slug }
+        type = if (bikeMaker) "bike" else "car"
+    }
     LaunchedEffect(type, city) {
         brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models }
         if (bands.isEmpty()) bands = runCatching { vm.api.bands() }.getOrElse { emptyList() }
@@ -134,7 +141,8 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
         all = null; failed = false
         runCatching { vm.api.explore(city, type = type) }.onSuccess { all = it }.onFailure { failed = true }
     }
-    val shown = all?.filter { matches(it, f, budgets) }?.let { l ->
+    val scoped = all?.filter { m -> brand == null || m.brandSlug == brand.first }
+    val shown = scoped?.filter { matches(it, f, budgets) }?.let { l ->
         when (sort) {
             "price" -> l.sortedBy { it.fromInr ?: Long.MAX_VALUE }
             "price_desc" -> l.sortedByDescending { it.fromInr ?: 0 }
@@ -148,13 +156,15 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
             item {
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (onBack != null) IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
                         Column(Modifier.weight(1f)) {
-                            Text("Explore", style = MaterialTheme.typography.headlineMedium)
-                            Text("Official prices for $city", color = Mute, style = MaterialTheme.typography.bodyMedium)
+                            Text(brand?.second ?: "Explore", style = MaterialTheme.typography.headlineMedium)
+                            Text(if (brand != null) "${scoped?.size ?: "…"} models · official prices for $city" else "Official prices for $city",
+                                color = Mute, style = MaterialTheme.typography.bodyMedium)
                         }
-                        IconButton(onSearch, Modifier.clip(CircleShape).background(Panel2)) { Icon(Icons.Outlined.Search, "Search") }
+                        if (brand == null) IconButton(onSearch, Modifier.clip(CircleShape).background(Panel2)) { Icon(Icons.Outlined.Search, "Search") }
                     }
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {
+                    if (brand == null) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {
                         listOf("car" to "Cars", "bike" to "Bikes & scooters").forEach { (k, l) ->
                             Text(l, fontWeight = FontWeight.SemiBold, color = if (type == k) Color.White else Mute, textAlign = TextAlign.Center,
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (type == k) Ignition else Color.Transparent)
@@ -163,7 +173,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                     }
                 }
                 // brand strip: quick multi-select
-                if (brands.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (brands.isNotEmpty() && brand == null) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(brands, key = { it.slug }) { b -> BrandLogo(b, b.slug in f.brands, vm.prefs.img(b.logo, 200)) { f = f.copy(brands = f.brands.toggle(b.slug)) } }
                 }
                 // active filters as removable chips
@@ -204,6 +214,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
         // pinned action bar (Myntra-style), just above the bottom navigation
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
+            .then(if (onBack != null) Modifier.navigationBarsPadding() else Modifier)
             .padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 10.dp)) {
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).border(1.dp, Line, RoundedCornerShape(50))) {
                 BarButton(Icons.AutoMirrored.Outlined.Sort, "Sort", SORTS.first { it.first == sort }.second, Modifier.weight(1f)) { sheet = "sort" }
@@ -228,7 +239,8 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
     if (sheet == "filters") {
         val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet({ sheet = null }, sheetState = state, containerColor = Panel) {
-            FilterSheet(all.orEmpty(), f, budgets, brands, bike, { vm.prefs.img(it, 200) }, onChange = { f = it }, onDone = { sheet = null })
+            FilterSheet(scoped.orEmpty(), f, budgets, if (brand != null) emptyList() else brands, bike, { vm.prefs.img(it, 200) },
+                onChange = { f = it }, onDone = { sheet = null })
         }
     }
 }
@@ -273,7 +285,8 @@ private fun FilterSheet(all: List<ModelSummary>, f0: Filters, budgets: List<Budg
                         logo: (String?) -> String?, onChange: (Filters) -> Unit, onDone: () -> Unit) {
     var f by remember { mutableStateOf(f0) }
     var cat by remember { mutableStateOf("Budget") }
-    val cats = listOf("Budget", "Brand", "Body type", "Fuel") + if (bike) emptyList() else listOf("Gearbox")
+    val cats = listOf("Budget") + (if (brands.isEmpty()) emptyList() else listOf("Brand")) + listOf("Body type", "Fuel") +
+        if (bike) emptyList() else listOf("Gearbox")
     fun count(skip: String, test: (ModelSummary) -> Boolean) = all.count { matches(it, f, budgets, skip) && test(it) }
     val total = all.count { matches(it, f, budgets) }
     fun set(n: Filters) { f = n; onChange(n) }

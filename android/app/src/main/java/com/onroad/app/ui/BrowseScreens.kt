@@ -61,23 +61,10 @@ private fun Header(title: String, sub: String? = null, onBack: () -> Unit) = Row
 }
 
 /** One brand's line-up, grouped by body type (Hatchback, Sedan, SUV…), most-bought first. */
+/** One brand's lineup: Explore scoped to the brand, with the same sort and filter bar. */
 @Composable
-fun BrandScreen(slug: String, name: String, onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
-    val city by vm.prefs.city.collectAsStateWithLifecycle()
-    var models by remember { mutableStateOf<List<ModelSummary>?>(null) }
-    LaunchedEffect(slug, city) { models = runCatching { vm.api.explore(city, brand = slug) }.getOrDefault(emptyList()) }
-    val order = listOf("Hatchback", "Sedan", "SUV", "MUV", "Pickup", "Coupe", "Convertible")
-    val groups = models.orEmpty().groupBy { it.bodyType ?: "Other" }.toList()
-        .sortedBy { order.indexOf(it.first).let { i -> if (i < 0) 99 else i } }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { Header(name, models?.let { "${it.size} models · prices for $city" }, onBack) }
-        if (models?.isEmpty() == true) item { Text("No prices published by $name right now.", color = Mute, modifier = Modifier.padding(20.dp)) }
-        groups.forEach { (type, list) ->
-            item { Text("${type}s".replace("Others", "Other"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 8.dp)) }
-            items(list, key = { it.id }) { m -> ModelCard(m, vm.prefs.img(m.imageUrl, 800)) { onModel(m.id) } }
-        }
-    }
-}
+fun BrandScreen(slug: String, name: String, onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) =
+    ExploreScreen(onModel = onModel, onSearch = {}, brand = slug to name, onBack = onBack, vm = vm)
 
 @Composable
 fun ModelCard(m: ModelSummary, img: String?, onClick: () -> Unit) = Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable(onClick = onClick), pad = 14) {

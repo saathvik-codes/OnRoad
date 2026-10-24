@@ -3,6 +3,15 @@ package com.onroad.app.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -108,40 +117,206 @@ fun OfferCard(o: OfferItem, img: (String?) -> String?, modifier: Modifier = Modi
     }
 }
 
+private val OFFER_SORTS = listOf("benefit" to "Biggest benefit", "ending" to "Ending soon", "brand" to "Brand A–Z", "latest" to "Latest first")
+private val BENEFITS = listOf(Triple("u25", "Up to ₹25,000", 0L..25_000L), Triple("25_50", "₹25,000 – ₹50,000", 25_001L..50_000L),
+    Triple("50_1l", "₹50,000 – ₹1 lakh", 50_001L..100_000L), Triple("1l", "Above ₹1 lakh", 100_001L..Long.MAX_VALUE))
+
+private data class OfferFilters(val brands: Set<String> = emptySet(), val kinds: Set<String> = emptySet(), val benefit: String? = null,
+                                val endingSoon: Boolean = false) {
+    val count get() = brands.size + kinds.size + (if (benefit != null) 1 else 0) + (if (endingSoon) 1 else 0)
+}
+
+private fun offerDate(s: String?): java.time.LocalDate? = s?.let { Regex("""\d{4}-\d{2}-\d{2}""").find(it)?.value }
+    ?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+
+private fun kindLabel(k: String?) = when ((k ?: "").lowercase()) {
+    "" -> "Other benefits"; "cash", "cash_discount", "discount" -> "Cash discount"; "exchange" -> "Exchange bonus"
+    "corporate" -> "Corporate offer"; "finance", "emi", "loan" -> "Finance / EMI"; "loyalty" -> "Loyalty bonus"
+    "scrappage" -> "Scrappage bonus"; else -> k!!.replace('_', ' ').replaceFirstChar { it.uppercase() }
+}
+
+private fun offerMatches(o: OfferItem, f: OfferFilters, skip: String? = null): Boolean {
+    if (skip != "brand" && f.brands.isNotEmpty() && o.brandSlug !in f.brands) return false
+    if (skip != "kind" && f.kinds.isNotEmpty() && kindLabel(o.kind) !in f.kinds) return false
+    if (skip != "benefit" && f.benefit != null) {
+        val r = BENEFITS.first { it.first == f.benefit }.third
+        if (o.amountInr == null || o.amountInr !in r) return false
+    }
+    if (skip != "ending" && f.endingSoon) {
+        val d = offerDate(o.validUntil) ?: return false
+        if (d.isAfter(java.time.LocalDate.now().plusDays(7))) return false
+    }
+    return true
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     var list by remember { mutableStateOf<List<OfferItem>?>(null) }
-    var brand by remember { mutableStateOf("all") }
     val ctx = LocalContext.current
     var failed by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
+    var f by remember { mutableStateOf(OfferFilters()) }
+    var sort by remember { mutableStateOf("benefit") }
+    var sheet by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(city, tick) {
         failed = false; list = null
         runCatching { vm.api.offers(city, 120) }.onSuccess { list = it }.onFailure { failed = true }
     }
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Offers & festive deals", "Live from manufacturers · $city", onBack)
-        // two-wheeler makers don't publish dated offers online; deals are given at the showroom
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(Panel2).padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.LocalOffer, null, tint = Amber, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(10.dp))
-            Text("Bike and scooter makers don't publish offers online. Open a bike and tap Get dealer quotes to get showroom deals.",
-                color = Mute, style = MaterialTheme.typography.bodySmall)
+    val all = list.orEmpty()
+    val brands = all.groupBy { it.brandSlug }.map { (slug, l) -> com.onroad.app.data.Brand(slug, l.first().brandName ?: slug, "/api/logos/$slug", l.size) }
+        .sortedByDescending { it.models }
+    val shown = list?.filter { offerMatches(it, f) }?.let { l ->
+        when (sort) {
+            "benefit" -> l.sortedByDescending { it.amountInr ?: 0 }
+            "ending" -> l.sortedBy { offerDate(it.validUntil) ?: java.time.LocalDate.MAX }
+            "brand" -> l.sortedBy { (it.brandName ?: it.brandSlug).lowercase() }
+            else -> l
         }
-        val l = list
-        if (failed) ErrorState("Couldn't reach OnRoad. Check your connection.") { tick++ }
-        else if (l == null) Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) }
-        else if (l.isEmpty()) Text("No manufacturer offers listed for $city right now.", color = Mute, modifier = Modifier.padding(20.dp))
-        else {
-            val brands = listOf("all" to "All") + l.mapNotNull { o -> o.brandName?.let { o.brandSlug to it } }.distinct()
-            Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { Pills(brands.take(12), brand) { brand = it } }
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(l.filter { brand == "all" || it.brandSlug == brand }, key = { it.id }) { o ->
-                    OfferCard(o, { vm.prefs.img(it, 480) }, Modifier.fillMaxWidth()) {
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
+            item {
+                ScreenHeader("Offers & festive deals", "Live from manufacturers · $city", onBack)
+                // two-wheeler makers don't publish dated offers online; deals are given at the showroom
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(Panel2).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.LocalOffer, null, tint = Amber, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(10.dp))
+                    Text("Bike and scooter makers don't publish offers online. Open a bike and tap Get dealer quotes to get showroom deals.",
+                        color = Mute, style = MaterialTheme.typography.bodySmall)
+                }
+                if (brands.size > 1) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(brands, key = { it.slug }) { b -> BrandLogo(b, b.slug in f.brands, vm.prefs.img(b.logo, 200)) { f = f.copy(brands = f.brands.toggle(b.slug)) } }
+                }
+                val active = buildList<Pair<String, () -> Unit>> {
+                    f.brands.forEach { s -> add((brands.firstOrNull { it.slug == s }?.name ?: s) to { f = f.copy(brands = f.brands - s) }) }
+                    f.kinds.forEach { k -> add(k to { f = f.copy(kinds = f.kinds - k) }) }
+                    f.benefit?.let { id -> add(BENEFITS.first { it.first == id }.second to { f = f.copy(benefit = null) }) }
+                    if (f.endingSoon) add("Ending in 7 days" to { f = f.copy(endingSoon = false) })
+                }
+                if (active.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(active, key = { it.first }) { (label, remove) ->
+                        Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .clickable { remove() }.padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(label, style = MaterialTheme.typography.labelLarge, color = Ink); Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Outlined.Close, "Remove", tint = Ignition, modifier = Modifier.size(15.dp))
+                        }
+                    }
+                    item { Text("Clear all", color = Ignition, style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.clickable { f = OfferFilters() }.padding(horizontal = 6.dp, vertical = 7.dp)) }
+                }
+                shown?.let { Text("${it.size} offer${if (it.size == 1) "" else "s"}", style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp)) }
+            }
+            val l = shown
+            when {
+                failed -> item { ErrorState("Couldn't reach OnRoad. Check your connection.") { tick++ } }
+                l == null -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
+                all.isEmpty() -> item { Text("No manufacturer offers listed for $city right now.", color = Mute, modifier = Modifier.padding(20.dp)) }
+                l.isEmpty() -> item {
+                    Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("No offer matches all of these.", color = Mute)
+                        TextButton({ f = OfferFilters() }) { Text("Clear filters", color = Ignition) }
+                    }
+                }
+                else -> items(l, key = { it.id }) { o ->
+                    OfferCard(o, { vm.prefs.img(it, 480) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
                         o.sourceUrl?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
                 }
+            }
+        }
+        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
+            .navigationBarsPadding().padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 10.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).border(1.dp, Line, RoundedCornerShape(50))) {
+                BarButton(Icons.AutoMirrored.Outlined.Sort, "Sort", OFFER_SORTS.first { it.first == sort }.second, Modifier.weight(1f)) { sheet = "sort" }
+                Box(Modifier.width(1.dp).height(44.dp).background(Line).align(Alignment.CenterVertically))
+                BarButton(Icons.Outlined.Tune, "Filters", if (f.count > 0) "${f.count} applied" else "None", Modifier.weight(1f), badge = f.count) { sheet = "filters" }
+            }
+        }
+    }
+
+    if (sheet == "sort") androidx.compose.material3.ModalBottomSheet({ sheet = null }, containerColor = Panel) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
+            Text("Sort offers by", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
+            OFFER_SORTS.forEach { (k, lab) ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { sort = k; sheet = null }.padding(vertical = 14.dp, horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(lab, Modifier.weight(1f), fontWeight = if (sort == k) FontWeight.SemiBold else FontWeight.Normal, color = if (sort == k) Ignition else Ink)
+                    if (sort == k) Icon(Icons.Outlined.Check, null, tint = Ignition)
+                }
+            }
+        }
+    }
+    if (sheet == "filters") {
+        val state = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        androidx.compose.material3.ModalBottomSheet({ sheet = null }, sheetState = state, containerColor = Panel) {
+            OfferFilterSheet(all, f, brands, { vm.prefs.img(it, 200) }, onChange = { f = it }) { sheet = null }
+        }
+    }
+}
+
+@Composable
+private fun OfferFilterSheet(all: List<OfferItem>, f0: OfferFilters, brands: List<com.onroad.app.data.Brand>, logo: (String?) -> String?,
+                             onChange: (OfferFilters) -> Unit, onDone: () -> Unit) {
+    var f by remember { mutableStateOf(f0) }
+    var cat by remember { mutableStateOf("Brand") }
+    val cats = listOf("Brand", "Offer type", "Benefit", "Validity")
+    fun set(n: OfferFilters) { f = n; onChange(n) }
+    fun count(skip: String, test: (OfferItem) -> Boolean) = all.count { offerMatches(it, f, skip) && test(it) }
+    val total = all.count { offerMatches(it, f) }
+    val kinds = all.map { kindLabel(it.kind) }.distinct().sorted()
+    Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Filter offers", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            if (f.count > 0) TextButton({ set(OfferFilters()) }) { Text("Clear all", color = Ignition) }
+        }
+        Row(Modifier.weight(1f)) {
+            Column(Modifier.width(112.dp).fillMaxHeight().background(Night)) {
+                cats.forEach { c ->
+                    val on = when (c) { "Brand" -> f.brands.isNotEmpty(); "Offer type" -> f.kinds.isNotEmpty(); "Benefit" -> f.benefit != null; else -> f.endingSoon }
+                    Row(Modifier.fillMaxWidth().background(if (cat == c) Panel else Color.Transparent).clickable { cat = c }, verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.width(3.dp).height(48.dp).background(if (cat == c) Ignition else Color.Transparent))
+                        Text(c, Modifier.weight(1f).padding(start = 13.dp), fontWeight = if (cat == c) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (cat == c) Ink else Mute, style = MaterialTheme.typography.bodyMedium)
+                        if (on) Box(Modifier.padding(end = 10.dp).size(7.dp).clip(CircleShape).background(Ignition))
+                    }
+                }
+            }
+            Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                when (cat) {
+                    "Brand" -> FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        brands.forEach { b ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                BrandLogo(b, b.slug in f.brands, logo(b.logo)) { set(f.copy(brands = f.brands.toggle(b.slug))) }
+                                Text("${count("brand") { it.brandSlug == b.slug }}", style = MaterialTheme.typography.labelSmall, color = Mute)
+                            }
+                        }
+                    }
+                    "Offer type" -> kinds.forEach { k -> OptionCard(k, null, count("kind") { kindLabel(it.kind) == k }, k in f.kinds) { set(f.copy(kinds = f.kinds.toggle(k))) } }
+                    "Benefit" -> BENEFITS.forEach { (id, lab, r) ->
+                        OptionCard(lab, null, count("benefit") { it.amountInr != null && it.amountInr in r }, f.benefit == id, radio = true) {
+                            set(f.copy(benefit = if (f.benefit == id) null else id))
+                        }
+                    }
+                    else -> OptionCard("Ending in the next 7 days", "Grab these before they lapse",
+                        count("ending") { o -> offerDate(o.validUntil)?.let { !it.isAfter(java.time.LocalDate.now().plusDays(7)) } == true }, f.endingSoon) {
+                        set(f.copy(endingSoon = !f.endingSoon))
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 16.dp, vertical = 12.dp).navigationBarsPadding(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("$total", style = MaterialTheme.typography.titleLarge)
+                Text("offers", color = Mute, style = MaterialTheme.typography.bodySmall)
+            }
+            Button(onDone, Modifier.height(50.dp), enabled = total > 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+                Text(if (total > 0) "Show offers" else "No matches", fontWeight = FontWeight.SemiBold)
             }
         }
     }

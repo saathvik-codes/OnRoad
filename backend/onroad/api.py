@@ -699,6 +699,11 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
     known = (one("SELECT 1 AS x FROM models WHERE image_url = ?", (u,)) or one("SELECT 1 AS x FROM variants WHERE image_url = ?", (u,))
              or one("SELECT 1 AS x FROM feature_images WHERE image_url = ?", (u,)))
     if not known:
+        try:                                      # model photo galleries (gallery_sync)
+            known = one("SELECT 1 AS x FROM model_gallery WHERE url = ?", (u,))
+        except Exception:
+            known = None
+    if not known:
         raise HTTPException(404, "Unknown image")
     try:
         f = _img_file(u, w)
