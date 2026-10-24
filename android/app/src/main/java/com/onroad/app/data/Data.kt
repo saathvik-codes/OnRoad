@@ -72,7 +72,8 @@ import javax.inject.Singleton
     val maxPct: Double? = null, val sourceUrl: String = "")
 @Serializable data class Reco(val id: String, val name: String, val brand: String = "", val brandSlug: String = "", val bodyType: String? = null,
     val imageUrl: String? = null, val fromInr: Long? = null, val matchScore: Int = 0, val reasons: List<String> = emptyList(),
-    val variant: String? = null, val variantId: String? = null, val transmission: String? = null, val crashStars: Int? = null)
+    val variant: String? = null, val variantId: String? = null, val transmission: String? = null, val crashStars: Int? = null,
+    val warnings: List<String> = emptyList())
 @Serializable data class SaveIn(val variantId: String, val city: String, val targetInr: Long? = null)
 @Serializable data class SavedCar(val variantId: String, val variant: String = "", val model: String = "", val modelId: String = "",
     val brand: String = "", val imageUrl: String? = null, val city: String = "")

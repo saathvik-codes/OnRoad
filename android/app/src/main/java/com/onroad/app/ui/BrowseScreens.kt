@@ -82,7 +82,7 @@ fun BrandScreen(slug: String, name: String, onModel: (String) -> Unit, onBack: (
 @Composable
 fun ModelCard(m: ModelSummary, img: String?, onClick: () -> Unit) = Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable(onClick = onClick), pad = 14) {
     Column {
-        AsyncImage(img, m.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().aspectRatio(16 / 9f))
+        VehicleImage(img, m.name, Modifier.fillMaxWidth().aspectRatio(16 / 9f))
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(m.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

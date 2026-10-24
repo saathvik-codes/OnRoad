@@ -68,7 +68,7 @@ class KawasakiAdapter(BrandAdapter):
             rows = table_rows(spec_html[:200000])
             cc = next((re.search(r"(\d+(?:\.\d+)?)", clean(v)) for k, v in rows if "displacement" in clean(k).lower()), None)
             out.append({"name": name, "url": BASE + path, "price": inr(price.group(1)) if price else None,
-                        "image": meta(page, "og:image"), "rows": rows, "body": _body(path, name),
+                        "image": _hero_image(page), "rows": rows, "body": _body(path, name),
                         "cc": int(round(float(cc.group(1)))) if cc else None})
         self._data = out
         return out
@@ -100,3 +100,13 @@ class KawasakiAdapter(BrandAdapter):
 
 
 ADAPTER = KawasakiAdapter()
+
+
+def _hero_image(page: str) -> str | None:
+    """og:image, unless it's Kawasaki's generic placeholder: then the first photo of the model's own product gallery."""
+    og = meta(page, "og:image")
+    if og and "placeholder" not in og:
+        return og
+    m = re.search(r"/content/dam/products/pim/gallery/[^\"' ]+?\.(?:jpg|png|webp)/_jcr_content/renditions/cq5dam\.web\.1280\.1280\.(?:png|jpeg)", page)
+    return BASE + m.group(0) if m else None
+

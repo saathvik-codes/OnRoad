@@ -126,13 +126,18 @@ class MainActivity : ComponentActivity() {
                         onCity = { nav.navigate("city") }, onGuide = { nav.navigate("guide") }, onShowrooms = { nav.navigate("showrooms") },
                         onOffers = { nav.navigate("offers") }, onFinder = { nav.navigate("finder") }, onCalc = { nav.navigate("calc") }) }
                     composable("explore") { ExploreScreen(onModel = { nav.navigate("model/${enc(it)}") }, onSearch = { nav.navigate("search") }) }
+                    composable("explore-budget/{type}/{budget}") { e ->
+                        ExploreScreen(onModel = { nav.navigate("model/${enc(it)}") }, onSearch = { nav.navigate("search") },
+                            initType = e.arguments?.getString("type") ?: "car", initBudget = e.arguments?.getString("budget"))
+                    }
                     composable("compare") { com.onroad.app.ui.CompareScreen(onBack = { nav.popBackStack() }, onModel = { nav.navigate("model/${enc(it)}") }) }
                     composable("guide") { GuideScreen(onBack = { nav.popBackStack() }) }
                     composable("home") {
                         HomeScreen(onBrand = { nav.navigate("brand/${it.slug}/${enc(it.name)}") }, onModel = { nav.navigate("model/${enc(it)}") },
                             onSearch = { nav.navigate("search") }, onCity = { nav.navigate("city") }, onCalc = { nav.navigate("calc") }, onAccount = { nav.navigate("account") },
                             onOffers = { nav.navigate("offers") }, onFinder = { nav.navigate("finder") }, onShowrooms = { nav.navigate("showrooms") },
-                            onCompare = { nav.navigate("compare") }, onGuide = { nav.navigate("guide") })
+                            onCompare = { nav.navigate("compare") }, onGuide = { nav.navigate("guide") },
+                            onBudget = { t, b -> nav.navigate("explore-budget/$t/$b") })
                     }
                     composable("brand/{slug}/{name}") { e ->
                         BrandScreen(e.arguments!!.getString("slug")!!, URLDecoder.decode(e.arguments!!.getString("name")!!, "UTF-8"),

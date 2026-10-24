@@ -62,7 +62,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeState(val type: String = "car", val brands: List<Brand> = emptyList(), val popular: List<ModelSummary> = emptyList(),
-                     val offers: List<com.onroad.app.data.OfferItem> = emptyList(),
+                     val offers: List<com.onroad.app.data.OfferItem> = emptyList(), val bands: List<com.onroad.app.data.Band> = emptyList(),
                      val loading: Boolean = true, val error: String? = null)
 
 @HiltViewModel
@@ -78,7 +78,8 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
             .onSuccess { (b, p) ->
                 val bset = b.map { it.slug }.toSet()
                 val offers = runCatching { api.offers(city, 40) }.getOrElse { emptyList() }.filter { it.brandSlug in bset }
-                _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, false)
+                val bands = runCatching { api.bands() }.getOrElse { emptyList() }
+                _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, bands, false)
             }
             .onFailure { _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check your internet connection.") }
     }
@@ -86,7 +87,7 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
 
 @Composable
 fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: () -> Unit, onCity: () -> Unit, onCalc: () -> Unit, onAccount: () -> Unit, onOffers: () -> Unit, onFinder: () -> Unit, onShowrooms: () -> Unit,
-               onCompare: () -> Unit, onGuide: () -> Unit, vm: HomeVM = hiltViewModel()) {
+               onCompare: () -> Unit, onGuide: () -> Unit, onBudget: (type: String, budget: String) -> Unit, vm: HomeVM = hiltViewModel()) {
     val s by vm.s.collectAsStateWithLifecycle()
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
@@ -141,12 +142,15 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                         Text("See all", color = Ignition, modifier = Modifier.clickable(onClick = onOffers).padding(6.dp))
                     }
                     Spacer(Modifier.height(10.dp))
-                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(s.offers.take(8).size) { i ->
-                            val o = s.offers[i]
-                            OfferCard(o, vm.prefs.img(o.modelImage, 480), Modifier.width(300.dp)) { onOffers() }
-                        }
-                    }
+                    OffersCarousel(s.offers.take(8), { vm.prefs.img(it, 480) }) { onOffers() }
+                    Spacer(Modifier.height(22.dp))
+                }
+                val chips = if (s.type == "bike") BIKE_BUDGET_CHIPS else s.bands.map { BudgetChip(it.id, it.label, it.hint) }
+                if (chips.isNotEmpty()) {
+                    Text("Shop by budget", style = MaterialTheme.typography.titleLarge)
+                    Text("On-road prices for $city inside", color = Mute, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(10.dp))
+                    BudgetRow(chips) { onBudget(s.type, it) }
                     Spacer(Modifier.height(22.dp))
                 }
                 Text("Most bought in India", style = MaterialTheme.typography.titleLarge)
@@ -162,7 +166,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
 @Composable
 private fun PopularRow(m: ModelSummary, img: String?, onClick: () -> Unit) = Tile(Modifier.fillMaxWidth().clickable(onClick = onClick), pad = 12) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        AsyncImage(img, m.name, contentScale = ContentScale.Fit, modifier = Modifier.width(130.dp).aspectRatio(16 / 10f))
+        VehicleImage(img, m.name, Modifier.width(130.dp).aspectRatio(16 / 10f))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             m.salesRank?.let { Chip("#$it in India", Ignition) }

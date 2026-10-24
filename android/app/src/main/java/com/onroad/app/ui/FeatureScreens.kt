@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -92,7 +93,7 @@ fun Pills(options: List<Pair<String, String>>, sel: String, onSel: (String) -> U
 fun OfferCard(o: OfferItem, img: String?, modifier: Modifier = Modifier, onOpen: () -> Unit) = Tile(modifier.clickable(onClick = onOpen), pad = 14) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (img != null) AsyncImage(img, o.modelName, contentScale = ContentScale.Fit, modifier = Modifier.width(96.dp).aspectRatio(16 / 10f))
+            if (img != null) VehicleImage(img, o.modelName, Modifier.width(96.dp).aspectRatio(16 / 10f))
             else Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(Ignition.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.LocalOffer, null, tint = Ignition)
             }
@@ -201,7 +202,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
                     Tile(Modifier.fillMaxWidth().clickable { onModel(x.id) }, pad = 14) {
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(vm.prefs.img(x.imageUrl, 480), x.name, contentScale = ContentScale.Fit, modifier = Modifier.width(110.dp).aspectRatio(16 / 10f))
+                                VehicleImage(vm.prefs.img(x.imageUrl, 480), x.name, Modifier.width(110.dp).aspectRatio(16 / 10f))
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Chip(if (i == 0) "Best match · ${x.matchScore}%" else "${x.matchScore}% match", if (i == 0) Ignition else Electric)
@@ -214,6 +215,13 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
                                 Row(Modifier.padding(vertical = 2.dp)) {
                                     Icon(Icons.Outlined.CheckCircle, null, tint = Good, modifier = Modifier.size(16.dp).padding(top = 2.dp)); Spacer(Modifier.width(6.dp))
                                     Text(reason, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                            // things to weigh before choosing it (e.g. a weak official crash rating)
+                            x.warnings.forEach { w ->
+                                Row(Modifier.padding(vertical = 2.dp)) {
+                                    Icon(Icons.Outlined.WarningAmber, null, tint = Amber, modifier = Modifier.size(16.dp).padding(top = 2.dp)); Spacer(Modifier.width(6.dp))
+                                    Text(w, style = MaterialTheme.typography.bodyMedium, color = Amber)
                                 }
                             }
                         }

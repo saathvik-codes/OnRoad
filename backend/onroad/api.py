@@ -712,7 +712,7 @@ def recommendations(city: str = "Hyderabad", vehicle_type: str = "car", usage: s
         out.append({"id": r["model_id"], "name": r["model"], "slug": slug, "brand_slug": brand_slug, "brand": r["brand"],
                     "body_type": m.get("body_type"), "image_url": r["image_url"], "logo": _logo_url(brand_slug),
                     "from_inr": r["onroad_inr"], "to_inr": r["onroad_inr"], "fuels": r["fuel"], "variants": 1,
-                    "match_score": r["score"], "reasons": r["reasons"], "variant": r["variant"], "variant_id": r["variant_id"],
+                    "match_score": r["score"], "reasons": r["reasons"], "warnings": r.get("warnings", []), "variant": r["variant"], "variant_id": r["variant_id"],
                     "transmission": r["transmission"], "crash_stars": r["crash_stars"], "efficiency": r["efficiency"]})
     return out
 

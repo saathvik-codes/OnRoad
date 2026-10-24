@@ -67,10 +67,11 @@ private val SORTS = listOf("popular" to "Most bought", "price" to "Price: low to
 
 /** Browse every listed model: cars or bikes, filtered by budget, brand, body type and fuel. */
 @Composable
-fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, vm: BrowseVM = hiltViewModel()) {
+fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: String = "car", initBudget: String? = null,
+                  vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
-    var type by remember { mutableStateOf("car") }
-    var budget by remember { mutableStateOf<String?>(null) }
+    var type by remember { mutableStateOf(initType) }
+    var budget by remember { mutableStateOf(initBudget) }
     var brand by remember { mutableStateOf<String?>(null) }
     var body by remember { mutableStateOf<String?>(null) }
     var fuel by remember { mutableStateOf<String?>(null) }
