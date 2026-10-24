@@ -26,7 +26,8 @@ SPEC = {"Engine": ("Engine", "displacement", "Displacement"), "Power": ("Engine"
 
 
 def _n(s: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+    """Comparable model name: "New Destini 125" and "Destini 125" are one scooter."""
+    return re.sub(r"^(?:new|all ?new|the)", "", re.sub(r"[^a-z0-9]", "", (s or "").lower()))
 
 
 def _body(name: str, kind: str, electric: bool, cc: int | None) -> str:

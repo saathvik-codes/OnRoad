@@ -40,6 +40,12 @@ def pretty(brand: str, model: str, name: str) -> str:
         if prefix and re.match(re.escape(prefix) + r"\b", s, re.I) and len(s) > len(prefix) + 1:
             s = s[len(prefix):].strip()
     s = re.sub(r"^[-–:·,\s]+", "", s)
+    s = re.sub(r"\(?\b(?:BS-?VI(?:\.2)?|BS-?6(?:\.2)?|OBD-?2B?|ODB-?2B?|E20)\b\)?", " ", s, flags=re.I)  # on every new vehicle
+    s = re.sub(r"^\(([^()]{2,12})\)\s*", r"\1 ", s)                       # "(2.7L) 4x2 AT" -> "2.7L 4x2 AT"
+    s = re.sub(r"\b(?:NON[ -]?AC|NAC)\b", "Non-AC", s, flags=re.I)
+    s = re.sub(r"\s*\[([A-Za-z][A-Za-z ]{3,40})\]", r" · \1", s)          # "[Platinum White Pearl]" -> "· Platinum White Pearl"
+    if re.search(r"\b(?:Sd|Td|Ug|SD|TD|UG)\b", s) and re.search(r"pulsar|platina|avenger|dominar|bajaj", (model + brand).lower()):
+        s = re.sub(r"\b(?:Sd|SD)\b", "Single Disc", s); s = re.sub(r"\b(?:Td|TD)\b", "Twin Disc", s); s = re.sub(r"\bUg\b", "UG", s)
     s = re.sub(r"\[(\d)S\]|\b(\d)\s?STR\b", lambda m: f"{m.group(1) or m.group(2)}-seater", s, flags=re.I)
     s = re.sub(r"\(MY(\d{4})\)", r"· MY\1", s)
     s = re.sub(r"\(RIZ[SZ]1?([A-Z0-9]{2,3})\)", lambda m: "· " + m.group(1), s)   # Ather codes: (RIZS1LR) -> · LR
@@ -48,14 +54,24 @@ def pretty(brand: str, model: str, name: str) -> str:
     s = " ".join(_word(w) for w in s.split(" "))
     if re.fullmatch(r"Starting price.*", s, re.I):
         return "Base (starting price)"
-    return s or name
+    if not s or s.lower() in ((model or "").lower(), (bare or "").lower()):
+        return "Standard"                                          # the variant is just the model
+    return s
 
 
 def display_names(brand: str, model: str, variants: list[dict], key: str = "name") -> None:
-    """Adds display_name to each variant dict in place; collisions keep the published name."""
+    """Adds display_name to each variant dict in place. Two variants that would read the same are told apart by fuel,
+    then gearbox ("HX 2 · CNG"); if even that doesn't separate them, both keep their published names."""
     out = [pretty(brand, model, v.get(key) or "") for v in variants]
-    seen: dict[str, int] = {}
-    for d in out:
-        seen[d.lower()] = seen.get(d.lower(), 0) + 1
+    def counts(xs):
+        c: dict[str, int] = {}
+        for x in xs:
+            c[x.lower()] = c.get(x.lower(), 0) + 1
+        return c
+    for field in ("fuel", "transmission"):
+        c = counts(out)
+        out = [d if c[d.lower()] == 1 or not v.get(field) or v[field].lower() in d.lower() else f"{d} · {v[field]}"
+               for v, d in zip(variants, out)]
+    c = counts(out)
     for v, d in zip(variants, out):
-        v["display_name"] = d if seen[d.lower()] == 1 else v.get(key)
+        v["display_name"] = d if c[d.lower()] == 1 else v.get(key)
