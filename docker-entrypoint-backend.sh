@@ -13,9 +13,20 @@ else
 import sqlite3, sys
 c = sqlite3.connect(sys.argv[1])
 c.execute("ATTACH '/app/data/seed.db' AS seed")
-n = c.execute("INSERT OR REPLACE INTO specs SELECT * FROM seed.specs WHERE variant_id IN (SELECT id FROM main.variants)").rowcount
+# catalogue tables only (models, variants, prices, specs, galleries, showroom matches); accounts, quotes, reviews untouched
+have = {r[0] for r in c.execute("SELECT name FROM main.sqlite_master WHERE type = 'table'")}
+seed = {r[0] for r in c.execute("SELECT name FROM seed.sqlite_master WHERE type = 'table'")}
+for t, how in (("models", "REPLACE"), ("variants", "REPLACE"), ("prices", "IGNORE"), ("specs", "REPLACE"), ("features", "IGNORE"),
+               ("model_gallery", "IGNORE"), ("dealer_places", "IGNORE")):
+    if t not in seed:
+        continue
+    if t not in have:
+        c.execute(c.execute("SELECT sql FROM seed.sqlite_master WHERE name = ?", (t,)).fetchone()[0])
+    cols = [r[1] for r in c.execute(f"PRAGMA main.table_info({t})")]
+    common = [x for x in cols if x in {r[1] for r in c.execute(f"PRAGMA seed.table_info({t})")}]
+    n = c.execute(f"INSERT OR {how} INTO main.{t} ({','.join(common)}) SELECT {','.join(common)} FROM seed.{t}").rowcount
+    print(f"[entrypoint] merged {n} {t} rows from seed")
 c.commit()
-print(f"[entrypoint] merged {n} spec rows from seed")
 PY
 fi
 mkdir -p "${IMG_CACHE:-$(dirname "$DB_PATH")/img_cache}"
