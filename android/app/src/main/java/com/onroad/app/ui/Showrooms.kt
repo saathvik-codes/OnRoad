@@ -281,7 +281,7 @@ private fun ShowroomCard(d: NearDealer, vm: BrowseVM, call: () -> Unit, go: () -
 /** A buyer rates the showroom they dealt with: overall stars, price honesty, add-on pressure, delivery. Needs sign-in. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun RateSheet(d: NearDealer, vm: BrowseVM, onDone: (Boolean) -> Unit) {
+internal fun RateSheet(d: NearDealer, vm: BrowseVM, onDone: (Boolean) -> Unit) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val signedIn = vm.prefs.account.value != null || vm.prefs.session != null
     var stars by remember { mutableIntStateOf(0) }

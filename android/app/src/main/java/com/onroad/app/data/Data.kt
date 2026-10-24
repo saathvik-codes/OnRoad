@@ -42,7 +42,8 @@ import javax.inject.Singleton
     val priceCity: String? = null, val priceSource: String? = null, val onroad: Breakdown? = null, val imageUrl: String? = null)
 
 @Serializable data class Dealer(val id: String, val name: String, val address: String = "", val phone: String? = null,
-    val lat: Double? = null, val lng: Double? = null, val kind: String = "", val distanceKm: Double? = null, val city: String? = null)
+    val lat: Double? = null, val lng: Double? = null, val kind: String = "", val distanceKm: Double? = null, val city: String? = null,
+    val onroadRating: Double? = null, val onroadCount: Int = 0, val googleRating: Double? = null, val googleCount: Int? = null)
 
 @Serializable data class Offer(val title: String, val amountInr: Long? = null, val details: String = "", val validUntil: String? = null,
     val kind: String? = null, val conditions: String? = null, val sourceUrl: String? = null)

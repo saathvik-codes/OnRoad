@@ -61,6 +61,7 @@ private enum class Tab(val label: String) { Price("On-road price"), Emi("EMI & l
 @Composable
 fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onModel: (String) -> Unit = {}, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
+    var rateDealer by remember { mutableStateOf<com.onroad.app.data.Dealer?>(null) }
     var m by remember { mutableStateOf<ModelDetail?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
     var sel by remember { mutableStateOf<String?>(null) }
@@ -188,6 +189,14 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                         Column(Modifier.weight(1f)) {
                             Text(d.name, style = MaterialTheme.typography.titleMedium); Text(d.address, color = Mute, maxLines = 2)
                             d.distanceKm?.let { Text("%.1f km away".format(it), color = Electric, style = MaterialTheme.typography.labelLarge) }
+                            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                d.googleRating?.let { g -> Text("★ %.1f".format(g), color = Amber, fontWeight = FontWeight.Bold)
+                                    Text(" Google${d.googleCount?.let { " (%,d)".format(it) } ?: ""}   ", color = Mute, style = MaterialTheme.typography.bodySmall) }
+                                d.onroadRating?.takeIf { d.onroadCount > 0 }?.let { r -> Text("★ %.1f".format(r), color = Good, fontWeight = FontWeight.Bold)
+                                    Text(" ${d.onroadCount} OnRoad buyer${if (d.onroadCount > 1) "s" else ""}   ", color = Mute, style = MaterialTheme.typography.bodySmall) }
+                                Text("Rate", color = Ignition, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable { rateDealer = d })
+                            }
                         }
                         if (d.lat != null && d.lng != null) IconButton({ ctx.startActivity(Intent(Intent.ACTION_VIEW,
                             Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}"))) }) { Icon(Icons.Outlined.Directions, "Directions", tint = Electric) }
@@ -208,6 +217,11 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             }
         }
         item { SimilarRow(model, city, vm, onOpen = onModel) }
+    }
+    rateDealer?.let { d ->
+        RateSheet(com.onroad.app.data.NearDealer(d.id, model.brandSlug, model.brandName, d.name, d.address, d.city, d.phone, d.lat, d.lng), vm) { posted ->
+            rateDealer = null; if (posted) retry++
+        }
     }
     if (askQuote) variant?.let { v -> QuoteSheet(v.id, v.name, city, onClose = { askQuote = false }, vm = vm) }
 }
