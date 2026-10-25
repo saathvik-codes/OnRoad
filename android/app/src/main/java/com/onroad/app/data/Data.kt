@@ -189,7 +189,15 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getBoolean("alerts", true)
         set(v) { sp.edit().putBoolean("alerts", v).apply() }
 
-    fun server(): String = if (BuildConfig.DEBUG) sp.getString("server", null) ?: BuildConfig.DEFAULT_SERVER else BuildConfig.DEFAULT_SERVER
+    // release: always the live API. Debug: the local API on the emulator and the live
+    // API on a real phone (10.0.2.2 only exists inside the emulator)
+    fun server(): String = if (!BuildConfig.DEBUG) BuildConfig.DEFAULT_SERVER
+        else if (onEmulator) BuildConfig.DEFAULT_SERVER else BuildConfig.LIVE_SERVER   // old saved test addresses are ignored
+
+    private val onEmulator: Boolean by lazy {
+        val b = android.os.Build.FINGERPRINT + android.os.Build.MODEL + android.os.Build.PRODUCT + android.os.Build.HARDWARE
+        listOf("generic", "emulator", "sdk_gphone", "ranchu", "goldfish", "Android SDK built for").any { b.contains(it, ignoreCase = true) }
+    }
     fun setServer(url: String) = sp.edit().putString("server", url.trim().trimEnd('/')).apply()
 
     /** Manufacturer images go through the API's resizing cache, exactly like the website. */
