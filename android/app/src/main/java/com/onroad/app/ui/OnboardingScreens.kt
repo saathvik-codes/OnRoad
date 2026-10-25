@@ -94,10 +94,16 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
     val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc, problem ->
         scope.launch {
             if (loc == null) { locMsg = (problem ?: com.onroad.app.data.LocationProblem.NoFix).message; return@launch }
-            val cities = runCatching { vm.api.cities() }.getOrElse { emptyList() }
+            locMsg = "Got your location. Finding your city…"
+            var cities = emptyList<com.onroad.app.data.City>()
+            for (i in 0 until 4) {                                  // the server may be waking up: keep trying briefly
+                cities = runCatching { vm.api.cities() }.getOrElse { emptyList() }
+                if (cities.isNotEmpty()) break
+                kotlinx.coroutines.delay(4000)
+            }
             val near = cities.minByOrNull { com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, it.lat, it.lng) }
-            if (near != null) { vm.prefs.setCity(near.name); locMsg = "Showrooms will be sorted by distance from you." }
-            else locMsg = "Couldn't reach OnRoad. Check your connection."
+            locMsg = if (near != null) { vm.prefs.setCity(near.name); "You're near ${near.name}. Showrooms are sorted by distance from you." }
+                     else "Location saved. We'll pick your city as soon as OnRoad connects."
         }
     }
     Column(Modifier.fillMaxSize().background(Night).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {

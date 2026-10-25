@@ -187,7 +187,7 @@ final class API {
     private init() {
         let c = URLSessionConfiguration.default
         c.httpCookieStorage = HTTPCookieStorage.shared       // the login cookie, kept across launches
-        c.timeoutIntervalForRequest = 60
+        c.timeoutIntervalForRequest = 90
         session = URLSession(configuration: c)
     }
 
@@ -201,9 +201,17 @@ final class API {
         return URL(string: url, relativeTo: base)
     }
 
+    /// Reads retry a few times: the API sleeps when idle (free hosting) and is slow or answers 502-504 while waking.
     func get<T: Decodable>(_ path: String, _ query: [String: String?] = [:]) async throws -> T {
         var c = URLComponents(url: base.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         c.queryItems = query.compactMap { k, v in v.map { URLQueryItem(name: k, value: $0) } }
+        var wait: UInt64 = 3_000_000_000
+        for _ in 0..<3 {
+            do { return try await send(URLRequest(url: c.url!)) }
+            catch APIError.http(let code, _) where (502...504).contains(code) { }
+            catch let e as URLError where e.code != .cancelled { }
+            try await Task.sleep(nanoseconds: wait); wait *= 2
+        }
         return try await send(URLRequest(url: c.url!))
     }
 
