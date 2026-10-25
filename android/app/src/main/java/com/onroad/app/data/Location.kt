@@ -47,12 +47,13 @@ suspend fun currentLocation(ctx: Context): Pair<Location?, LocationProblem?> {
     if (!hasPermission(ctx)) return null to LocationProblem.Denied
     val lm = ctx.getSystemService(LocationManager::class.java)
     if (!LocationManagerCompat.isLocationEnabled(lm)) return null to LocationProblem.Off
-    val fresh = { l: Location? -> l != null && System.currentTimeMillis() - l.time < 10 * 60_000 }
+    // a position from the last 30 minutes is good enough to pick a city and sort showrooms (what Maps does)
+    val fresh = { l: Location? -> l != null && System.currentTimeMillis() - l.time < 30 * 60_000 }
 
     if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx) == ConnectionResult.SUCCESS) {
         val fused = LocationServices.getFusedLocationProviderClient(ctx)
         runCatching { fused.lastLocation.await() }.getOrNull()?.let { if (fresh(it)) return it to null }
-        for ((priority, wait) in listOf(Priority.PRIORITY_BALANCED_POWER_ACCURACY to 12_000L, Priority.PRIORITY_HIGH_ACCURACY to 20_000L)) {
+        for ((priority, wait) in listOf(Priority.PRIORITY_BALANCED_POWER_ACCURACY to 6_000L, Priority.PRIORITY_HIGH_ACCURACY to 12_000L)) {
             val cts = CancellationTokenSource()
             val fix = withTimeoutOrNull(wait) { runCatching { fused.getCurrentLocation(priority, cts.token).await() }.getOrNull() }
             cts.cancel()

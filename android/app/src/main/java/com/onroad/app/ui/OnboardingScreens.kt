@@ -69,6 +69,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.onroad.app.data.LoginIn
 import com.onroad.app.data.SignupIn
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
@@ -91,15 +92,17 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     val last = pager.currentPage == SLIDES.lastIndex
     var locMsg by remember { mutableStateOf<String?>(null) }
+    // the city list loads while this screen is open, so picking the nearest city is instant
+    val citiesAhead = remember { scope.async { runCatching { vm.api.cities() }.getOrElse { emptyList() } } }
     val locate = com.onroad.app.data.rememberLocator(vm.prefs) { loc, problem ->
         scope.launch {
             if (loc == null) { locMsg = (problem ?: com.onroad.app.data.LocationProblem.NoFix).message; return@launch }
             locMsg = "Got your location. Finding your city…"
-            var cities = emptyList<com.onroad.app.data.City>()
-            for (i in 0 until 4) {                                  // the server may be waking up: keep trying briefly
-                cities = runCatching { vm.api.cities() }.getOrElse { emptyList() }
+            var cities = citiesAhead.await()                        // fetched while the phone was locating
+            for (i in 0 until 3) {                                  // the server may be waking up: keep trying briefly
                 if (cities.isNotEmpty()) break
                 kotlinx.coroutines.delay(4000)
+                cities = runCatching { vm.api.cities() }.getOrElse { emptyList() }
             }
             val near = cities.minByOrNull { com.onroad.app.data.kmBetween(loc.latitude, loc.longitude, it.lat, it.lng) }
             locMsg = if (near != null) { vm.prefs.setCity(near.name); "You're near ${near.name}. Showrooms are sorted by distance from you." }
