@@ -198,7 +198,8 @@ class GoogleIn(BaseModel):
 # Google OAuth client IDs whose sign-in tokens we accept (web client first; the Android app asks Google for a token
 # issued to the web client too). GOOGLE_CLIENT_IDS="id1,id2" overrides.
 GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv("GOOGLE_CLIENT_IDS",
-                     "725690528227-vtrohp3ga3aguno26glvdfefu4lacecu.apps.googleusercontent.com").split(",") if x.strip()]
+                     "1072418446057-pmhgl0qj23soqt5vmg2huhprejc14p4o.apps.googleusercontent.com,"
+                     "1072418446057-hc9bck9eis4v6fgf5nmcieggrfbbqf04.apps.googleusercontent.com").split(",") if x.strip()]
 
 
 @app.get("/api/auth/google/config")

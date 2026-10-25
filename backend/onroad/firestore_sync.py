@@ -42,6 +42,22 @@ def _creds():
     return None
 
 
+def _database(project: str, cr) -> str:
+    """FIRESTORE_DATABASE if set; else "(default)" if the project has it, else its only database (the console can
+    create one named e.g. "default")."""
+    if os.getenv("FIRESTORE_DATABASE"):
+        return os.environ["FIRESTORE_DATABASE"]
+    try:
+        from google.auth.transport.requests import AuthorizedSession
+        dbs = [d["name"].rsplit("/", 1)[-1] for d in AuthorizedSession(cr).get(
+            f"https://firestore.googleapis.com/v1/projects/{project}/databases", timeout=15).json().get("databases", [])]
+        if dbs and "(default)" not in dbs:
+            return dbs[0]
+    except Exception:
+        pass
+    return "(default)"
+
+
 def client():
     global _client
     if _client is None:
@@ -50,7 +66,8 @@ def client():
             return None
         from google.cloud import firestore
         from google.oauth2 import service_account
-        _client = firestore.Client(project=info["project_id"], credentials=service_account.Credentials.from_service_account_info(info))
+        cr = service_account.Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        _client = firestore.Client(project=info["project_id"], credentials=cr, database=_database(info["project_id"], cr))
     return _client
 
 

@@ -12,7 +12,20 @@
           "package_name": "com.onroad.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1072418446057-9ld6qlce36oe9c8601t5qe83hbt7n8ro.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onroad.app",
+            "certificate_hash": "e44a025a3c50bdabe8810bf73cd767f11a1bba57"
+          }
+        },
+        {
+          "client_id": "1072418446057-pmhgl0qj23soqt5vmg2huhprejc14p4o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDFvvDZpf5N6kG5WJ0i-RbkPlA_eZHSjK8"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1072418446057-pmhgl0qj23soqt5vmg2huhprejc14p4o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1072418446057-hc9bck9eis4v6fgf5nmcieggrfbbqf04.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.onroad.app"
+              }
+            }
+          ]
         }
       }
     }

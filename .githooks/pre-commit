@@ -1,0 +1,23 @@
+#!/bin/sh
+# Refuse commits that would publish a secret. Enabled with: git config core.hooksPath .githooks
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^\.githooks/')
+[ -z "$staged" ] && exit 0
+bad=0
+for f in $staged; do
+  case "$f" in
+    *.env.example) ;;
+    *.env|*.env.*) echo "BLOCKED: $f is an env file (secrets live there)"; bad=1 ;;
+    *adminsdk*.json|*service-account*.json|*service_account*.json) echo "BLOCKED: $f looks like a service-account key"; bad=1 ;;
+  esac
+done
+# private keys, service accounts and OAuth client secrets anywhere
+if git diff --cached -U0 -- $staged | grep -E '^\+' | grep -qE '"private_key"|BEGIN (RSA |EC )?PRIVATE KEY|"type": ?"service_account"|FIREBASE_SERVICE_ACCOUNT=\{|GOCSPX-'; then
+  echo "BLOCKED: a private key, service account or Google OAuth secret is in the staged changes"; bad=1
+fi
+# Google API keys belong only in the two Firebase app configs (public by design); anywhere else they are secrets
+others=$(echo "$staged" | grep -vE '(^|/)google-services\.json$|(^|/)GoogleService-Info\.plist$')
+if [ -n "$others" ] && git diff --cached -U0 -- $others | grep -E '^\+' | grep -qE 'AIza[0-9A-Za-z_-]{35}'; then
+  echo "BLOCKED: a Google API key outside the Firebase config files"; bad=1
+fi
+[ $bad -eq 1 ] && echo "Move secrets to backend/.env (git-ignored) or Render's environment settings." && exit 1
+exit 0
