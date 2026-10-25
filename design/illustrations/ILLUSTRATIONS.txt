@@ -1,0 +1,130 @@
+ONROAD ILLUSTRATIONS - prompts for generation
+==============================================
+
+Where to put the results: this folder (onroad/design/illustrations/), using the exact file names below.
+Format: PNG with a transparent background.
+Size: 1536x1024 (landscape) unless marked "square" (1024x1024).
+Keep the same characters across images if your tool allows (the same young woman and the same young man).
+
+SHARED STYLE - add this to the end of every prompt
+--------------------------------------------------
+Soft 3D clay-render illustration, premium and minimal, in the style of a modern Indian car-buying / fintech app.
+Rounded friendly shapes, soft studio lighting, gentle shadows, matte materials. Palette: warm white, light grey,
+charcoal, with vivid orange #F2441F as the only accent colour. Indian characters with natural skin tones and modern
+casual clothes. No text, letters, numbers, rupee/dollar signs, logos or watermarks. Transparent background, subject
+centred with generous empty space around it.
+
+
+ONBOARDING (landscape 1536x1024)
+--------------------------------
+1. onb-price.png
+   A cheerful young Indian woman standing beside a sleek modern orange compact SUV, holding her phone, confident and
+   happy. A small blank price tag floats near the car.
+
+2. onb-receipt.png
+   A young Indian man holding a long paper receipt that unrolls to the floor, reading it with a relieved smile. A few
+   blank coins and a green checkmark float around. The receipt has only blank lines.
+
+3. onb-showrooms.png
+   A young Indian couple looking at a large phone showing a simple map with three orange location pins, with a small
+   modern glass-front car showroom behind them.
+
+
+EMPTY AND ERROR STATES (square 1024x1024)
+-----------------------------------------
+4. empty-garage.png
+   An empty parking spot with a soft orange outline and a small bookmark icon floating above it (no saved cars yet).
+
+5. empty-search.png
+   A friendly magnifying glass leaning against a small toy car, with a few faint dotted lines (no results).
+
+6. empty-quotes.png
+   A dealer's small desk with an empty in-tray and a paper airplane taking off (no dealer quotes yet).
+
+7. empty-offers.png
+   A small closed gift box with an orange ribbon, sitting on a soft pedestal (no offers right now).
+
+8. empty-showrooms.png
+   A single map pin standing alone on a soft rounded map tile (no showroom nearby).
+
+9. error-offline.png
+   A small car parked next to a fallen Wi-Fi signal shape, with a little traffic cone (couldn't connect).
+
+10. location-permission.png
+   A phone with a large orange location pin rising out of its screen, with tiny buildings around it.
+
+
+FEATURE HEROES (landscape 1536x1024)
+------------------------------------
+11. hero-finder.png
+   A young Indian woman at a fork in a road, with three different cars (hatchback, sedan, SUV) parked at the ends of
+   the paths (Find my car).
+
+12. hero-guide.png
+   A short winding road with milestone flags and, at the end, a car with a ribbon bow on its roof (buying guide: from
+   quote to delivery).
+
+13. hero-quote.png
+   A handshake between a young Indian buyer and a showroom salesperson, with a car key between them (get dealer quotes).
+
+14. hero-emi.png
+   A car on a soft rounded calendar with stacked coins beside it (EMI and loans).
+
+15. signin.png
+   A young Indian man waving from the driver's seat of an orange car, viewed through the open window (welcome / sign in).
+
+
+MORE SCREENS (square 1024x1024 unless noted)
+--------------------------------------------
+16. success-quote-sent.png
+   A paper airplane flying towards three small showroom buildings, with a soft orange trail (quote request sent).
+
+17. notifications-permission.png
+   A phone with a small bell ringing above it and a tiny car with a downward arrow tag beside it (price-drop alerts).
+
+18. hero-compare.png  (landscape 1536x1024)
+   Two cars side by side on a soft balance scale, one slightly higher than the other (compare cars).
+
+19. hero-calculator.png  (landscape 1536x1024)
+   A car next to a large friendly calculator, with a few blank coins and a road-tax stamp shape (on-road price
+   calculator).
+
+20. hero-showroom-rating.png  (landscape 1536x1024)
+   A young Indian woman leaving a car showroom holding new car keys, with five soft orange stars floating above her
+   (rate your showroom).
+
+21. empty-compare.png
+   Two empty dotted car outlines side by side with a small plus sign between them (nothing to compare yet).
+
+
+WEBSITE
+-------
+22. web-404.png  (landscape 1536x1024)
+   A small car at a dead-end sign on a quiet road, the driver looking at a paper map, slightly puzzled (page not found).
+
+23. web-dealer-portal.png  (landscape 1536x1024)
+   A friendly showroom salesperson at a desk with a laptop, a car on display behind them, sending a quote (dealer
+   portal sign-up).
+
+24. og-share.png  (landscape 1200x630, NOT transparent - use a clean warm-white background)
+   The orange compact SUV from onb-price.png at a slight angle on the right, plenty of empty space on the left for the
+   OnRoad wordmark to be added later. Used when someone shares an OnRoad link on WhatsApp / social media.
+
+
+STORE LISTING (Google Play / App Store)
+---------------------------------------
+25. play-feature-graphic.png  (1024x500, NOT transparent - warm-white background)
+   A wide scene: the young Indian woman and her orange SUV on the right, a soft road curving across, empty space on
+   the left for the OnRoad wordmark and a short line of text to be added later.
+
+26. store-backdrop.png  (portrait 1290x2796, NOT transparent - very soft warm-white to light-grey gradient)
+   An empty, softly lit backdrop with a subtle curved road line at the bottom. App screenshots will be placed on top
+   of it for the store listing.
+
+
+PRIORITY
+--------
+If you only do a few, start with 1-3 (onboarding), then 9 (offline) and 4 (empty garage): those are seen most.
+Next: 24 (link sharing image) and 25-26 (store listing), then the rest.
+Note: 24, 25 and 26 are the only ones WITHOUT a transparent background.
+When they are in this folder, tell me and I will convert, compress and wire them into Android, iOS and the website.

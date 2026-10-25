@@ -91,7 +91,7 @@ struct ExploreView: View {
                 if failed { ErrorView(message: "Couldn't reach OnRoad.") { Task { await load() } } }
                 else if shown == nil { ProgressView().frame(maxWidth: .infinity).padding(30) }
                 else if shown!.isEmpty {
-                    VStack { Text("Nothing matches all of these in \(state.city).").foregroundStyle(Palette.mute); Button("Clear filters") { f = Filters() } }
+                    VStack { Art(name: "empty-search"); Text("Nothing matches all of these in \(state.city).").foregroundStyle(Palette.mute); Button("Clear filters") { f = Filters() } }
                         .frame(maxWidth: .infinity).padding(28)
                 }
                 LazyVStack(spacing: 12) {

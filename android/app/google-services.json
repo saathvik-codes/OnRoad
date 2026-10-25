@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1072418446057-obooiu8snt84o7h7su2tdf9j1qf4l6tj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onroad.app",
+            "certificate_hash": "6bf393623d3f2e37c533ca99db9d5d4ff25fc104"
+          }
+        },
+        {
           "client_id": "1072418446057-pmhgl0qj23soqt5vmg2huhprejc14p4o.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -35,7 +35,7 @@ struct OffersView: View {
                 }
                 if failed { ErrorView(message: "Couldn't reach OnRoad.") { Task { await load() } } }
                 else if all == nil { ProgressView().frame(maxWidth: .infinity).padding(30) }
-                else if shown.isEmpty { Text("No manufacturer offers listed for \(state.city) right now.").foregroundStyle(Palette.mute) }
+                else if shown.isEmpty { VStack { Art(name: "empty-offers"); Text("No manufacturer offers listed for \(state.city) right now.").foregroundStyle(Palette.mute) }.frame(maxWidth: .infinity) }
                 ForEach(shown) { o in
                     Button { if let u = o.sourceUrl.flatMap(URL.init) { openURL(u) } } label: { OfferTile(o: o) }.buttonStyle(.plain)
                 }
@@ -91,7 +91,7 @@ struct ShowroomsView: View {
                 }
                 if failed { ErrorView(message: "Couldn't reach OnRoad.") { Task { await load() } } }
                 else if list == nil { ProgressView().frame(maxWidth: .infinity).padding(30) }
-                else if shown.isEmpty { Text("No listed showroom within about 300 km.").foregroundStyle(Palette.mute) }
+                else if shown.isEmpty { VStack { Art(name: "empty-showrooms"); Text("No listed showroom within about 300 km.").foregroundStyle(Palette.mute) }.frame(maxWidth: .infinity) }
                 ForEach(shown) { d in DealerCard(d: d) }
             }.padding(16)
         }

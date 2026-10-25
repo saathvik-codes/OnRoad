@@ -69,7 +69,8 @@ import com.onroad.app.data.rememberLocator
 fun ErrorState(message: String, onRetry: () -> Unit) = Column(
     Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
 ) {
-    Icon(Icons.Outlined.CloudOff, null, tint = Mute, modifier = Modifier.size(40.dp))
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    if (hasArt(ctx, "error-offline")) Art("error-offline") else Icon(Icons.Outlined.CloudOff, null, tint = Mute, modifier = Modifier.size(40.dp))
     Text(message, color = Mute, textAlign = TextAlign.Center)
     Button(onRetry, colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text("Try again", color = Ink) }
 }
@@ -164,6 +165,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             l == null -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
             l.isEmpty() -> item {
                 Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Art("empty-showrooms")
                     Text("No listed showroom within about 300 km.", color = Mute)
                     if (brand != null) TextButton({ brand = null }) { Text("Show all brands", color = Ignition) }
                 }

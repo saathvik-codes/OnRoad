@@ -313,6 +313,8 @@ private fun OnboardingArt(name: String) = Box(
     Modifier.fillMaxWidth().aspectRatio(1.25f).clip(RoundedCornerShape(24.dp)).background(Color.White).padding(22.dp),
     contentAlignment = Alignment.Center,
 ) {
-    coil3.compose.AsyncImage("file:///android_asset/onboarding/$name.svg", null, contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-        modifier = Modifier.fillMaxSize())
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val generated = "onb-$name".replace("onb-showrooms", "onb-showrooms")
+    val url = if (hasArt(ctx, generated)) "file:///android_asset/illustrations/$generated.webp" else "file:///android_asset/onboarding/$name.svg"
+    coil3.compose.AsyncImage(url, null, contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxSize())
 }

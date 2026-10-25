@@ -25,7 +25,7 @@ struct HomeView: View {
                 Text("Official prices, the full on-road bill and real dealer quotes for \(state.city).").foregroundStyle(Palette.mute)
 
                 HStack(spacing: 12) {
-                    NavigationLink { FinderView() } label: { QuickAction(icon: "sparkles", title: "Find my car") }
+                    NavigationLink { FinderView() } label: { QuickAction(icon: "car.2", title: "Find my car") }
                     NavigationLink { ShowroomsView() } label: { QuickAction(icon: "mappin.and.ellipse", title: "Showrooms") }
                     NavigationLink { OffersView() } label: { QuickAction(icon: "tag", title: "Offers") }
                 }.buttonStyle(.plain)

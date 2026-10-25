@@ -93,9 +93,23 @@ struct ErrorView: View {
     let retry: () -> Void
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: "icloud.slash").font(.largeTitle).foregroundStyle(Palette.mute)
+            if UIImage(named: "error-offline") != nil {          // generated illustration, when it has been added
+                Image("error-offline").resizable().scaledToFit().frame(height: 170)
+            } else {
+                Image(systemName: "icloud.slash").font(.largeTitle).foregroundStyle(Palette.mute)
+            }
             Text(message).foregroundStyle(Palette.mute).multilineTextAlignment(.center)
             Button("Try again", action: retry).buttonStyle(.bordered)
         }.padding(32).frame(maxWidth: .infinity)
+    }
+}
+
+
+/** An illustration from the asset catalog if it has been added (scripts/illustrations.py); nothing otherwise. */
+struct Art: View {
+    let name: String
+    var height: CGFloat = 170
+    var body: some View {
+        if UIImage(named: name) != nil { Image(name).resizable().scaledToFit().frame(height: height) }
     }
 }

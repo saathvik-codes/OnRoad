@@ -179,6 +179,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
                 r == null -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
                 r.isEmpty() -> item {
                     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Art("empty-search")
                         Text("Nothing in $city fits all of this.", color = Mute)
                         val more = (a.budget.endInclusive * 1.25f).coerceAtMost(a.maxL)
                         if (more > a.budget.endInclusive) TextButton({ a = a.copy(budget = a.budget.start..more) }) { Text("Raise budget to ${lakh(more)}", color = Ignition) }

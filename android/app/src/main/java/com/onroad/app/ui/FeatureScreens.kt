@@ -213,9 +213,10 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             when {
                 failed -> item { ErrorState("Couldn't reach OnRoad. Check your connection.") { tick++ } }
                 l == null -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
-                all.isEmpty() -> item { Text("No manufacturer offers listed for $city right now.", color = Mute, modifier = Modifier.padding(20.dp)) }
+                all.isEmpty() -> item { Art("empty-offers", Modifier.padding(top = 20.dp).size(170.dp)); Text("No manufacturer offers listed for $city right now.", color = Mute, modifier = Modifier.padding(20.dp)) }
                 l.isEmpty() -> item {
                     Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Art("empty-search")
                         Text("No offer matches all of these.", color = Mute)
                         TextButton({ f = OfferFilters() }) { Text("Clear filters", color = Ignition) }
                     }

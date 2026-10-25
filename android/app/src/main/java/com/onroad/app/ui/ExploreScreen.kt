@@ -204,6 +204,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                 shown == null -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
                 shown.isEmpty() -> item {
                     Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Art("empty-search")
                         Text("Nothing matches all of these in $city.", color = Mute)
                         TextButton({ f = Filters() }) { Text("Clear filters", color = Ignition) }
                     }

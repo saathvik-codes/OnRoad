@@ -81,3 +81,7 @@ credentials.json
 token.json
 *service-account*.json
 *-sa.json
+
+# Android release signing (key lives outside the repo, D:/dev/keys)
+keystore.properties
+android/keystore.properties
