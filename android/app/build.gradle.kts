@@ -30,7 +30,7 @@ android {
             firebaseAppDistribution {
                 artifactType = "APK"
                 serviceCredentialsFile = rootProject.file("../onroad-6c950-firebase-adminsdk-fbsvc-78d608a81d.json").path
-                testersFile = rootProject.file("../firebase/testers.txt").path      # one email per line
+                testersFile = rootProject.file("../firebase/testers.txt").path      // one email per line
                 groups = "internal-testers"
                 releaseNotes = "OnRoad test build"
             }
