@@ -1,0 +1,10 @@
+rules_version = '2';
+// OnRoad keeps its data on its own API (accounts, quotes, reviews, prices). Apps never read or write Firestore
+// directly, so every client request is refused. The server, using the Admin SDK, is not bound by these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
