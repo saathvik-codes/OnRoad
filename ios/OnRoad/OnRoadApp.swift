@@ -98,10 +98,12 @@ final class AppState: NSObject, ObservableObject, CLLocationManagerDelegate {
 struct OnRoadApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var state = AppState()
+    @AppStorage("appearance") private var appearance = "system"     // system | light | dark, picked in Profile
 
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(state).preferredColorScheme(.dark).tint(Palette.ignition)
+            RootView().environmentObject(state).tint(Palette.ignition)
+                .preferredColorScheme(appearance == "light" ? .light : appearance == "dark" ? .dark : nil)
         }
     }
 }

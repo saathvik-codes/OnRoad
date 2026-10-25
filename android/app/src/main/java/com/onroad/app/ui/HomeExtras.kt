@@ -69,7 +69,7 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
         HorizontalPager(pager, pageSpacing = 12.dp) { i ->
             val o = offers[i]
             Column(Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(26.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF3B140E), Color(0xFF1A1020), Panel)))
+                .background(Brush.linearGradient(if (IsDark) listOf(Color(0xFF3B140E), Color(0xFF1A1020), Panel) else listOf(Color(0xFFFFE6DE), Color(0xFFFFF3EF), Panel)))
                 .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }.padding(16.dp)) {
                     Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {

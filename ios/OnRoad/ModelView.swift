@@ -42,9 +42,7 @@ struct ModelView: View {
                         }.padding(.horizontal, 16)
                     }
 
-                    Button { quoting = true } label: {
-                        Text("Get dealer quotes").fontWeight(.semibold).frame(maxWidth: .infinity).padding(.vertical, 14)
-                    }.buttonStyle(.borderedProminent).padding(.horizontal, 16)
+                    KeySpecs(specs: specs)
 
                     Picker("", selection: $tab) {
                         Text("Price").tag("price"); Text("Specs").tag("specs"); Text("Safety").tag("safety"); Text("Showrooms").tag("dealers")
@@ -74,6 +72,20 @@ struct ModelView: View {
             }
         }
         .background(Palette.night)
+        .safeAreaInset(edge: .bottom) {
+            // pinned: this variant's on-road price and the main action
+            if m != nil {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("On-road · \(variant?.name ?? "")").font(.caption).foregroundStyle(Palette.mute).lineLimit(1)
+                        Text(rupees(variant?.onroad.map { $0.totalInr - $0.refundableInr } ?? variant?.exShowroomInr)).font(.title3.bold())
+                    }
+                    Spacer()
+                    Button { quoting = true } label: { Text("Get best price").fontWeight(.semibold).padding(.horizontal, 10).padding(.vertical, 6) }
+                        .buttonStyle(.borderedProminent)
+                }.padding(.horizontal, 16).padding(.vertical, 10).background(Palette.panel)
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .task(id: state.city) { await load() }
         .task(id: variant?.id) { specs = nil; if let v = variant { specs = try? await API.shared.get("api/variant-specs", ["variant_id": v.id]) } }
@@ -87,6 +99,33 @@ struct ModelView: View {
         var q: [String: String?] = ["city": state.city]
         if let c = state.coord { q["lat"] = String(c.latitude); q["lng"] = String(c.longitude) }
         do { m = try await API.shared.get("api/models/\(parts[0])/\(parts[1])", q) } catch { failed = true }
+    }
+}
+
+/// Engine, power, torque, mileage / range and seats at a glance, from the variant's official sheet.
+struct KeySpecs: View {
+    let specs: VariantSpecs?
+    static let wanted: [(String, String)] = [("Engine", "displacement|engine capacity|cubic"), ("Power", "max(imum)? ?power|^power"),
+        ("Torque", "torque"), ("Mileage", "mileage|fuel efficiency"), ("Range", "\\brange\\b"), ("Seats", "seating")]
+    var body: some View {
+        let rows = specs?.specs ?? []
+        let glance: [(String, String)] = Self.wanted.compactMap { label, rx in
+            rows.first { $0.label.range(of: rx, options: [.regularExpression, .caseInsensitive]) != nil }.map { (label, $0.value) }
+        }
+        if !glance.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(glance.indices, id: \.self) { i in
+                        let item = glance[i]
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.0.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(Palette.mute)
+                            Text(item.1).font(.subheadline.weight(.semibold)).lineLimit(2)
+                        }.frame(width: 120, alignment: .leading).padding(12).background(Palette.panel)
+                            .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.line))
+                    }
+                }.padding(.horizontal, 16)
+            }
+        }
     }
 }
 

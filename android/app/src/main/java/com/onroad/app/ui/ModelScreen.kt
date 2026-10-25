@@ -7,7 +7,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -95,11 +97,19 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     LaunchedEffect(topId) { topSpecs = topId?.let { runCatching { vm.api.specs(it) }.getOrNull() } }
     val prices = model.variants.mapNotNull { it.exShowroomInr }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+    Box(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
         item {
-            Row(Modifier.statusBarsPadding().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
-                Text(model.brandName, color = Mute)
+                Text(model.brandName, color = Mute, modifier = Modifier.weight(1f))
+                IconButton({
+                    val v = variant ?: return@IconButton
+                    if (acc == null) onSignIn() else scope.launch {
+                        runCatching { vm.api.save(com.onroad.app.data.SaveIn(v.id, city)) }
+                            .onSuccess { android.widget.Toast.makeText(ctx, "Saved to your garage. We'll alert you when the price drops.", android.widget.Toast.LENGTH_SHORT).show() }
+                    }
+                }) { Icon(Icons.Outlined.BookmarkAdd, "Save and track price", tint = Ink) }
             }
             Gallery(model.gallery.ifEmpty { listOfNotNull(model.imageUrl?.let { com.onroad.app.data.GalleryItem(it, model.name) }) },
                 variant?.imageUrl, variant?.name) { u -> vm.prefs.img(u, 1200) }
@@ -107,17 +117,16 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                 Text(model.name, style = MaterialTheme.typography.displaySmall)
                 Text(range(prices.minOrNull(), prices.maxOrNull()), style = MaterialTheme.typography.titleLarge, color = Ignition)
                 Text("Ex-showroom · ${variant?.priceCity ?: city} · ${model.variants.size} variants", color = Mute)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    androidx.compose.material3.Button(onClick = { if (acc == null) onSignIn() else askQuote = true }, Modifier.weight(1f).height(48.dp),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Ignition)) { Text("Get dealer quotes", fontWeight = FontWeight.SemiBold) }
-                    androidx.compose.material3.OutlinedButton(onClick = {
-                        val v = variant ?: return@OutlinedButton
-                        if (acc == null) onSignIn() else scope.launch {
-                            runCatching { vm.api.save(com.onroad.app.data.SaveIn(v.id, city)) }
-                                .onSuccess { android.widget.Toast.makeText(ctx, "Saved to your garage. We'll track its price.", android.widget.Toast.LENGTH_SHORT).show() }
-                        }
-                    }, Modifier.height(48.dp)) { Icon(Icons.Outlined.BookmarkAdd, "Save", tint = Ink) }
+            }
+            // key specs at a glance (engine, power, mileage / range, seats), from this variant's official sheet
+            val glance = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(specs?.specs, rx)?.let { label to it } }.take(5)
+            if (glance.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(glance, key = { it.first }) { (l, v) ->
+                    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp).width(112.dp)) {
+                        Text(l.uppercase(), style = MaterialTheme.typography.labelSmall, color = Mute)
+                        Text(v, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+                    }
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -217,6 +226,21 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             }
         }
         item { SimilarRow(model, city, vm, onOpen = onModel) }
+    }
+    // pinned: this variant's on-road price and the main action, always in reach
+    val onRoad = variant?.onroad?.let { it.totalInr - it.refundableInr }
+    Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Panel).border(1.dp, Line)
+        .navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(if (onRoad != null) "On-road · ${variant?.name ?: ""}" else "Price", style = MaterialTheme.typography.labelMedium, color = Mute,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(onRoad?.let { lakh(it) } ?: lakh(variant?.exShowroomInr), style = MaterialTheme.typography.titleLarge)
+        }
+        androidx.compose.material3.Button(onClick = { if (acc == null) onSignIn() else askQuote = true }, Modifier.height(50.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Text("Get best price", fontWeight = FontWeight.SemiBold)
+        }
+    }
     }
     rateDealer?.let { d ->
         RateSheet(com.onroad.app.data.NearDealer(d.id, model.brandSlug, model.brandName, d.name, d.address, d.city, d.phone, d.lat, d.lng), vm) { posted ->

@@ -95,7 +95,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
+        com.onroad.app.ui.ThemeMode.init(this)
+        val dark = when (com.onroad.app.ui.ThemeMode.mode.value) { "dark" -> true; "light" -> false
+            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES }
+        // status / navigation bar icons readable on the chosen theme
+        enableEdgeToEdge(if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT))
         com.onroad.app.data.PushService.channel(this)
         // this phone's push token, sent again whenever someone signs in so alerts reach their account
         lifecycleScope.launch {

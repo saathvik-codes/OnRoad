@@ -79,7 +79,7 @@ fun GuideScreen(onBack: () -> Unit) {
     var open by remember { mutableStateOf(0) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF0E2A3A), Color(0xFF0B1424), Night)))
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(if (IsDark) listOf(Color(0xFF0E2A3A), Color(0xFF0B1424), Night) else listOf(Color(0xFFDDEFFB), Color(0xFFEAF4FB), Night)))
                 .padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 22.dp)) {
                 Column {
                     IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }

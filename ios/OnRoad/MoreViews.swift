@@ -222,6 +222,7 @@ struct ProfileView: View {
     @State private var msg: String?
     @State private var busy = false
     @State private var pickingCity = false
+    @AppStorage("appearance") private var appearance = "system"
 
     var body: some View {
         Form {
@@ -245,6 +246,10 @@ struct ProfileView: View {
                     if let msg { Text(msg).foregroundStyle(Palette.ignition) }
                     Button(busy ? "Please wait…" : (signup ? "Create account" : "Sign in")) { Task { await submit() } }.disabled(busy)
                 } footer: { Text("Save cars, get dealer quotes and rate the showroom you bought from.") }
+            }
+            Section("Appearance") {
+                Picker("Theme", selection: $appearance) { Text("Same as phone").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
+                    .pickerStyle(.segmented)
             }
             Section("City") {
                 Button { pickingCity = true } label: { HStack { Text(state.city); Spacer(); Image(systemName: "chevron.right").foregroundStyle(Palette.mute) } }

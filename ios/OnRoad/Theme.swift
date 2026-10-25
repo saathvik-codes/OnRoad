@@ -1,20 +1,25 @@
 import SwiftUI
 
-/// The same palette as the Android app and the website.
+/// The same palette as the Android app and the website: light by default, "night drive" in dark mode.
 enum Palette {
-    static let night = Color(hex: 0x05060A)
-    static let panel = Color(hex: 0x0E1119)
-    static let panel2 = Color(hex: 0x161A26)
-    static let line = Color(hex: 0x232838)
-    static let mute = Color(hex: 0x94A3B8)
-    static let ink = Color(hex: 0xF1F4FA)
-    static let ignition = Color(hex: 0xFF4D2E)
-    static let electric = Color(hex: 0x39D0FF)
-    static let good = Color(hex: 0x34D399)
-    static let amber = Color(hex: 0xFFB547)
+    static let night = Color(light: 0xF4F5F8, dark: 0x05060A)
+    static let panel = Color(light: 0xFFFFFF, dark: 0x0E1119)
+    static let panel2 = Color(light: 0xEDEFF4, dark: 0x161A26)
+    static let line = Color(light: 0xE2E5EC, dark: 0x232838)
+    static let mute = Color(light: 0x5E6778, dark: 0x94A3B8)
+    static let ink = Color(light: 0x111522, dark: 0xF1F4FA)
+    static let ignition = Color(light: 0xF2441F, dark: 0xFF4D2E)
+    static let electric = Color(light: 0x0B7FC1, dark: 0x39D0FF)
+    static let good = Color(light: 0x0E9F55, dark: 0x34D399)
+    static let amber = Color(light: 0xB86E00, dark: 0xFFB547)
 }
 
 extension Color {
+    /// Switches with the light / dark appearance.
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { t in UIColor(Color(hex: t.userInterfaceStyle == .dark ? dark : light)) })
+    }
+
     init(hex: UInt32) {
         self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
     }
@@ -41,6 +46,7 @@ struct Card<Content: View>: View {
     var body: some View {
         content.padding(padding).frame(maxWidth: .infinity, alignment: .leading)
             .background(Palette.panel).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.06), radius: 6, y: 2)
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Palette.line, lineWidth: 1))
     }
 }

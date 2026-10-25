@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -178,6 +179,18 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 SettingRow(Icons.Outlined.Notifications, Amber, "Offers & launch alerts", "Manufacturer offers and newly listed models") {
                     Switch(alerts, { alerts = it; vm.prefs.alerts = it }, colors = SwitchDefaults.colors(checkedTrackColor = Ignition))
                 }
+                // Appearance: follow the phone, or always light / always dark
+                val mode by ThemeMode.mode.collectAsStateWithLifecycle()
+                SettingRow(Icons.Outlined.Palette, Electric, "Appearance", when (mode) { "light" -> "Light"; "dark" -> "Dark"; else -> "Same as phone" }) {
+                    Row(Modifier.clip(RoundedCornerShape(50)).background(Panel2).padding(3.dp)) {
+                        listOf("system" to "Auto", "light" to "Light", "dark" to "Dark").forEach { (k, l) ->
+                            Text(l, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+                                color = if (mode == k) Color.White else Mute,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (mode == k) Ignition else Color.Transparent)
+                                    .clickable { ThemeMode.set(k) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
             }
         }
         item { Section("Help", null, null) }
@@ -204,7 +217,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
 
 @Composable
 private fun Stat(value: String, label: String, modifier: Modifier) = Column(
-    modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f)).padding(vertical = 12.dp),
+    modifier.clip(RoundedCornerShape(16.dp)).background(Panel2).padding(vertical = 12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
 ) {
     Text(value, style = MaterialTheme.typography.headlineSmall)
