@@ -123,13 +123,16 @@ fun Tile(modifier: Modifier = Modifier, pad: Int = 16, content: @Composable BoxS
     content = content,
 )
 
+/** The app's one corner for chips, tabs, badges and buttons: a soft rectangle, not a pill. */
+val Corner = RoundedCornerShape(10.dp)
+
 @Composable
 fun Chip(text: String, color: Color = Mute, modifier: Modifier = Modifier) = Text(
     text, color = color, style = MaterialTheme.typography.labelSmall,
-    modifier = modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 5.dp),
+    modifier = modifier.clip(Corner).background(color.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 5.dp),
 )
 
-private val inr = NumberFormat.getNumberInstance(Locale("en", "IN"))
+private val inr = NumberFormat.getNumberInstance(Locale.forLanguageTag("en-IN"))
 fun rupees(n: Long?) = if (n == null) "—" else "₹" + inr.format(n)
 fun lakh(n: Long?): String = when {
     n == null -> "Price on request"

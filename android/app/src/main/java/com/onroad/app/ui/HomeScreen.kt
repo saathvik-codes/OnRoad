@@ -98,13 +98,13 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     Text("on", style = MaterialTheme.typography.headlineMedium)
                     Text("road", style = MaterialTheme.typography.headlineMedium, color = Ignition)
                     Spacer(Modifier.weight(1f))
-                    Row(Modifier.clip(RoundedCornerShape(50)).background(Panel2).clickable(onClick = onCity).padding(horizontal = 12.dp, vertical = 7.dp),
+                    Row(Modifier.clip(Corner).background(Panel2).clickable(onClick = onCity).padding(horizontal = 12.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.LocationOn, null, tint = Ignition, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp)); Text(city, style = MaterialTheme.typography.labelLarge)
                     }
                     Spacer(Modifier.width(8.dp))
-                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).background(Panel2).clickable(onClick = onAccount), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(36.dp).clip(Corner).background(Panel2).clickable(onClick = onAccount), contentAlignment = Alignment.Center) {
                         Icon(androidx.compose.material.icons.Icons.Outlined.Person, "My garage", tint = Ink, modifier = Modifier.size(20.dp))
                     }
                 }
@@ -118,7 +118,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     listOf("car" to "Cars", "bike" to "Bikes").forEach { (k, l) ->
                         Text(l, style = MaterialTheme.typography.labelLarge, color = if (s.type == k) Color.White else Mute,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (s.type == k) Ignition else Panel2)
+                            modifier = Modifier.clip(Corner).background(if (s.type == k) Ignition else Panel2)
                                 .clickable { vm.setType(k) }.padding(horizontal = 16.dp, vertical = 8.dp))
                     }
                 }

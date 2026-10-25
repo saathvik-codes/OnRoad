@@ -135,7 +135,7 @@ fun GuideScreen(onBack: () -> Unit) {
                             Spacer(Modifier.height(8.dp))
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 g.docs.forEach { d ->
-                                    Row(Modifier.clip(RoundedCornerShape(50)).background(Amber.copy(alpha = 0.10f)).padding(horizontal = 10.dp, vertical = 6.dp),
+                                    Row(Modifier.clip(Corner).background(Amber.copy(alpha = 0.10f)).padding(horizontal = 10.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Outlined.Description, null, tint = Amber, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(6.dp))
                                         Text(d, style = MaterialTheme.typography.labelMedium)
@@ -144,7 +144,7 @@ fun GuideScreen(onBack: () -> Unit) {
                             }
                         }
                         g.link?.let { (url, label) ->
-                            Row(Modifier.padding(top = 12.dp).clip(RoundedCornerShape(50)).background(Electric.copy(alpha = 0.12f))
+                            Row(Modifier.padding(top = 12.dp).clip(Corner).background(Electric.copy(alpha = 0.12f))
                                 .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text(label, color = Electric, style = MaterialTheme.typography.labelLarge); Spacer(Modifier.width(6.dp))

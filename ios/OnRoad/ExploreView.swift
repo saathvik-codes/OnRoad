@@ -132,7 +132,7 @@ struct ExploreView: View {
             }
         }
         .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-        .background(Palette.panel2).clipShape(Capsule()).overlay(Capsule().stroke(Palette.line))
+        .background(Palette.panel2).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Palette.line))
         .padding(.horizontal, 16).padding(.bottom, 6)
     }
 

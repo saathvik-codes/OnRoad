@@ -25,6 +25,11 @@ android {
         // Same API as the OnRoad website. Change it in Settings (tunnel / server URL).
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8101\"")      // local API, reachable only from the emulator
         buildConfigField("String", "LIVE_SERVER", "\"https://onroad-uu9c.onrender.com\"")
+        // AdMob: Google's public test IDs unless android/ads.properties (git-ignored) has the real ones
+        val ads = Properties().apply { val f = rootProject.file("ads.properties"); if (f.exists()) f.inputStream().use { load(it) } }
+        manifestPlaceholders["admobAppId"] = ads.getProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"
+        buildConfigField("String", "BANNER_AD", "\"${ads.getProperty("ADMOB_BANNER") ?: "ca-app-pub-3940256099942544/9214589741"}\"")
+        buildConfigField("boolean", "ADS_ON", "true")
     }
     // Release signing: the upload key lives outside the repo (D:/dev/keys); its passwords are in the git-ignored
     // android/keystore.properties. Without that file (e.g. CI), release falls back to the debug key.
@@ -53,6 +58,9 @@ android {
             }
             // production API on Render (also editable in Profile → Server)
             buildConfigField("String", "DEFAULT_SERVER", "\"https://onroad-uu9c.onrender.com\"")
+            // release shows ads only with real AdMob IDs (never test ads to real users)
+            val ads = Properties().apply { val f = rootProject.file("ads.properties"); if (f.exists()) f.inputStream().use { load(it) } }
+            buildConfigField("boolean", "ADS_ON", (ads.getProperty("ADMOB_BANNER") != null).toString())
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -101,6 +109,8 @@ dependencies {
     implementation(libs.googleid)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
+    implementation(libs.play.ads)
+    implementation(libs.ump)
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.play.services)

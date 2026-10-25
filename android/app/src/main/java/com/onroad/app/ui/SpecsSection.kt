@@ -122,11 +122,11 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
             }
         }
         // view switch
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {
+        Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
             listOf("features" to "Features (${sp.features.size})", "specs" to "Specifications").forEach { (k, l) ->
                 Text(l, fontWeight = FontWeight.SemiBold, color = if (view == k) Color.White else Mute,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (view == k) Ignition else Color.Transparent)
+                    modifier = Modifier.weight(1f).clip(Corner).background(if (view == k) Ignition else Color.Transparent)
                         .clickable { view = k }.padding(vertical = 10.dp))
             }
         }
@@ -147,7 +147,7 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
                 if (missing.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("all" to "All", "yes" to "Included", "no" to "Not in this variant").forEach { (k, l) ->
                         Text(l, style = MaterialTheme.typography.labelMedium, color = if (filter == k) Ink else Mute,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, if (filter == k) Ink else Line, RoundedCornerShape(50))
+                            modifier = Modifier.clip(Corner).border(1.dp, if (filter == k) Ink else Line, Corner)
                                 .clickable { filter = k }.padding(horizontal = 12.dp, vertical = 7.dp))
                     }
                 }

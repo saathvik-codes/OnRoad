@@ -56,7 +56,7 @@ struct Chip: View {
     var color: Color = Palette.electric
     var body: some View {
         Text(text).font(.caption.weight(.semibold)).foregroundStyle(color)
-            .padding(.horizontal, 9).padding(.vertical, 4).background(color.opacity(0.14)).clipShape(Capsule())
+            .padding(.horizontal, 9).padding(.vertical, 4).background(color.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -67,7 +67,7 @@ struct Pill: View {
     var body: some View {
         Button(action: action) {
             Text(text).font(.subheadline.weight(on ? .semibold : .regular)).foregroundStyle(on ? .white : Palette.mute)
-                .padding(.horizontal, 14).padding(.vertical, 9).background(on ? Palette.ignition : Palette.panel2).clipShape(Capsule())
+                .padding(.horizontal, 14).padding(.vertical, 9).background(on ? Palette.ignition : Palette.panel2).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }.buttonStyle(.plain)
     }
 }

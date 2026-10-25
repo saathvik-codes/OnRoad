@@ -59,12 +59,12 @@ fun Gallery(items: List<GalleryItem>, variantImage: String?, variantName: String
                         error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Photo unavailable", color = Mute) } })
                     if (!car && s.label.isNotBlank()) Text(s.label, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(RoundedCornerShape(50))
+                        modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(Corner)
                             .background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 12.dp, vertical = 6.dp))
                 }
             }
             if (shots.size > 1) Text("${pager.currentPage + 1} / ${shots.size}", style = MaterialTheme.typography.labelMedium, color = Color.White,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 24.dp).clip(RoundedCornerShape(50))
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 24.dp).clip(Corner)
                     .background(Color.Black.copy(alpha = 0.5f)).padding(horizontal = 10.dp, vertical = 4.dp))
         }
         if (shots.size > 1) Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {

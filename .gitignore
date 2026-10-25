@@ -89,3 +89,6 @@ android/keystore.properties
 # Firebase mobile configs
 GoogleService-Info.plist
 *.backup.json
+
+# AdMob IDs
+android/ads.properties

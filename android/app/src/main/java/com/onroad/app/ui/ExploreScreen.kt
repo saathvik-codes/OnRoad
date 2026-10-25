@@ -164,10 +164,10 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                         }
                         if (brand == null) IconButton(onSearch, Modifier.clip(CircleShape).background(Panel2)) { Icon(Icons.Outlined.Search, "Search") }
                     }
-                    if (brand == null) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {
+                    if (brand == null) Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
                         listOf("car" to "Cars", "bike" to "Bikes & scooters").forEach { (k, l) ->
                             Text(l, fontWeight = FontWeight.SemiBold, color = if (type == k) Color.White else Mute, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (type == k) Ignition else Color.Transparent)
+                                modifier = Modifier.weight(1f).clip(Corner).background(if (type == k) Ignition else Color.Transparent)
                                     .clickable { if (type != k) { type = k; f = Filters() } }.padding(vertical = 10.dp))
                         }
                     }
@@ -187,7 +187,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                 if (active.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(active.size) { i ->
                         val (label, remove) = active[i]
-                        Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), Corner)
                             .clickable { remove() }.padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(label, style = MaterialTheme.typography.labelLarge, color = Ink); Spacer(Modifier.width(4.dp))
                             Icon(Icons.Outlined.Close, "Remove", tint = Ignition, modifier = Modifier.size(15.dp))
@@ -209,7 +209,10 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                         TextButton({ f = Filters() }) { Text("Clear filters", color = Ignition) }
                     }
                 }
-                else -> items(shown, key = { it.id }) { m -> ModelCard(m, vm.prefs.img(m.imageUrl, 480)) { onModel(m.id) } }
+                else -> items(shown, key = { it.id }) { m ->
+                    ModelCard(m, vm.prefs.img(m.imageUrl, 480)) { onModel(m.id) }
+                    if (m === shown.getOrNull(5)) AdBanner()     // one ad, after the sixth result
+                }
             }
         }
         // pinned action bar (Myntra-style), just above the bottom navigation
@@ -217,7 +220,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
             .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
             .then(if (onBack != null) Modifier.navigationBarsPadding() else Modifier)
             .padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 10.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).border(1.dp, Line, RoundedCornerShape(50))) {
+            Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).border(1.dp, Line, Corner)) {
                 BarButton(Icons.AutoMirrored.Outlined.Sort, "Sort", SORTS.first { it.first == sort }.second, Modifier.weight(1f)) { sheet = "sort" }
                 Box(Modifier.width(1.dp).height(44.dp).background(Line).align(Alignment.CenterVertically))
                 BarButton(Icons.Outlined.Tune, "Filters", if (f.count > 0) "${f.count} applied" else "None", Modifier.weight(1f), badge = f.count) { sheet = "filters" }
@@ -250,7 +253,7 @@ internal fun <T> Set<T>.toggle(x: T) = if (x in this) this - x else this + x
 
 @Composable
 internal fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, modifier: Modifier, badge: Int = 0, onClick: () -> Unit) = Row(
-    modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 16.dp),
+    modifier.clip(Corner).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 16.dp),
     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
 ) {
     Box {
@@ -354,7 +357,7 @@ private fun FilterSheet(all: List<ModelSummary>, f0: Filters, budgets: List<Budg
                 Text("$total", style = MaterialTheme.typography.titleLarge)
                 Text(if (bike) "bikes & scooters" else "cars", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
-            Button(onDone, Modifier.height(50.dp), enabled = total > 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Button(onDone, Modifier.height(50.dp), enabled = total > 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (total > 0) "Show results" else "No matches", fontWeight = FontWeight.SemiBold)
             }
         }

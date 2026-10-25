@@ -34,7 +34,7 @@ import androidx.compose.material.icons.outlined.CurrencyRupee
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -79,7 +79,7 @@ private data class Slide(val icon: ImageVector, val tint: Color, val title: Stri
 private val SLIDES = listOf(
     Slide(Icons.Outlined.CurrencyRupee, Ignition, "The real price,\nnot the brochure one",
         "Every car and bike sold in India, with the manufacturer's own ex-showroom price for your city."),
-    Slide(Icons.Outlined.ReceiptLong, Electric, "Every rupee\nexplained",
+    Slide(Icons.AutoMirrored.Outlined.ReceiptLong, Electric, "Every rupee\nexplained",
         "Road tax, registration, insurance and cess from your state's official rules. Dealer padding gets flagged."),
     Slide(Icons.Outlined.Storefront, Good, "Showrooms\nnear you",
         "Official dealers by distance from where you are, with what buyers say about them."),
@@ -141,16 +141,16 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
                         Column(Modifier.weight(1f)) { Text("Prices for", color = Mute, style = MaterialTheme.typography.labelSmall); Text(city, fontWeight = FontWeight.SemiBold) }
                         Text("Change", color = Ignition)
                     }
-                    OutlinedButton(onClick = { locMsg = "Finding you…"; locate() }, Modifier.fillMaxWidth().height(50.dp)) {
+                    OutlinedButton(onClick = { locMsg = "Finding you…"; locate() }, Modifier.fillMaxWidth().height(50.dp), shape = Corner) {
                         Icon(Icons.Outlined.LocationOn, null, tint = Ignition); Spacer(Modifier.width(8.dp)); Text("Use my location", color = Ink)
                     }
                     locMsg?.let { Text(it, color = Mute, style = MaterialTheme.typography.bodySmall) }
                     Button(onClick = { vm.prefs.onboarded = true; onDone(true) }, Modifier.fillMaxWidth().height(54.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Ignition)) { Text("Create account or sign in", fontWeight = FontWeight.SemiBold) }
-                    OutlinedButton(onClick = { vm.prefs.onboarded = true; onDone(false) }, Modifier.fillMaxWidth().height(54.dp)) { Text("Browse without an account", color = Ink) }
+                        colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) { Text("Create account or sign in", fontWeight = FontWeight.SemiBold) }
+                    OutlinedButton(onClick = { vm.prefs.onboarded = true; onDone(false) }, Modifier.fillMaxWidth().height(54.dp), shape = Corner) { Text("Browse without an account", color = Ink) }
                 } else {
                     Button(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, Modifier.fillMaxWidth().height(54.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Ignition)) { Text("Next", fontWeight = FontWeight.SemiBold) }
+                        colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) { Text("Next", fontWeight = FontWeight.SemiBold) }
                 }
             }
         }
@@ -229,15 +229,15 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
             Art("signin", Modifier.fillMaxWidth().height(170.dp))
             Text(if (signup) "Create your account" else "Welcome back", style = MaterialTheme.typography.displaySmall)
             Text(if (signup) "Save cars, get dealer quotes and rate the showroom you bought from." else "Sign in to see your saved cars and quotes.", color = Mute)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {
+            Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
                 listOf(false to "Sign in", true to "Create account").forEach { (k, l) ->
                     Text(l, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, color = if (signup == k) Color.White else Mute,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (signup == k) Ignition else Color.Transparent)
+                        modifier = Modifier.weight(1f).clip(Corner).background(if (signup == k) Ignition else Color.Transparent)
                             .clickable { signup = k; error = null }.padding(vertical = 10.dp))
                 }
             }
             androidx.compose.material3.OutlinedButton(::google, Modifier.fillMaxWidth().height(54.dp), enabled = !busy,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Line)) {
+                border = androidx.compose.foundation.BorderStroke(1.dp, Line), shape = Corner) {
                 Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                 androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
                 Text("Continue with Google", color = Ink, fontWeight = FontWeight.SemiBold)
@@ -256,7 +256,7 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 trailingIcon = { IconButton({ show = !show }) { Icon(if (show) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, if (show) "Hide" else "Show") } })
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(::submit, Modifier.fillMaxWidth().height(54.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Button(::submit, Modifier.fillMaxWidth().height(54.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (busy) "Please wait…" else if (signup) "Create account" else "Sign in", fontWeight = FontWeight.SemiBold)
             }
             TextButton(onClick = onDone, Modifier.align(Alignment.CenterHorizontally)) { Text("Not now", color = Mute) }
@@ -291,9 +291,9 @@ fun AccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, vm: BrowseVM = hiltV
                     }
                 }
             }
-            if (acc == null) Button(onSignIn, Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition)) { Text("Sign in or create account") }
+            if (acc == null) Button(onSignIn, Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) { Text("Sign in or create account") }
             else OutlinedButton(onClick = { scope.launch { runCatching { vm.api.logout() }; vm.prefs.session = null; vm.prefs.setAccount(null) } },
-                Modifier.fillMaxWidth().height(52.dp)) { Icon(Icons.AutoMirrored.Outlined.Logout, null); Spacer(Modifier.width(8.dp)); Text("Sign out", color = Ink) }
+                Modifier.fillMaxWidth().height(52.dp), shape = Corner) { Icon(Icons.AutoMirrored.Outlined.Logout, null); Spacer(Modifier.width(8.dp)); Text("Sign out", color = Ink) }
             Tile(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Dns, null, tint = Mute); Spacer(Modifier.width(8.dp)); Text("Server", fontWeight = FontWeight.SemiBold) }

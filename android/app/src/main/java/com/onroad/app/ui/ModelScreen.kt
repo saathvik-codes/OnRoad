@@ -144,7 +144,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tab.entries.filter { it != Tab.Offers || model.offers.isNotEmpty() }.forEach { t ->
                     Text(t.label, style = MaterialTheme.typography.labelLarge, color = if (t == tab) androidx.compose.ui.graphics.Color.White else Mute,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (t == tab) Ignition else Panel2).clickable { tab = t }
+                        modifier = Modifier.clip(Corner).background(if (t == tab) Ignition else Panel2).clickable { tab = t }
                             .padding(horizontal = 14.dp, vertical = 8.dp))
                 }
             }
@@ -226,6 +226,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             }
         }
         item { SimilarRow(model, city, vm, onOpen = onModel) }
+        item { AdBanner() }
     }
     // pinned: this variant's on-road price and the main action, always in reach
     val onRoad = variant?.onroad?.let { it.totalInr - it.refundableInr }
@@ -237,7 +238,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             Text(onRoad?.let { lakh(it) } ?: lakh(variant?.exShowroomInr), style = MaterialTheme.typography.titleLarge)
         }
         androidx.compose.material3.Button(onClick = { if (acc == null) onSignIn() else askQuote = true }, Modifier.height(50.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
             Text("Get best price", fontWeight = FontWeight.SemiBold)
         }
     }

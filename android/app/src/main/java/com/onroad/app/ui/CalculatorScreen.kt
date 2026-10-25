@@ -63,7 +63,7 @@ fun CalculatorScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (k, l) ->
                 Text(l, style = MaterialTheme.typography.labelLarge, color = if (sel == k) Color.White else Mute,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(if (sel == k) Ignition else Panel2)
+                    modifier = Modifier.clip(Corner).background(if (sel == k) Ignition else Panel2)
                         .clickable { onSel(k) }.padding(horizontal = 14.dp, vertical = 8.dp))
             }
         }
@@ -90,7 +90,7 @@ fun CalculatorScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                         .onSuccess { result = it }.onFailure { error = "Couldn't calculate. Check your connection." }
                     busy = false
                 }
-            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (busy) "Calculating…" else "Show on-road price", fontWeight = FontWeight.SemiBold)
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingFlat
-import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingFlat
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,7 +51,7 @@ fun PriceTrend(history: List<PricePoint>, variantId: String, city: String) {
     Tile(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (diff < 0) Icons.Outlined.TrendingDown else if (diff > 0) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingFlat, null,
+                Icon(if (diff < 0) Icons.AutoMirrored.Outlined.TrendingDown else if (diff > 0) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingFlat, null,
                     tint = if (diff < 0) Good else if (diff > 0) Amber else Mute)
                 Spacer(Modifier.width(8.dp))
                 Text("PRICE TREND · $city", style = MaterialTheme.typography.labelSmall, color = Mute)

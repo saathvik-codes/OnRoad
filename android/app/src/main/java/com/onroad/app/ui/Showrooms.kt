@@ -72,7 +72,7 @@ fun ErrorState(message: String, onRetry: () -> Unit) = Column(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     if (hasArt(ctx, "error-offline")) Art("error-offline") else Icon(Icons.Outlined.CloudOff, null, tint = Mute, modifier = Modifier.size(40.dp))
     Text(message, color = Mute, textAlign = TextAlign.Center)
-    Button(onRetry, colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text("Try again", color = Ink) }
+    Button(onRetry, colors = ButtonDefaults.buttonColors(containerColor = Panel2), shape = Corner) { Text("Try again", color = Ink) }
 }
 
 /** Nearest official showrooms of every brand (or the brands picked), with photo, ratings, call and directions. */
@@ -217,7 +217,7 @@ private fun Ratings(d: NearDealer) = Row(verticalAlignment = Alignment.CenterVer
 
 @Composable
 private fun Action(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: Color, modifier: Modifier, onClick: () -> Unit) = Row(
-    modifier.clip(RoundedCornerShape(50)).background(tint.copy(alpha = 0.12f)).clickable(onClick = onClick).padding(vertical = 10.dp),
+    modifier.clip(Corner).background(tint.copy(alpha = 0.12f)).clickable(onClick = onClick).padding(vertical = 10.dp),
     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
 ) {
     Icon(icon, null, tint = tint, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(6.dp))
@@ -231,10 +231,10 @@ private fun FeaturedShowroom(d: NearDealer, vm: BrowseVM, call: (NearDealer) -> 
             Box {
                 ShowroomPhoto(d, vm, Modifier.fillMaxWidth().aspectRatio(16 / 9f), big = true)
                 Text("NEAREST", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(10.dp).clip(RoundedCornerShape(50)).background(Ignition).padding(horizontal = 10.dp, vertical = 4.dp))
+                    modifier = Modifier.padding(10.dp).clip(Corner).background(Ignition).padding(horizontal = 10.dp, vertical = 4.dp))
                 d.distanceKm?.let { km ->
                     Text("%.1f km".format(km), color = Color.White, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.6f))
+                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).clip(Corner).background(Color.Black.copy(alpha = 0.6f))
                             .padding(horizontal = 10.dp, vertical = 4.dp))
                 }
             }
@@ -300,7 +300,7 @@ internal fun RateSheet(d: NearDealer, vm: BrowseVM, onDone: (Boolean) -> Unit) {
     }
     @Composable fun yesNo(v: Boolean?, set: (Boolean) -> Unit) = Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(true to "Yes", false to "No").forEach { (b, l) -> Text(l, color = if (v == b) Color.White else Mute, style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (v == b) Ignition else Panel2).clickable { set(b) }.padding(horizontal = 14.dp, vertical = 7.dp)) }
+            modifier = Modifier.clip(Corner).background(if (v == b) Ignition else Panel2).clickable { set(b) }.padding(horizontal = 14.dp, vertical = 7.dp)) }
     }
     androidx.compose.material3.ModalBottomSheet({ onDone(false) }, containerColor = Panel) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -322,7 +322,7 @@ internal fun RateSheet(d: NearDealer, vm: BrowseVM, onDone: (Boolean) -> Unit) {
                         .onSuccess { onDone(true) }.onFailure { msg = "Couldn't post your rating. Sign in again and retry." }
                     busy = false
                 }
-            }, Modifier.fillMaxWidth().height(50.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            }, Modifier.fillMaxWidth().height(50.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (busy) "Posting…" else "Post rating", fontWeight = FontWeight.SemiBold)
             }
         }

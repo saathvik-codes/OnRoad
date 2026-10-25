@@ -71,7 +71,7 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
             Column(Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(26.dp))
                 .background(Brush.linearGradient(listOf(Panel, Panel)))
                 .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }.padding(16.dp)) {
-                    Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
+                    Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Bolt, null, tint = Ignition, modifier = Modifier.size(13.dp)); Spacer(Modifier.width(3.dp))
                         Text("MANUFACTURER OFFER", style = MaterialTheme.typography.labelSmall, color = Ignition)

@@ -91,7 +91,7 @@ fun Pills(options: List<Pair<String, String>>, sel: String, onSel: (String) -> U
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (k, l) ->
             Text(l, style = MaterialTheme.typography.labelLarge, color = if (sel == k) Color.White else Mute,
-                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (sel == k) Ignition else Panel2)
+                modifier = Modifier.clip(Corner).background(if (sel == k) Ignition else Panel2)
                     .clickable { onSel(k) }.padding(horizontal = 14.dp, vertical = 9.dp))
         }
     }
@@ -197,7 +197,7 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                 }
                 if (active.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(active, key = { it.first }) { (label, remove) ->
-                        Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), Corner)
                             .clickable { remove() }.padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(label, style = MaterialTheme.typography.labelLarge, color = Ink); Spacer(Modifier.width(4.dp))
                             Icon(Icons.Outlined.Close, "Remove", tint = Ignition, modifier = Modifier.size(15.dp))
@@ -225,13 +225,14 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     OfferCard(o, { vm.prefs.img(it, 480) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
                         o.sourceUrl?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
+                    if (o === l.getOrNull(3)) AdBanner()
                 }
             }
         }
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
             .navigationBarsPadding().padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 10.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).border(1.dp, Line, RoundedCornerShape(50))) {
+            Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).border(1.dp, Line, Corner)) {
                 BarButton(Icons.AutoMirrored.Outlined.Sort, "Sort", OFFER_SORTS.first { it.first == sort }.second, Modifier.weight(1f)) { sheet = "sort" }
                 Box(Modifier.width(1.dp).height(44.dp).background(Line).align(Alignment.CenterVertically))
                 BarButton(Icons.Outlined.Tune, "Filters", if (f.count > 0) "${f.count} applied" else "None", Modifier.weight(1f), badge = f.count) { sheet = "filters" }
@@ -315,7 +316,7 @@ private fun OfferFilterSheet(all: List<OfferItem>, f0: OfferFilters, brands: Lis
                 Text("$total", style = MaterialTheme.typography.titleLarge)
                 Text("offers", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
-            Button(onDone, Modifier.height(50.dp), enabled = total > 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Button(onDone, Modifier.height(50.dp), enabled = total > 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (total > 0) "Show offers" else "No matches", fontWeight = FontWeight.SemiBold)
             }
         }
@@ -381,7 +382,7 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
             Art("hero-quote", Modifier.fillMaxWidth().height(130.dp))
             Text("Get dealer quotes", style = MaterialTheme.typography.headlineSmall)
             Text("$variantName · $city. Showrooms of this brand near you send their best on-road price with offers and waiting time.", color = Mute)
-            if (done != null) { Art("success-quote-sent", Modifier.fillMaxWidth().height(170.dp)); Text(done!!, color = Good, fontWeight = FontWeight.SemiBold); Button(onClose, Modifier.fillMaxWidth()) { Text("Done") }; return@Column }
+            if (done != null) { Art("success-quote-sent", Modifier.fillMaxWidth().height(170.dp)); Text(done!!, color = Good, fontWeight = FontWeight.SemiBold); Button(onClose, Modifier.fillMaxWidth(), shape = Corner) { Text("Done") }; return@Column }
             androidx.compose.material3.OutlinedTextField(pin, { pin = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true,
                 label = { Text("Your PIN code (optional)") })
             Text("Buying in", fontWeight = FontWeight.SemiBold)
@@ -399,7 +400,7 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
                         .onFailure { done = null; android.util.Log.w("quote", it) }
                     busy = false
                 }
-            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (busy) "Sending…" else "Send to nearby showrooms", fontWeight = FontWeight.SemiBold)
             }
         }

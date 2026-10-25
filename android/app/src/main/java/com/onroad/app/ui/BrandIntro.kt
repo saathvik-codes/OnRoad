@@ -98,20 +98,20 @@ fun BrandIntro(onDone: () -> Unit) {
     LaunchedEffect(Unit) {
         if (noMotion) { onDone(); return@LaunchedEffect }
         coroutineScope {
-            // ~1.4 s, like the big Indian apps: one beat of motion, a clean logo, then straight into the app
+            // ~1.1 s, like the big Indian apps: one beat of motion, a clean logo, then straight into the app
             if (draw.value < 1f) { draw.animateTo(1f, tween(480, easing = Smooth)); lane.animateTo(1f, tween(160)) }
-            drive.animateTo(0.45f, tween(320, easing = LinearEasing))                 // the lane races through once
-            val a = async { lane.animateTo(0f, tween(260)) }                          // ...and dissolves: a clean "o"
-            val b = async { drive.animateTo(0.75f, tween(260, easing = LinearEasing)) }
-            val c = async { settle.animateTo(1f, tween(520, easing = Glide)) }        // the ring becomes the "o"
-            delay(180)
-            reveal.animateTo(1f, tween(420, easing = Smooth))                         // "nroad" unrolls out of it
+            drive.animateTo(0.45f, tween(220, easing = LinearEasing))                 // the lane races through once
+            val a = async { lane.animateTo(0f, tween(200)) }                          // ...and dissolves: a clean "o"
+            val b = async { drive.animateTo(0.75f, tween(200, easing = LinearEasing)) }
+            val c = async { settle.animateTo(1f, tween(400, easing = Glide)) }        // the ring becomes the "o"
+            delay(100)
+            reveal.animateTo(1f, tween(320, easing = Smooth))                         // "nroad" unrolls out of it
             a.await(); b.await(); c.await()
-            val d = async { shine.animateTo(1.3f, tween(420, easing = LinearEasing)) }
-            tag.animateTo(1f, tween(260))
+            val d = async { shine.animateTo(1.3f, tween(300, easing = LinearEasing)) }
+            tag.animateTo(1f, tween(180))
             d.await()
-            delay(120)
-            out.animateTo(0f, tween(220))
+            delay(60)
+            out.animateTo(0f, tween(160))
         }
         onDone()
     }

@@ -79,6 +79,7 @@ class OnRoadApp : Application(), SingletonImageLoader.Factory {
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    companion object { private var processStarted = false }
     @Inject lateinit var prefs: Prefs
     @Inject lateinit var api: com.onroad.app.data.Api
     private val askNotify = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -97,7 +98,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // the brand intro starts on exactly the launch icon's frame, so swap without the system's fade (no dip)
         installSplashScreen().setOnExitAnimationListener { it.remove() }
-        super.onCreate(savedInstanceState)
+        // A new process means the app was closed (swiped from recents, or the phone freed it): start fresh with the
+        // brand intro on the first screen, even if Android hands back the old screen state. Rotation or theme
+        // changes keep the same process, so they keep their place and skip the intro.
+        val fresh = !processStarted || savedInstanceState == null
+        processStarted = true
+        super.onCreate(if (fresh) null else savedInstanceState)
         com.onroad.app.ui.ThemeMode.init(this)
         val dark = when (com.onroad.app.ui.ThemeMode.mode.value) { "dark" -> true; "light" -> false
             else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES }
@@ -105,6 +111,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT))
         com.onroad.app.data.PushService.channel(this)
+        com.onroad.app.ui.Ads.start(this)
         // this phone's push token, sent again whenever someone signs in so alerts reach their account
         lifecycleScope.launch {
             prefs.account.collect { com.onroad.app.data.PushService.register(api, lifecycleScope) }
@@ -182,7 +189,7 @@ class MainActivity : ComponentActivity() {
                 }
                 }
                 // brand intro over the first screen, on a fresh launch only (not when coming back to the app)
-                var intro by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(savedInstanceState == null) }
+                var intro by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(fresh) }
                 if (intro) com.onroad.app.ui.BrandIntro { intro = false }
             }
         }

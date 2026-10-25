@@ -151,7 +151,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
             if (chips.isNotEmpty()) item {
                 LazyRow(Modifier.padding(top = 12.dp), contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(chips, key = { it.first }) { (label, remove) ->
-                        Row(Modifier.clip(RoundedCornerShape(50)).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.14f)).border(1.dp, Ignition.copy(alpha = 0.5f), Corner)
                             .clickable { remove() }.padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(label, style = MaterialTheme.typography.labelLarge, color = Ink); Spacer(Modifier.width(4.dp))
                             Icon(Icons.Outlined.Close, "Remove", tint = Ignition, modifier = Modifier.size(15.dp))
@@ -199,7 +199,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
             .navigationBarsPadding().padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 10.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).border(1.dp, Line, RoundedCornerShape(50))) {
+            Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).border(1.dp, Line, Corner)) {
                 BarButton(Icons.Outlined.WorkspacePremium, "Priority", a.prios.ifEmpty { listOf("value") }
                     .joinToString(", ") { k -> PRIOS.first { it.first == k }.second.substringBefore(" ") }, Modifier.weight(1f)) { sheet = "prio" }
                 Box(Modifier.width(1.dp).height(44.dp).background(Line).align(Alignment.CenterVertically))
@@ -226,7 +226,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
                     Text(l, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                 }
             }
-            Button({ sheet = null }, Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Button({ sheet = null }, Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text("Done", fontWeight = FontWeight.SemiBold)
             }
         }
@@ -260,7 +260,7 @@ private fun BudgetCard(a: Ask, onChange: (ClosedFloatingPointRange<Float>) -> Un
 @Composable
 private fun ToggleChip(label: String, on: Boolean, onClick: () -> Unit) = Text(label, style = MaterialTheme.typography.labelLarge,
     color = if (on) Color.White else Mute, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-    modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Ignition else Panel2).clickable(onClick = onClick)
+    modifier = Modifier.clip(Corner).background(if (on) Ignition else Panel2).clickable(onClick = onClick)
         .padding(horizontal = 14.dp, vertical = 9.dp))
 
 @Composable
@@ -373,7 +373,7 @@ private fun FinderFilters(a0: Ask, brands: List<Brand>, city: String, vm: Browse
                 Text(pool?.toString() ?: "…", style = MaterialTheme.typography.titleLarge)
                 Text("matching models", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
-            Button({ onApply(a) }, Modifier.height(50.dp), enabled = pool != 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+            Button({ onApply(a) }, Modifier.height(50.dp), enabled = pool != 0, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (pool == 0) "No matches" else "Show matches", fontWeight = FontWeight.SemiBold)
             }
         }

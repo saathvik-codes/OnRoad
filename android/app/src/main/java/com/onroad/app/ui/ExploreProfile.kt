@@ -112,7 +112,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                     }
                     Spacer(Modifier.height(18.dp))
                     if (acc == null) {
-                        Button(onSignIn, Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition)) {
+                        Button(onSignIn, Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                             Text("Sign in or create account", fontWeight = FontWeight.SemiBold)
                         }
                     } else {
@@ -196,11 +196,11 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 // Appearance: follow the phone, or always light / always dark
                 val mode by ThemeMode.mode.collectAsStateWithLifecycle()
                 SettingRow(Icons.Outlined.Palette, Electric, "Appearance", when (mode) { "light" -> "Light"; "dark" -> "Dark"; else -> "Same as phone" }) {
-                    Row(Modifier.clip(RoundedCornerShape(50)).background(Panel2).padding(3.dp)) {
+                    Row(Modifier.clip(Corner).background(Panel2).padding(3.dp)) {
                         listOf("system" to "Auto", "light" to "Light", "dark" to "Dark").forEach { (k, l) ->
                             Text(l, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
                                 color = if (mode == k) Color.White else Mute,
-                                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (mode == k) Ignition else Color.Transparent)
+                                modifier = Modifier.clip(Corner).background(if (mode == k) Ignition else Color.Transparent)
                                     .clickable { ThemeMode.set(k) }.padding(horizontal = 10.dp, vertical = 6.dp))
                         }
                     }
