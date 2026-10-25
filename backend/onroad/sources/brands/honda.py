@@ -279,7 +279,7 @@ class HondaAdapter(BrandAdapter):
                 details=" | ".join(lines + ([det["offerDesc"]] if det.get("offerDesc") else []) + disc),
                 conditions=" ".join(x for x in [total_def] + [x for x in disc if "valid till" not in x] if x) or None,
                 valid_until=valid, city=None,
-                source_url=f"{BASE}/shop/shop-offers/{slug} (API {BASE}/api/getShopCarOffer?carName={slug})"))
+                source_url=f"{BASE}/shop/shop-offers/{slug}"))           # data: {BASE}/api/getShopCarOffer?carName={slug}
         corp = next((x for x in disc if "Corporate" in x), None)
         if corp:
             out.append(Offer(model=None, kind="corporate", title="Additional offers for selected corporates",

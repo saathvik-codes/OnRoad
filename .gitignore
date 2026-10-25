@@ -64,3 +64,6 @@ desktop.ini
 data/onroad.db
 data/onroad.db-*
 data/backup_*
+
+# Firebase admin keys: never commit
+*firebase-adminsdk*.json

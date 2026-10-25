@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1072418446057",
+    "project_id": "onroad-6c950",
+    "storage_bucket": "onroad-6c950.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1072418446057:android:3b17dd4485759ad06e6e78",
+        "android_client_info": {
+          "package_name": "com.onroad.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFvvDZpf5N6kG5WJ0i-RbkPlA_eZHSjK8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 import { api, type Account } from "@/lib/api";
 import { Logo } from "@/components/logo";
+import { GoogleButton } from "@/components/google-button";
 import { Button, Card, Input, Label } from "@/components/ui";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
@@ -28,6 +29,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       router.push(sp.get("next") ?? (acc.role === "dealer" ? "/dealer" : acc.role === "admin" ? "/admin" : "/account"));
     } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
   }
+
+  const onGoogle = useCallback(async (acc: Account) => {
+    await mutate("/auth/me", acc, false);
+    toast.success(`Welcome, ${acc.name.split(" ")[0]}`);
+    router.push(sp.get("next") ?? (acc.role === "dealer" ? "/dealer" : acc.role === "admin" ? "/admin" : "/account"));
+  }, [router, sp]);
+  const onGoogleError = useCallback((m: string) => toast.error(m), []);
 
   return (
     <main className="relative grid min-h-screen place-items-center px-5 py-28">
@@ -51,6 +59,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             ))}
           </div>
         )}
+        {(mode === "login" || role === "buyer") && <GoogleButton onDone={onGoogle} onError={onGoogleError} />}
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "signup" && <div><Label>Full name</Label><Input required value={form.name} onChange={set("name")} /></div>}
           <div><Label>Email</Label><Input required type="email" value={form.email} onChange={set("email")} autoComplete="email" /></div>

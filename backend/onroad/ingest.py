@@ -148,8 +148,15 @@ def refresh_brand(a, city: str) -> dict:
                                 active = 1, last_seen = excluded.last_seen""",
                          (mid, slug, display_name(m["name"]), key, body_type(key, m.get("body_type")), m.get("url"), m.get("image_url"), now, now))
         res["models"] = len(models)
-        if variants and city == "Hyderabad":   # launch-city read worked: retire what the site no longer lists (re-activated below)
+        before = conn.execute("""SELECT COUNT(*) FROM variants WHERE active = 1
+                                 AND model_id IN (SELECT id FROM models WHERE brand_slug = ?)""", (slug,)).fetchone()[0]
+        # launch-city read worked: retire what the site no longer lists (re-activated below). A read that suddenly lists
+        # under half of what was live is a site problem (a page blocked or half-loaded), not half the lineup discontinued:
+        # nothing is retired then, and the run says so.
+        if variants and city == "Hyderabad" and (before < 6 or len(variants) >= before * 0.5):
             conn.execute("UPDATE variants SET active = 0 WHERE model_id IN (SELECT id FROM models WHERE brand_slug = ?)", (slug,))
+        elif variants and city == "Hyderabad":
+            res.setdefault("errors", []).append(f"partial read: {len(variants)} variants vs {before} live; nothing retired")
         vid_names: dict[str, str] = {}
         for v in variants:
             key = model_key(a.brand, v.model)

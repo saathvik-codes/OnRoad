@@ -96,6 +96,7 @@ def _key(u: str) -> str:
     """Same picture in another size counts once: drop size markers from the path."""
     p = urlparse(u).path.lower()
     p = re.sub(r"\.img\.\d+\.\w+$|_\d{2,4}x\d{2,4}|/\d{2,4}x\d{2,4}/|-\d{2,4}x\d{2,4}", "", p)
+    p = re.sub(r"\.ximg\.[a-z0-9]+\.\w+/[0-9a-f]+\.\w+$", "", p)          # Renault: one picture, many renditions
     return re.sub(r"\.(?:jpe?g|png|webp)$", "", p)
 
 
@@ -188,7 +189,7 @@ def aggregator(c: httpx.Client, mid: str, name: str, vehicle_type: str, model_ur
             return []
         for u in dict.fromkeys(re.findall(r"(https://cdn\.bikedekho\.com/processedimages/[^\"'\s]+?\.(?:jpe?g|webp|png))", r.text)):
             folder = urlparse(u).path.split("/")[3] if len(urlparse(u).path.split("/")) > 3 else ""
-            if any(t in folder.replace("-", "") for t in toks) and "/source/" in u or "/640X309/" in u and any(t in folder.replace("-", "") for t in toks):
+            if all(t in folder.replace("-", "") for t in toks) and "/source/" in u or "/640X309/" in u and all(t in folder.replace("-", "") for t in toks):
                 out.append((u, name, "Photo", page))
     else:
         from .online_specs import SLUG
@@ -199,7 +200,7 @@ def aggregator(c: httpx.Client, mid: str, name: str, vehicle_type: str, model_ur
         for u in dict.fromkeys(re.findall(r"(https://stimg\.cardekho\.com/images/car(ex|in)teriorimages/930x620/[^\"'\s]+?\.jpe?g)", r.text)):
             url, kind = u
             model_dir = urlparse(url).path.split("/")[5].lower().replace("-", "") if len(urlparse(url).path.split("/")) > 5 else ""
-            if any(t in model_dir for t in toks):
+            if all(t in model_dir for t in toks):
                 out.append((url, _label(url), "Exterior" if kind == "ex" else "Interior", page))
     ext = [x for x in out if x[2] != "Interior"][:9]
     return ext + [x for x in out if x[2] == "Interior"][:4]

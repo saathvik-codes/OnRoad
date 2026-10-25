@@ -106,11 +106,15 @@ import javax.inject.Singleton
     val status: String = "open", val created: String = "", val quotes: List<DealerQuote> = emptyList())
 
 @Serializable data class LoginIn(val email: String, val password: String)
+@Serializable data class GoogleIn(val idToken: String)
+@Serializable data class GoogleConfig(val clientId: String? = null)
 @Serializable data class SignupIn(val name: String, val email: String, val phone: String? = null, val password: String, val role: String = "buyer")
 @Serializable data class Account(val id: Long = 0, val email: String = "", val name: String = "", val phone: String? = null, val role: String = "buyer")
 
 interface Api {
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
+    @POST("api/auth/google") suspend fun google(@Body body: GoogleIn): Account
+    @GET("api/auth/google/config") suspend fun googleConfig(): GoogleConfig
     @POST("api/auth/signup") suspend fun signup(@Body body: SignupIn): Account
     @POST("api/auth/logout") suspend fun logout()
     @GET("api/auth/me") suspend fun me(): Account

@@ -67,5 +67,8 @@ dependencies {
     implementation(libs.androidx.work)
     implementation(libs.androidx.browser)
     implementation(libs.play.services.location)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play)
+    implementation(libs.googleid)
     implementation(libs.kotlinx.coroutines.play.services)
 }

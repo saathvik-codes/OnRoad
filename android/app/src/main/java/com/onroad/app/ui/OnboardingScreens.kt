@@ -187,6 +187,32 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
         }
     }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // Sign in with Google (Credential Manager): Google returns an ID token for our web client, the server verifies it
+    fun google() {
+        busy = true; error = null
+        scope.launch {
+            runCatching {
+                val clientId = vm.api.googleConfig().clientId ?: error("Google sign-in isn't set up on the server")
+                val option = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(clientId).build()
+                val req = androidx.credentials.GetCredentialRequest.Builder().addCredentialOption(option).build()
+                val cred = androidx.credentials.CredentialManager.create(ctx).getCredential(ctx, req).credential
+                val token = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(cred.data).idToken
+                vm.api.google(com.onroad.app.data.GoogleIn(token))
+            }.onSuccess { vm.prefs.setAccount(it); onDone() }
+                .onFailure { e ->
+                    error = when (e) {
+                        is androidx.credentials.exceptions.GetCredentialCancellationException -> null
+                        is androidx.credentials.exceptions.NoCredentialException -> "Add a Google account to this phone to sign in with Google."
+                        is androidx.credentials.exceptions.GetCredentialException -> "Google sign-in isn't available right now. Use email instead."
+                        is HttpException -> if (e.code() == 401) "Google sign-in couldn't be verified. Try again." else "Something went wrong. Please try again."
+                        else -> e.message ?: "Can't reach OnRoad. Check your connection."
+                    }
+                }
+            busy = false
+        }
+    }
+
     Column(Modifier.fillMaxSize().background(Night).verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().imePadding()) {
         IconButton(onBack, Modifier.padding(4.dp)) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
         Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -198,6 +224,16 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (signup == k) Ignition else Color.Transparent)
                             .clickable { signup = k; error = null }.padding(vertical = 10.dp))
                 }
+            }
+            androidx.compose.material3.OutlinedButton(::google, Modifier.fillMaxWidth().height(54.dp), enabled = !busy,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Line)) {
+                Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+                Text("Continue with Google", color = Ink, fontWeight = FontWeight.SemiBold)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f).height(1.dp).background(Line)); Text("  or with email  ", color = Mute, style = MaterialTheme.typography.bodySmall)
+                Box(Modifier.weight(1f).height(1.dp).background(Line))
             }
             if (signup) OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Full name") }, singleLine = true)
             OutlinedTextField(email, { email = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true,

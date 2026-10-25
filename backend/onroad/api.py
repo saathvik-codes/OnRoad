@@ -188,6 +188,48 @@ def login(body: LoginIn, request: Request, response: Response):
     return {k: acc[k] for k in ("id", "email", "name", "role")}
 
 
+class GoogleIn(BaseModel):
+    id_token: str
+
+
+# Google OAuth client IDs whose sign-in tokens we accept (web client first; the Android app asks Google for a token
+# issued to the web client too). GOOGLE_CLIENT_IDS="id1,id2" overrides.
+GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv("GOOGLE_CLIENT_IDS",
+                     "725690528227-vtrohp3ga3aguno26glvdfefu4lacecu.apps.googleusercontent.com").split(",") if x.strip()]
+
+
+@app.get("/api/auth/google/config")
+def google_config():
+    return {"client_id": GOOGLE_CLIENT_IDS[0] if GOOGLE_CLIENT_IDS else None}
+
+
+@app.post("/api/auth/google")
+def google_login(body: GoogleIn, response: Response):
+    """Sign in with Google: the ID token is checked by Google itself (signature, expiry), and must be issued to one of
+    our client IDs for a verified email. An existing OnRoad account with that email is signed in; otherwise one is made."""
+    import secrets
+    import httpx
+    try:
+        r = httpx.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": body.id_token}, timeout=15)
+    except Exception:
+        raise HTTPException(503, "Couldn't reach Google. Try again.")
+    t = r.json() if r.status_code == 200 else {}
+    if not t or t.get("aud") not in GOOGLE_CLIENT_IDS or t.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(401, "Google sign-in couldn't be verified.")
+    if str(t.get("email_verified")).lower() != "true" or not t.get("email"):
+        raise HTTPException(401, "Your Google account's email isn't verified.")
+    email = t["email"].strip().lower()
+    acc = one("SELECT * FROM accounts WHERE email = ?", (email,))
+    if not acc:
+        with closing(db.connect()) as conn, conn:
+            uid = conn.execute("INSERT INTO accounts (email, name, phone, pw_hash, role) VALUES (?, ?, ?, ?, ?)",
+                               (email, (t.get("name") or email.split("@")[0]).strip(), None,
+                                _hash(secrets.token_urlsafe(24)), "buyer")).lastrowid      # no password: Google signs them in
+        acc = one("SELECT * FROM accounts WHERE id = ?", (uid,))
+    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    return {k: acc[k] for k in ("id", "email", "name", "role")}
+
+
 @app.post("/api/auth/logout")
 def logout(response: Response):
     response.delete_cookie(COOKIE, path="/")
@@ -691,6 +733,18 @@ def _img_file(u: str, w: int):
     return f
 
 
+@app.get("/models/{brand}/{name}")
+def model_cutout(brand: str, name: str):
+    """Model cut-outs kept with the data (data/model_images/<brand>/<file>), the same paths the website serves."""
+    from fastapi.responses import FileResponse
+    if not re.fullmatch(r"[a-z0-9_-]+", brand) or not re.fullmatch(r"[A-Za-z0-9_.-]+\.(?:png|jpe?g|webp)", name):
+        raise HTTPException(404, "Unknown image")
+    f = db.ROOT / "data" / "model_images" / brand / name
+    if not f.is_file():
+        raise HTTPException(404, "Unknown image")
+    return FileResponse(f, headers={"Cache-Control": "public, max-age=604800"})
+
+
 @app.get("/api/img")
 def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
     """Serves a manufacturer image we already store (models / feature photos), downscaled to WebP and cached on disk.
@@ -705,6 +759,15 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
             known = None
     if not known:
         raise HTTPException(404, "Unknown image")
+    if u.startswith("/models/"):                     # a local cut-out: downscale it like any other image
+        local = db.ROOT / "data" / "model_images" / u[len("/models/"):]
+        if not local.is_file():
+            raise HTTPException(404, "Unknown image")
+        import io
+        from PIL import Image
+        im = Image.open(local); im.thumbnail((w, w * 2))
+        buf = io.BytesIO(); im.save(buf, "WEBP", quality=82)
+        return Response(buf.getvalue(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
     try:
         f = _img_file(u, w)
     except Exception as e:
@@ -1474,7 +1537,8 @@ def _refresh_loop(hours: float) -> None:
         slugs = sorted(m.__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
         out: list[tuple[str, object]] = [("brands", slugs[i:i + 2]) for i in range(0, len(slugs), 2)]
         out += [("city", c) for c in CITIES if c != "Hyderabad"]
-        out += [("loans", None), ("images", None), ("places", None), ("crash", None), ("sales", None)]
+        out += [("loans", None), ("images", None), ("places", None), ("crash", None), ("sales", None), ("photos", None),
+                ("offerlinks", None)]
         return out
 
     def cursor(set_to: int | None = None) -> int:
@@ -1514,6 +1578,15 @@ def _refresh_loop(hours: float) -> None:
                 elif kind == "places":
                     from . import places
                     places.match_and_rate(300)
+                elif kind == "offerlinks":                     # offers whose own page is gone are over
+                    from . import offer_links
+                    offer_links.run()
+                elif kind == "photos":                         # weekly: galleries for models short of pictures, drop dead links
+                    mark = db.ROOT / "data" / ".photos_checked"
+                    if not mark.exists() or _t.time() - mark.stat().st_mtime > 7 * 86400:
+                        from . import gallery_sync, image_check
+                        gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
+                        mark.touch()
                 _RESP_CACHE.clear()
             except Exception as e:                            # never kill the API because a site was down
                 log.warning("refresh step %s %s failed: %s", kind, arg, e)
