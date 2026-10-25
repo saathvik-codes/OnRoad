@@ -5,20 +5,58 @@ on:
     paths: ["ios/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write          # to publish the unsigned .ipa on the "ios-latest" release
+
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Generate the Xcode project
         run: |
           brew install xcodegen
           cd ios && xcodegen generate
-      - name: Build for the iPhone simulator (no signing)
+      - name: Build for the iPhone simulator (compile check, no signing)
         run: |
           cd ios
           xcodebuild -project OnRoad.xcodeproj -scheme OnRoad -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO build | tail -200
           exit ${PIPESTATUS[0]}
+      # Free install path: an unsigned iPhone build. Testers sign it with their own free Apple ID using
+      # Sideloadly or AltStore (re-install every 7 days; no push notifications). No Apple Developer account needed.
+      - name: Build an unsigned iPhone app (.ipa)
+        run: |
+          cd ios
+          xcodebuild -project OnRoad.xcodeproj -scheme OnRoad -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build -skipPackagePluginValidation -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -60
+          exit ${PIPESTATUS[0]}
+      - name: Package OnRoad-unsigned.ipa
+        run: |
+          cd ios
+          mkdir -p Payload && cp -R build/Build/Products/Release-iphoneos/OnRoad.app Payload/
+          zip -qry OnRoad-unsigned.ipa Payload
+          ls -la OnRoad-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OnRoad-unsigned-ipa
+          path: ios/OnRoad-unsigned.ipa
+      - name: Publish on the "ios-latest" release (stable download link)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: OnRoad for iPhone (unsigned test build)
+          prerelease: true
+          make_latest: false
+          files: ios/OnRoad-unsigned.ipa
+          body: |
+            Free way to try OnRoad on an iPhone without the App Store.
+            1. On a Windows PC or Mac, install Sideloadly (sideloadly.io) or AltStore (altstore.io).
+            2. Connect the iPhone by cable, drop OnRoad-unsigned.ipa into Sideloadly and sign in with your own free Apple ID.
+            3. On the iPhone: Settings > General > VPN & Device Management > trust your Apple ID; turn on Developer Mode if asked.
+            The app works for 7 days, then install again. Push notifications need the App Store build.
+            Easiest option for everyone else: open https://onroad-frontend.onrender.com in Safari > Share > Add to Home Screen.
