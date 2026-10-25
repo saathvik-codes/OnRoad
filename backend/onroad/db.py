@@ -85,6 +85,9 @@ CREATE TABLE IF NOT EXISTS features (
     variant_id TEXT, key TEXT, label TEXT, source_url TEXT, fetched_at TEXT,
     PRIMARY KEY (variant_id, key, label)
 );
+CREATE TABLE IF NOT EXISTS push_tokens (     -- phones that asked for notifications (FCM)
+    token TEXT PRIMARY KEY, account_id INTEGER, platform TEXT, created TEXT DEFAULT (datetime('now')), last_seen TEXT
+);
 CREATE TABLE IF NOT EXISTS dealer_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT, dealer_id TEXT, account_id INTEGER, rating INTEGER,
     price_honesty INTEGER, no_forced_addons INTEGER, delivery_on_time INTEGER, visit TEXT, text TEXT,

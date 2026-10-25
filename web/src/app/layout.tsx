@@ -8,6 +8,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { CityProvider } from "@/components/city";
 import { THEME_SCRIPT, ThemeProvider } from "@/components/theme";
 import { MobileNav } from "@/components/mobile-nav";
+import { Analytics } from "@/components/analytics";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </CityProvider>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
+              <Analytics />
       </body>
     </html>
   );

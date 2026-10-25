@@ -1,5 +1,7 @@
 package com.onroad.app
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.annotation.SuppressLint
 import android.app.Application
 import android.graphics.Color
@@ -76,6 +78,7 @@ class OnRoadApp : Application(), SingletonImageLoader.Factory {
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var prefs: Prefs
+    @Inject lateinit var api: com.onroad.app.data.Api
     private val askNotify = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -93,11 +96,20 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
+        com.onroad.app.data.PushService.channel(this)
+        // this phone's push token, sent again whenever someone signs in so alerts reach their account
+        lifecycleScope.launch {
+            prefs.account.collect { com.onroad.app.data.PushService.register(api, lifecycleScope) }
+        }
         setContent {
             OnRoadTheme {
                 val nav = rememberNavController()
                 val enc = { s: String -> URLEncoder.encode(s, "UTF-8") }
                 val start = remember { if (prefs.onboarded) "home" else "welcome" }
+                // tapped a price-drop notification: open that car
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    intent?.getStringExtra("open_model")?.let { if (prefs.onboarded) nav.navigate("model/${enc(it)}") }
+                }
                 val route = nav.currentBackStackEntryAsState().value?.destination?.route
                 androidx.compose.runtime.LaunchedEffect(route) {
                     if (route == "home" && android.os.Build.VERSION.SDK_INT >= 33 && !prefs.askedNotify) {

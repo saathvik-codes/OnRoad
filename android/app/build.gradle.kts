@@ -5,6 +5,9 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
+    alias(libs.plugins.app.distribution)
 }
 
 android {
@@ -22,6 +25,14 @@ android {
     }
     buildTypes {
         release {
+            // ./gradlew assembleRelease appDistributionUploadRelease  (key file stays outside git; needs the
+            // "Firebase App Distribution Admin" role on that service account)
+            firebaseAppDistribution {
+                artifactType = "APK"
+                serviceCredentialsFile = rootProject.file("../onroad-6c950-firebase-adminsdk-fbsvc-78d608a81d.json").path
+                testers = "saathvikk202@gmail.com"
+                releaseNotes = "OnRoad test build"
+            }
             // production API on Render (also editable in Profile → Server)
             buildConfigField("String", "DEFAULT_SERVER", "\"https://onroad-uu9c.onrender.com\"")
             isMinifyEnabled = true
@@ -70,5 +81,9 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play)
     implementation(libs.googleid)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.play.services)
 }

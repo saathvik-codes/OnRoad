@@ -39,6 +39,9 @@ app = FastAPI(
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400:
+        from . import firestore_sync
+        firestore_sync.mark_dirty()
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -639,6 +642,21 @@ CITIES = {
 }
 
 
+FEATURE_SHOTS = {
+    "alloy_wheels": r"^(?:alloy )?wheels?$|alloy wheel", "digital_cluster": r"instrument cluster|digital cluster",
+    "tft_display": r"instrument cluster|tft|console", "touchscreen": r"infotainment|touch ?screen",
+    "android_auto_carplay": r"infotainment system main menu|apple carplay|android auto", "led_headlamps": r"head ?(?:light|lamp)",
+    "auto_headlamps": r"head ?(?:light|lamp)", "led_drl": r"\bdrl|daytime running|head ?(?:light|lamp)",
+    "led_lamps_2w": r"head ?(?:light|lamp)|tail ?(?:light|lamp)", "fog_lamps": r"fog ?lamp", "airbags_6": r"air ?bags?",
+    "airbags_2": r"air ?bags?", "sunroof": r"sun ?roof", "panoramic_sunroof": r"panoramic|sun ?roof",
+    "push_button_start": r"start[- ]stop|engine start|push button", "auto_climate": r"climate control|ac controls?|dashboard controls",
+    "rear_ac_vents": r"rear (?:ac )?vents?", "rear_armrest": r"rear armrest|front armrest", "wireless_charger": r"wireless charg",
+    "electric_parking_brake": r"parking brake|\bepb\b", "rear_camera": r"rear camera|parking camera", "camera_360": r"360",
+    "ventilated_seats": r"ventilated|seats? (?:aerial|controls)", "powered_driver_seat": r"seat (?:adjust|controls)",
+    "roof_rails": r"roof rails?", "rain_sensing_wipers": r"wiper", "front_disc": r"front (?:disc|brake)", "rear_disc_brakes": r"rear (?:disc|brake)",
+}
+
+
 @app.get("/api/variant-specs")
 def variant_specs(variant_id: str):
     """Published specs + standard equipment for one variant (empty lists when the brand's spec sheet isn't read yet)."""
@@ -651,6 +669,18 @@ def variant_specs(variant_id: str):
         photos = {r["key"]: r for r in q("SELECT key, image_url, source_url FROM feature_images WHERE model_id = ?", (v["model_id"],))}
     except Exception:
         photos = {}
+    # gallery shots labelled with what they show ("Instrument cluster", "Wheel", "Sunroof") stand in where the maker
+    # gave no dedicated feature photo; only for equipment this variant actually has
+    try:
+        have = {f["key"] for f in feats}
+        gallery = q("SELECT url, label, source_url FROM model_gallery WHERE model_id = ?", (v["model_id"],))
+        for key, rx in FEATURE_SHOTS.items():
+            if key in have and key not in photos:
+                hit = next((g for g in gallery if re.search(rx, g["label"] or "", re.I)), None)
+                if hit:
+                    photos[key] = {"key": key, "image_url": hit["url"], "source_url": hit["source_url"]}
+    except Exception:
+        pass
     return {"variant_id": variant_id, "specs": specs, "features": feats, "model_url": v["model_url"], "photos": photos,
             "basics": {k: v[k] for k in ("fuel", "transmission", "engine_cc", "battery_kwh", "seats")}}
 
@@ -1174,6 +1204,22 @@ class QuoteIn(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class PushTokenIn(BaseModel):
+    token: str = Field(min_length=20, max_length=4096)
+    platform: str = "android"
+
+
+@app.post("/api/me/push-token")
+def push_token(body: PushTokenIn, request: Request):
+    """A phone's FCM token. Signed in: tied to the account (price drops on saved cars, dealer quotes)."""
+    uid = _uid(request.cookies.get(COOKIE))
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""INSERT INTO push_tokens (token, account_id, platform, last_seen) VALUES (?, ?, ?, datetime('now'))
+                        ON CONFLICT(token) DO UPDATE SET account_id = COALESCE(excluded.account_id, push_tokens.account_id),
+                        platform = excluded.platform, last_seen = excluded.last_seen""", (body.token, uid, body.platform[:20]))
+    return {"ok": True}
+
+
 @app.post("/api/dealer/quotes")
 def submit_quote(body: QuoteIn, acc: dict = Depends(role("dealer"))):
     if body.dealer_id not in {d["id"] for d in _my_dealers(acc)}:
@@ -1186,6 +1232,12 @@ def submit_quote(body: QuoteIn, acc: dict = Depends(role("dealer"))):
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                      (body.request_id, body.dealer_id, body.ex_showroom_inr, body.road_tax_inr, body.registration_inr, body.insurance_inr,
                       body.accessories_inr, body.other_inr, body.discount_inr, total, body.waiting_weeks, body.valid_until, body.note))
+    try:
+        from . import push
+        dn = one("SELECT name FROM dealers WHERE id = ?", (body.dealer_id,))
+        push.quote_received(body.request_id, (dn or {}).get("name") or "A dealer", total)
+    except Exception:
+        pass
     return {"ok": True, "on_road_inr": total}
 
 
@@ -1595,6 +1647,10 @@ def _refresh_loop(hours: float) -> None:
             _t.sleep(gap)
     threading.Thread(target=run, name="onroad-refresh", daemon=True).start()
 
+
+if os.getenv("FIRESTORE_SYNC", "1") == "1":       # user data mirrored to Firestore (onroad/firestore_sync.py)
+    from . import firestore_sync as _fs
+    _fs.start()
 
 if os.getenv("REFRESH_EVERY_HOURS"):
     _refresh_loop(float(os.getenv("REFRESH_EVERY_HOURS")))

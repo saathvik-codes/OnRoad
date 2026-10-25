@@ -114,6 +114,7 @@ import javax.inject.Singleton
 interface Api {
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
     @POST("api/auth/google") suspend fun google(@Body body: GoogleIn): Account
+    @POST("api/me/push-token") suspend fun pushToken(@Body body: PushTokenIn): kotlinx.serialization.json.JsonObject
     @GET("api/auth/google/config") suspend fun googleConfig(): GoogleConfig
     @POST("api/auth/signup") suspend fun signup(@Body body: SignupIn): Account
     @POST("api/auth/logout") suspend fun logout()

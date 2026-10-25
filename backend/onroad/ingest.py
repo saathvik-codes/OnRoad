@@ -183,6 +183,12 @@ def refresh_brand(a, city: str) -> dict:
                 conn.execute("INSERT OR IGNORE INTO prices (variant_id, city, ex_showroom_inr, source_url, fetched_at) VALUES (?, ?, ?, ?, ?)",
                              (vid, v.city, int(v.ex_showroom_inr), v.source_url, v.fetched_at))
                 res["price_changes"] += 1
+                if last and v.ex_showroom_inr < last["ex_showroom_inr"]:       # tell buyers who saved this car
+                    try:
+                        from . import push
+                        push.price_dropped(conn, vid, v.city, int(last["ex_showroom_inr"]), int(v.ex_showroom_inr))
+                    except Exception:
+                        pass
         res["variants"] = len(variants)
         if (models or variants) and city == "Hyderabad":   # models neither listed nor priced any more drop out
             listed = set(known_models.values())
