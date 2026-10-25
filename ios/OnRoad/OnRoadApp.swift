@@ -110,7 +110,15 @@ struct OnRoadApp: App {
 
 struct RootView: View {
     @EnvironmentObject var state: AppState
+    @State private var intro = true                     // brand intro on launch
     var body: some View {
+        ZStack {
+            tabs
+            if intro { BrandIntro { withAnimation(.easeOut(duration: 0.2)) { intro = false } }.transition(.opacity).zIndex(1) }
+        }
+    }
+
+    var tabs: some View {
         TabView {
             NavigationStack { HomeView() }.tabItem { Label("Home", systemImage: "house") }
             NavigationStack { ExploreView() }.tabItem { Label("Explore", systemImage: "square.grid.2x2") }

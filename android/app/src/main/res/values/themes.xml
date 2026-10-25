@@ -5,8 +5,8 @@
         <item name="android:windowBackground">@color/night</item>
     </style>
     <style name="Theme.OnRoad.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/night</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
         <item name="postSplashScreenTheme">@style/Theme.OnRoad</item>
     </style>
 </resources>

@@ -1,5 +1,7 @@
 package com.onroad.app
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.annotation.SuppressLint
@@ -93,7 +95,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        // the brand intro starts on exactly the launch icon's frame, so swap without the system's fade (no dip)
+        installSplashScreen().setOnExitAnimationListener { it.remove() }
         super.onCreate(savedInstanceState)
         com.onroad.app.ui.ThemeMode.init(this)
         val dark = when (com.onroad.app.ui.ThemeMode.mode.value) { "dark" -> true; "light" -> false
@@ -178,6 +181,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 }
+                // brand intro over the first screen, on a fresh launch only (not when coming back to the app)
+                var intro by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(savedInstanceState == null) }
+                if (intro) com.onroad.app.ui.BrandIntro { intro = false }
             }
         }
     }

@@ -1,0 +1,5 @@
+<resources>
+    <!-- launch screen follows light / dark like the app -->
+    <color name="splash_bg">#F4F5F8</color>
+    <color name="splash_dash">#111522</color>
+</resources>
