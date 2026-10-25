@@ -126,8 +126,8 @@ struct DealerCard: View {
                 Text(d.name).font(.headline).lineLimit(2)
                 Text([d.address, d.city].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")).font(.caption).foregroundStyle(Palette.mute).lineLimit(2)
                 HStack(spacing: 12) {
-                    if let g = d.googleRating { Text(String(format: "★ %.1f", g)).bold().foregroundStyle(Palette.amber) + Text(" Google (\(d.googleCount ?? 0))").font(.caption).foregroundStyle(Palette.mute) }
-                    if let r = d.rating, (d.ratingCount ?? 0) > 0 { Text(String(format: "★ %.1f", r)).bold().foregroundStyle(Palette.good) + Text(" \(d.ratingCount ?? 0) OnRoad").font(.caption).foregroundStyle(Palette.mute) }
+                    if let g = d.googleRating { Text(String(format: "★ %.1f", g)).bold().foregroundColor(Palette.amber) + Text(" Google (\(d.googleCount ?? 0))").font(.caption).foregroundColor(Palette.mute) }
+                    if let r = d.rating, (d.ratingCount ?? 0) > 0 { Text(String(format: "★ %.1f", r)).bold().foregroundColor(Palette.good) + Text(" \(d.ratingCount ?? 0) OnRoad").font(.caption).foregroundColor(Palette.mute) }
                 }
                 HStack(spacing: 8) {
                     if let ph = d.phone?.split(whereSeparator: { ",/;".contains($0) }).first,
