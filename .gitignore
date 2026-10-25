@@ -85,3 +85,7 @@ token.json
 # Android release signing (key lives outside the repo, D:/dev/keys)
 keystore.properties
 android/keystore.properties
+
+# Firebase mobile configs
+GoogleService-Info.plist
+*.backup.json

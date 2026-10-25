@@ -2,3 +2,7 @@
 - mclaren/artura: File:McLaren Artura IMG 0527.jpg by Alexander-93, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:McLaren_Artura_IMG_0527.jpg
 - mclaren/artura-spider: File:2024 McLaren Artura Spider.jpg by MrWalkr, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:2024_McLaren_Artura_Spider.jpg
 - mclaren/750s-spider: File:McLaren 750S Spider IMG 2458.jpg by Alexander-93, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:McLaren_750S_Spider_IMG_2458.jpg
+- land_rover/discovery-sport: File:Land Rover Discovery Sport HSE Luxury TD4 2016.jpg by DeFacto, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Land_Rover_Discovery_Sport_HSE_Luxury_TD4_2016.jpg
+- mclaren/artura: File:McLaren Artura IMG 0527.jpg by Alexander-93, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:McLaren_Artura_IMG_0527.jpg
+- mclaren/artura-spider: File:2024 McLaren Artura Spider.jpg by MrWalkr, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:2024_McLaren_Artura_Spider.jpg
+- mclaren/750s-spider: File:McLaren 750S Spider IMG 2458.jpg by Alexander-93, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:McLaren_750S_Spider_IMG_2458.jpg
