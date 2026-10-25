@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Delete
@@ -91,11 +90,11 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(if (IsDark) listOf(Color(0xFF4A1A12), Color(0xFF241020), Night) else listOf(Color(0xFFFFE1D8), Color(0xFFFFF1EC), Night)))
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Panel, Panel)))
                 .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 20.dp)) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(68.dp).clip(CircleShape).background(IgnitionGradient).border(3.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+                        Box(Modifier.size(68.dp).clip(CircleShape).background(Ignition).border(3.dp, Color.White.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center) {
                             val a = acc
                             if (a != null && a.name.isNotBlank()) Text(a.name.take(1).uppercase(), style = MaterialTheme.typography.headlineMedium, color = Color.White)
@@ -209,7 +208,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
             }
         }
         item {
-            Text("OnRoad · honest on-road prices", color = Mute, style = MaterialTheme.typography.bodySmall,
+            Text("OnRoad ${com.onroad.app.BuildConfig.VERSION_NAME}", color = Mute, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.fillMaxWidth().padding(top = 20.dp), textAlign = TextAlign.Center)
         }
     }

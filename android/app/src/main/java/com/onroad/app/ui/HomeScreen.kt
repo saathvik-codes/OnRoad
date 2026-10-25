@@ -23,7 +23,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.automirrored.outlined.CompareArrows
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Calculate
@@ -108,11 +108,6 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                         Icon(androidx.compose.material.icons.Icons.Outlined.Person, "My garage", tint = Ink, modifier = Modifier.size(20.dp))
                     }
                 }
-                Spacer(Modifier.height(18.dp))
-                Text(if (s.type == "bike") "The real on-road price\nof every bike." else "The real on-road price\nof every car.",
-                    style = MaterialTheme.typography.displaySmall)
-                Spacer(Modifier.height(8.dp))
-                Text("Manufacturer prices for $city, every tax and fee itemised.", color = Mute)
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel2).clickable(onClick = onSearch).padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +124,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction(Icons.Outlined.AutoAwesome, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
+                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
                     QuickAction(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
                     QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, "Compare", Electric, Modifier.weight(1f), onCompare)
                     QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying\nguide", Good, Modifier.weight(1f), onGuide)

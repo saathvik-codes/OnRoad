@@ -38,7 +38,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.WarningAmber

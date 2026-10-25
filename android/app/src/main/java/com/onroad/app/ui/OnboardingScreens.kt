@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -118,7 +119,7 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
         HorizontalPager(pager, Modifier.weight(1f)) { i ->
             val sl = SLIDES[i]
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-                when (i) { 0 -> PriceArt(); 1 -> ReceiptArt(); else -> MapArt() }
+                OnboardingArt(listOf("price", "receipt", "showrooms")[i])
                 Spacer(Modifier.height(24.dp))
                 Text(sl.title, style = MaterialTheme.typography.displaySmall)
                 Spacer(Modifier.height(14.dp))
@@ -277,7 +278,7 @@ fun AccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, vm: BrowseVM = hiltV
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Tile(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp).clip(CircleShape).background(IgnitionGradient), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(Ignition), contentAlignment = Alignment.Center) {
                         val a = acc
                         if (a != null && a.name.isNotBlank()) Text(a.name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = Color.White)
                         else Icon(Icons.Outlined.Person, null, tint = Color.White)
@@ -302,4 +303,16 @@ fun AccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, vm: BrowseVM = hiltV
             Text("Prices are the manufacturers' own; taxes follow each state's official rules.", color = Mute, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+
+/** A character illustration for an onboarding slide (unDraw, recoloured to the OnRoad orange; assets/onboarding),
+ *  on a white card so its dark details stay visible in dark mode too. */
+@Composable
+private fun OnboardingArt(name: String) = Box(
+    Modifier.fillMaxWidth().aspectRatio(1.25f).clip(RoundedCornerShape(24.dp)).background(Color.White).padding(22.dp),
+    contentAlignment = Alignment.Center,
+) {
+    coil3.compose.AsyncImage("file:///android_asset/onboarding/$name.svg", null, contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+        modifier = Modifier.fillMaxSize())
 }

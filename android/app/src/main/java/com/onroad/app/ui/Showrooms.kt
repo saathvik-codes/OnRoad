@@ -185,7 +185,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
 @Composable
 private fun ShowroomPhoto(d: NearDealer, vm: BrowseVM, modifier: Modifier, big: Boolean) = Box(
     modifier.clip(RoundedCornerShape(if (big) 20.dp else 14.dp))
-        .background(Brush.linearGradient(listOf(Panel2, Ignition.copy(alpha = 0.22f)))), contentAlignment = Alignment.Center,
+        .background(Panel2), contentAlignment = Alignment.Center,
 ) {
     if (d.photoUrl != null) {
         AsyncImage(vm.prefs.img(d.photoUrl, if (big) 1000 else 400), d.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
