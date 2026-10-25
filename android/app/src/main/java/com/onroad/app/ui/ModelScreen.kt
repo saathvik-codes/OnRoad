@@ -116,7 +116,12 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             Column(Modifier.padding(horizontal = 20.dp)) {
                 Text(model.name, style = MaterialTheme.typography.displaySmall)
                 Text(range(prices.minOrNull(), prices.maxOrNull()), style = MaterialTheme.typography.titleLarge, color = Ignition)
-                Text("Ex-showroom · ${variant?.priceCity ?: city} · ${model.variants.size} variants", color = Mute)
+                val pc = variant?.priceCity
+                Text(when {
+                    pc == null || pc.equals(city, true) -> "Ex-showroom price in $city"
+                    pc == "India (national)" -> "Ex-showroom · same price across India"
+                    else -> "Ex-showroom · $city (${model.brandName} lists the nearest price, $pc)"
+                } + " · ${model.variants.size} variants", color = Mute)
             }
             // key specs at a glance (engine, power, mileage / range, seats), from this variant's official sheet
             val glance = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(specs?.specs, rx)?.let { label to it } }.take(5)

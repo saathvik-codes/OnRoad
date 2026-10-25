@@ -22,7 +22,7 @@ struct ModelView: View {
                         Text(m.name).font(.largeTitle.bold())
                         let prices = m.variants.compactMap { $0.exShowroomInr }
                         Text(range(prices.min(), prices.max())).font(.title3.bold()).foregroundStyle(Palette.ignition)
-                        Text("Ex-showroom · \(variant?.priceCity ?? state.city) · \(m.variants.count) variants").font(.caption).foregroundStyle(Palette.mute)
+                        Text(priceLabel(variant?.priceCity, state.city) + " · \(m.variants.count) variants").font(.caption).foregroundStyle(Palette.mute)
                     }.padding(.horizontal, 16)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -283,4 +283,10 @@ struct QuoteSheet: View {
             }.navigationTitle("Dealer quotes")
         }
     }
+}
+
+/// Where the ex-showroom figure comes from, said plainly when the maker doesn't list the chosen city.
+func priceLabel(_ pc: String?, _ city: String) -> String {
+    guard let pc, pc.lowercased() != city.lowercased() else { return "Ex-showroom price in \(city)" }
+    return pc == "India (national)" ? "Ex-showroom · same price across India" : "Ex-showroom · \(city) (nearest listed price, \(pc))"
 }

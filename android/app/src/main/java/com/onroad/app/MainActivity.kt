@@ -158,12 +158,16 @@ class MainActivity : ComponentActivity() {
                             initType = e.arguments?.getString("type") ?: "car", initBudget = e.arguments?.getString("budget"))
                     }
                     composable("compare") { com.onroad.app.ui.CompareScreen(onBack = { nav.popBackStack() }, onModel = { nav.navigate("model/${enc(it)}") }) }
+                    composable("compare/{a}/{b}") { e ->
+                        val ids = listOf("a", "b").map { URLDecoder.decode(e.arguments!!.getString(it)!!, "UTF-8") }
+                        com.onroad.app.ui.CompareScreen(onBack = { nav.popBackStack() }, onModel = { nav.navigate("model/${enc(it)}") }, preset = ids)
+                    }
                     composable("guide") { GuideScreen(onBack = { nav.popBackStack() }) }
                     composable("home") {
                         HomeScreen(onBrand = { nav.navigate("brand/${it.slug}/${enc(it.name)}") }, onModel = { nav.navigate("model/${enc(it)}") },
                             onSearch = { nav.navigate("search") }, onCity = { nav.navigate("city") }, onCalc = { nav.navigate("calc") }, onAccount = { nav.navigate("account") },
                             onOffers = { nav.navigate("offers") }, onFinder = { nav.navigate("finder") }, onShowrooms = { nav.navigate("showrooms") },
-                            onCompare = { nav.navigate("compare") }, onGuide = { nav.navigate("guide") },
+                            onCompare = { nav.navigate("compare") }, onCompareThese = { a, b -> nav.navigate("compare/${enc(a)}/${enc(b)}") }, onGuide = { nav.navigate("guide") },
                             onBudget = { t, b -> nav.navigate("explore-budget/$t/$b") })
                     }
                     composable("brand/{slug}/{name}") { e ->

@@ -63,7 +63,23 @@ import javax.inject.Inject
 
 data class HomeState(val type: String = "car", val brands: List<Brand> = emptyList(), val popular: List<ModelSummary> = emptyList(),
                      val offers: List<com.onroad.app.data.OfferItem> = emptyList(), val bands: List<com.onroad.app.data.Band> = emptyList(),
-                     val loading: Boolean = true, val error: String? = null)
+                     val loading: Boolean = true, val error: String? = null,
+                     val rivals: List<Pair<ModelSummary, ModelSummary>> = emptyList())
+
+/** Head-to-head picks from real sales ranks: each best seller against the closest-priced best seller of another
+ *  brand with the same body type (e.g. Creta vs Seltos). No made-up popularity, only official monthly sales. */
+fun rivalPairs(all: List<ModelSummary>, max: Int = 6): List<Pair<ModelSummary, ModelSummary>> {
+    val ranked = all.filter { it.salesRank != null && it.fromInr != null && it.bodyType != null }.sortedBy { it.salesRank }.take(40)
+    val used = mutableSetOf<String>(); val out = mutableListOf<Pair<ModelSummary, ModelSummary>>()
+    for (a in ranked) {
+        if (a.id in used || out.size >= max) continue
+        val pa = a.fromInr!!.toDouble()
+        val b = ranked.filter { it.id != a.id && it.id !in used && it.bodyType == a.bodyType && it.brandSlug != a.brandSlug &&
+            it.fromInr!! / pa in 0.75..1.33 }.minByOrNull { it.salesRank!! } ?: continue
+        out += a to b; used += a.id; used += b.id
+    }
+    return out
+}
 
 @HiltViewModel
 class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewModel() {
@@ -74,12 +90,13 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
     fun retry() { viewModelScope.launch { load(prefs.city.value, type.value) } }
     private suspend fun load(city: String, t: String) {
         _s.value = _s.value.copy(type = t, loading = true, error = null)
-        runCatching { api.brands(city, t) to api.explore(city, type = t).take(10) }
-            .onSuccess { (b, p) ->
+        runCatching { api.brands(city, t) to api.explore(city, type = t) }
+            .onSuccess { (b, all) ->
+                val p = all.take(10)
                 val bset = b.map { it.slug }.toSet()
                 val offers = runCatching { api.offers(city, 40) }.getOrElse { emptyList() }.filter { it.brandSlug in bset }
                 val bands = runCatching { api.bands() }.getOrElse { emptyList() }
-                _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, bands, false)
+                _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, bands, false, rivals = rivalPairs(all))
             }
             .onFailure { _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check your internet connection.") }
     }
@@ -87,7 +104,7 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
 
 @Composable
 fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: () -> Unit, onCity: () -> Unit, onCalc: () -> Unit, onAccount: () -> Unit, onOffers: () -> Unit, onFinder: () -> Unit, onShowrooms: () -> Unit,
-               onCompare: () -> Unit, onGuide: () -> Unit, onBudget: (type: String, budget: String) -> Unit, vm: HomeVM = hiltViewModel()) {
+               onCompare: () -> Unit, onCompareThese: (String, String) -> Unit = { _, _ -> }, onGuide: () -> Unit, onBudget: (type: String, budget: String) -> Unit, vm: HomeVM = hiltViewModel()) {
     val s by vm.s.collectAsStateWithLifecycle()
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
@@ -148,7 +165,17 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     BudgetRow(chips) { onBudget(s.type, it) }
                     Spacer(Modifier.height(22.dp))
                 }
-                Text("Most bought in India", style = MaterialTheme.typography.titleLarge)
+                if (s.rivals.isNotEmpty()) {
+                    Text("Top picks to compare", style = MaterialTheme.typography.titleLarge)
+                    Text("Best-selling rivals, same body type and budget", color = Mute, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(10.dp))
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(s.rivals.size) { i -> val (a, b) = s.rivals[i]
+                            RivalCard(a, b, { vm.prefs.img(it, 480) }) { onCompareThese(a.id, b.id) } }
+                    }
+                    Spacer(Modifier.height(22.dp))
+                }
+                Text("Top buys in India", style = MaterialTheme.typography.titleLarge)
                 Text("Ranked by official monthly sales", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -171,6 +198,29 @@ private fun PopularRow(m: ModelSummary, img: String?, onClick: () -> Unit) = Til
         }
     }
 }
+
+@Composable
+private fun RivalCard(a: ModelSummary, b: ModelSummary, img: (String?) -> String?, onClick: () -> Unit) =
+    Tile(Modifier.width(310.dp).clickable(onClick = onClick), pad = 12) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                listOf(a, b).forEachIndexed { i, m ->
+                    if (i == 1) Text("VS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Ignition,
+                        modifier = Modifier.padding(horizontal = 6.dp))
+                    Column(Modifier.weight(1f)) {
+                        VehicleImage(img(m.imageUrl), m.name, Modifier.fillMaxWidth().aspectRatio(16 / 10f))
+                        Spacer(Modifier.height(6.dp))
+                        Text(m.brand, color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Text(m.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(lakh(m.fromInr ?: 0) + " onwards", color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                        m.salesRank?.let { Chip("#$it in sales", Good, Modifier.padding(top = 4.dp)) }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("Compare on-road prices  →", color = Ignition, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+        }
+    }
 
 @Composable
 private fun BrandTile(b: Brand, logo: String?, onClick: () -> Unit) = Box(

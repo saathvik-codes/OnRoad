@@ -66,13 +66,20 @@ private class Slot(first: ModelDetail, var city: String) {
 /** Side-by-side comparison of up to three cars or bikes: on-road price for the user's city, key specs and equipment count. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = hiltViewModel()) {
+fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<String> = emptyList(), vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     val slots = remember { mutableStateListOf<Slot>() }
     var picking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // (re)load prices when the city changes and specs when a variant changes
     slots.forEach { s -> LaunchedEffect(s.variantId) { s.specs = s.variantId?.let { runCatching { vm.api.specs(it) }.getOrNull() } } }
+    // opened from "Top picks to compare": load those models straight in
+    LaunchedEffect(Unit) {
+        if (slots.isEmpty()) preset.forEach { id ->
+            val (b, m) = id.split("/", limit = 2)
+            runCatching { vm.api.model(b, m, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { slots.add(Slot(it, city)) }
+        }
+    }
     LaunchedEffect(city) {
         slots.filter { it.city != city }.forEach { s ->
             val (b, m) = s.model.id.split("/", limit = 2)

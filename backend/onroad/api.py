@@ -322,16 +322,43 @@ def _gallery(m: dict, variants: list[dict]) -> list[dict]:
     return out
 
 
+def _price_order(city: str) -> list[str]:
+    """Cities that have prices, best stand-in first for `city`: same state, then nearest by distance."""
+    import math
+    key = city.strip().lower()
+    if key in _PRICE_ORDER:
+        return _PRICE_ORDER[key]
+    coords = {k.lower(): v for k, v in CITIES.items()}
+    st = onroad_calc.STATE_OF_CITY.get(key)
+    here = coords.get(key)
+    have = [r["city"] for r in q("SELECT DISTINCT city FROM prices WHERE city <> 'India (national)'")]
+
+    def dist(c):
+        there = coords.get(c.lower())
+        if not here or not there:
+            return 1e9
+        la1, lo1, la2, lo2 = map(math.radians, (*here, *there))
+        return 6371 * 2 * math.asin(math.sqrt(math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2))
+    order = sorted(have, key=lambda c: (onroad_calc.STATE_OF_CITY.get(c.lower()) != st, dist(c), c != "Hyderabad"))
+    _PRICE_ORDER[key] = order
+    return order
+
+
+_PRICE_ORDER: dict[str, list[str]] = {}
+
+
 def _pick(city: str) -> tuple[str, tuple]:
     """CTE `pick`: one current ex-showroom price per variant for `city`: that city's own price, else the brand's national
-    list, else its list for the city's state, else Hyderabad (the launch city, always ingested). Newest first within each."""
-    st = onroad_calc.STATE_OF_CITY.get(city.strip().lower(), "TS")
-    state_name = ((onroad_calc.rules().get("states") or {}).get(st) or {}).get("name", "")
-    sql = """pick AS (SELECT variant_id, ex_showroom_inr, city, fetched_at, source_url FROM (
-                 SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.variant_id ORDER BY lower(p.city) = lower(?) DESC,
-                        p.city = 'India (national)' DESC, p.city = ? DESC, p.city = 'Hyderabad' DESC, p.fetched_at DESC) AS rn
+    list, else the nearest city in the same state that the brand lists, else the nearest listed city anywhere.
+    Newest first within each."""
+    order = [c for c in _price_order(city) if c.lower() != city.strip().lower()][:60]
+    case = "CASE " + " ".join("WHEN p.city = ? THEN %d" % (i + 2) for i in range(len(order))) + " ELSE 999 END" if order else "999"
+    sql = f"""pick AS (SELECT variant_id, ex_showroom_inr, city, fetched_at, source_url FROM (
+                 SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.variant_id ORDER BY
+                        CASE WHEN lower(p.city) = lower(?) THEN 0 WHEN p.city = 'India (national)' THEN 1 ELSE {case} END,
+                        p.fetched_at DESC) AS rn
                  FROM prices p) WHERE rn = 1)"""
-    return sql, (city, state_name)
+    return sql, (city, *order)
 
 
 def _price_city(city: str) -> str:
@@ -954,11 +981,11 @@ def search(text: str = Query(default="", alias="q"), city: str = "Hyderabad"):
 
 # Price bands as Indian buyers think about them (ex-showroom, starting price of the model)
 PRICE_BANDS = [
-    {"id": "budget", "label": "Budget", "hint": "Under ₹6 lakh", "min": 0, "max": 600_000},
-    {"id": "middle", "label": "Middle class", "hint": "₹6–12 lakh", "min": 600_000, "max": 1_200_000},
-    {"id": "upper-middle", "label": "Upper middle", "hint": "₹12–20 lakh", "min": 1_200_000, "max": 2_000_000},
-    {"id": "premium", "label": "Premium", "hint": "₹20–40 lakh", "min": 2_000_000, "max": 4_000_000},
-    {"id": "luxury", "label": "Luxury", "hint": "₹40 lakh – 1 crore", "min": 4_000_000, "max": 10_000_000},
+    {"id": "budget", "label": "Under ₹6 lakh", "hint": "Entry range", "min": 0, "max": 600_000},
+    {"id": "middle", "label": "₹6–12 lakh", "hint": "Mid range", "min": 600_000, "max": 1_200_000},
+    {"id": "upper-middle", "label": "₹12–20 lakh", "hint": "Upper range", "min": 1_200_000, "max": 2_000_000},
+    {"id": "premium", "label": "₹20–40 lakh", "hint": "Premium", "min": 2_000_000, "max": 4_000_000},
+    {"id": "luxury", "label": "₹40 lakh – 1 crore", "hint": "Luxury", "min": 4_000_000, "max": 10_000_000},
     {"id": "ultra", "label": "Ultra luxury", "hint": "Above ₹1 crore", "min": 10_000_000, "max": None},
 ]
 
