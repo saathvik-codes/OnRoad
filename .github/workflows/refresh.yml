@@ -1,0 +1,46 @@
+# Data refresh: re-reads manufacturer sites every 6 hours and publishes a catalogue snapshot (no user data) to the
+# "data-latest" release. The API server downloads it (backend/onroad/snapshot.py), so Render does no scraping.
+name: data refresh
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "time budget in minutes"
+        default: "300"
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install
+        run: pip install -r backend/requirements.txt
+      - name: Refresh
+        env:
+          GOOGLE_PLACES_KEY: ""
+        run: python scripts/refresh_job.py --minutes "${{ github.event.inputs.minutes || '300' }}"
+      - name: Publish snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view data-latest >/dev/null 2>&1 || gh release create data-latest --title "Catalogue data (latest)" \
+            --notes "Refreshed every 6 hours by the data refresh workflow. No user data." --latest=false
+          gh release upload data-latest dist/catalogue.db.gz dist/popularity.json dist/crash_tests.json --clobber
+          # manifest last: the server only downloads once the manifest says there is something newer
+          gh release upload data-latest dist/manifest.json --clobber

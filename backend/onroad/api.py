@@ -1604,7 +1604,8 @@ def health():
     try:
         st = {r["k"]: r["v"] for r in q("SELECT k, v FROM app_state")}
         out.update(refresh_step=st.get("refresh_step"), refresh_last_step=st.get("refresh_last_step"),
-                   refresh_last_ok=st.get("refresh_last_ok"))
+                   refresh_last_ok=st.get("refresh_last_ok"), snapshot_built_at=st.get("snapshot_built_at"),
+                   snapshot_applied_at=st.get("snapshot_applied_at"))
         out["newest_price"] = (one("SELECT MAX(fetched_at) AS t FROM prices") or {}).get("t")
     except Exception:
         pass
@@ -1623,7 +1624,12 @@ def _refresh_loop(hours: float) -> None:
 
     def steps() -> list[tuple[str, object]]:
         from . import ingest
-        slugs = sorted(m.__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
+        # the data refresh runs on GitHub Actions (scripts/refresh_job.py) and arrives as a snapshot; the server only
+        # keeps the Google ratings, which need the key that lives here. REFRESH_SOURCE=server brings the old loop back.
+        if os.getenv("REFRESH_SOURCE", "github") != "server":
+            return [("places", None)]
+        # module name of the brand adapter (a BikeDekho-wrapped adapter reports the wrapper's module otherwise)
+        slugs = sorted(getattr(m, "_a", m).__module__.rsplit(".", 1)[-1] for m in ingest.adapters())
         out: list[tuple[str, object]] = [("brands", slugs[i:i + 2]) for i in range(0, len(slugs), 2)]
         out += [("city", c) for c in CITIES if c != "Hyderabad"]
         out += [("loans", None), ("images", None), ("places", None), ("crash", None), ("sales", None), ("photos", None),
@@ -1701,3 +1707,11 @@ if os.getenv("FIRESTORE_SYNC", "1") == "1":       # user data mirrored to Firest
 
 if os.getenv("REFRESH_EVERY_HOURS"):
     _refresh_loop(float(os.getenv("REFRESH_EVERY_HOURS")))
+
+if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "github") != "server":
+    from . import snapshot as _snap
+
+    def _after_snapshot():
+        _RESP_CACHE.clear()
+        _PRICE_ORDER.clear()
+    _snap.start(on_applied=_after_snapshot)
