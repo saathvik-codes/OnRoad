@@ -1599,7 +1599,16 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    """Liveness, plus whether the self-refresh is running and when prices last changed (no secrets)."""
+    out = {"ok": True, "refresh_every_hours": os.getenv("REFRESH_EVERY_HOURS")}
+    try:
+        st = {r["k"]: r["v"] for r in q("SELECT k, v FROM app_state")}
+        out.update(refresh_step=st.get("refresh_step"), refresh_last_step=st.get("refresh_last_step"),
+                   refresh_last_ok=st.get("refresh_last_ok"))
+        out["newest_price"] = (one("SELECT MAX(fetched_at) AS t FROM prices") or {}).get("t")
+    except Exception:
+        pass
+    return out
 
 
 # ── Self-refresh when deployed (Render etc.): set REFRESH_EVERY_HOURS, e.g. 6 ────────────────────────────
@@ -1668,9 +1677,19 @@ def _refresh_loop(hours: float) -> None:
                         gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
                         mark.touch()
                 _RESP_CACHE.clear()
+                with closing(db.connect()) as conn, conn:
+                    conn.execute("INSERT OR REPLACE INTO app_state VALUES ('refresh_last_ok', ?)",
+                                 (_t.strftime('%Y-%m-%dT%H:%M:%SZ', _t.gmtime()),))
             except Exception as e:                            # never kill the API because a site was down
                 log.warning("refresh step %s %s failed: %s", kind, arg, e)
             cursor(i + 1)
+            try:
+                with closing(db.connect()) as conn, conn:
+                    conn.execute("INSERT OR REPLACE INTO app_state VALUES ('refresh_last_step', ?)",
+                                 (f"{_t.strftime('%Y-%m-%dT%H:%M:%SZ', _t.gmtime())} {kind} {arg if isinstance(arg, str) else ','.join(arg or [])}",))
+            except Exception:
+                pass
+            _PRICE_ORDER.clear()                              # new cities may now have prices
             gc.collect()
             _t.sleep(gap)
     threading.Thread(target=run, name="onroad-refresh", daemon=True).start()

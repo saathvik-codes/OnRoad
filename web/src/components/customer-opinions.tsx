@@ -52,9 +52,9 @@ export function CustomerOpinions() {
   const [modelName, setModelName] = useState("");
   const [vehicleType, setVehicleType] = useState<"car" | "bike">("car");
   const [rating, setRating] = useState("5.0");
-  const [ownershipPeriod, setOwnershipPeriod] = useState("12 months · 15,000 km");
-  const [realMileage, setRealMileage] = useState("18.0 kmpl City / 22.0 kmpl Highway");
-  const [annualServiceCost, setAnnualServiceCost] = useState("₹5,500/yr");
+  const [ownershipPeriod, setOwnershipPeriod] = useState("");
+  const [realMileage, setRealMileage] = useState("");
+  const [annualServiceCost, setAnnualServiceCost] = useState("");
   const [pros, setPros] = useState("");
   const [cons, setCons] = useState("");
   const [verdict, setVerdict] = useState("");

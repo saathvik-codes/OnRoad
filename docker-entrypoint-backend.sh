@@ -24,7 +24,11 @@ for t, how in (("models", "REPLACE"), ("variants", "REPLACE"), ("prices", "IGNOR
         c.execute(c.execute("SELECT sql FROM seed.sqlite_master WHERE name = ?", (t,)).fetchone()[0])
     cols = [r[1] for r in c.execute(f"PRAGMA main.table_info({t})")]
     common = [x for x in cols if x in {r[1] for r in c.execute(f"PRAGMA seed.table_info({t})")}]
-    n = c.execute(f"INSERT OR {how} INTO main.{t} ({','.join(common)}) SELECT {','.join(common)} FROM seed.{t}").rowcount
+    where = ""
+    if t in ("models", "variants") and "last_seen" in common:
+        where = (f" WHERE NOT EXISTS (SELECT 1 FROM main.{t} m WHERE m.id = s.id) OR s.last_seen >= "
+                 f"(SELECT m.last_seen FROM main.{t} m WHERE m.id = s.id)")
+    n = c.execute(f"INSERT OR {how} INTO main.{t} ({','.join(common)}) SELECT {','.join('s.' + x for x in common)} FROM seed.{t} s{where}").rowcount
     print(f"[entrypoint] merged {n} {t} rows from seed")
 c.commit()
 PY
