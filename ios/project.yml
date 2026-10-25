@@ -1,0 +1,40 @@
+name: OnRoad
+options:
+  bundleIdPrefix: com.onroad
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.6.0
+targets:
+  OnRoad:
+    type: application
+    platform: iOS
+    sources:
+      - path: OnRoad
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.onroad.app
+        PRODUCT_NAME: OnRoad
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: OnRoad/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        OTHER_LDFLAGS: -ObjC
+    dependencies:
+      - package: Firebase
+        product: FirebaseAnalytics
+      - package: Firebase
+        product: FirebaseCrashlytics
+      - package: Firebase
+        product: FirebaseMessaging
+    entitlements:
+      path: OnRoad/OnRoad.entitlements
+      properties:
+        aps-environment: development
