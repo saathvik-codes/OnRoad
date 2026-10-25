@@ -158,6 +158,7 @@ struct FinderView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                Art(name: "hero-finder", height: 150).frame(maxWidth: .infinity)
                 Picker("", selection: $bike) { Text("Car").tag(false); Text("Bike / scooter").tag(true) }.pickerStyle(.segmented)
                 Card { VStack(alignment: .leading) {
                     Text("ON-ROAD BUDGET").font(.caption).foregroundStyle(Palette.mute)
@@ -238,6 +239,7 @@ struct ProfileView: View {
                     }
                 }
             } else {
+                Section { Art(name: "signin", height: 160).frame(maxWidth: .infinity) }.listRowBackground(Color.clear)
                 Section {
                     Picker("", selection: $signup) { Text("Sign in").tag(false); Text("Create account").tag(true) }.pickerStyle(.segmented)
                     if signup { TextField("Full name", text: $name).textContentType(.name) }

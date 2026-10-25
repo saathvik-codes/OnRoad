@@ -27,6 +27,8 @@ export const metadata: Metadata = {
   title: { default: "OnRoad · The real on-road price of every car in India", template: "%s · OnRoad" },
   description: "Every car sold in India with every variant, the manufacturer's ex-showroom price for your city, an itemised on-road price "
     + "with road tax, RTO, insurance and TCS, live offers, nearby dealers, and dealer quotes that compete for you.",
+  openGraph: { images: [{ url: "/og.jpg", width: 1200, height: 630 }] },
+  twitter: { card: "summary_large_image", images: ["/og.jpg"] },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

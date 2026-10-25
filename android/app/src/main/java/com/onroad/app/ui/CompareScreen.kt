@@ -82,6 +82,7 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ScreenHeader("Compare", "Up to 3 · on-road prices for $city", onBack)
+        if (slots.isEmpty()) Art("hero-compare", Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 16.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             slots.forEachIndexed { i, s ->
                 Column(Modifier.width(170.dp).clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(20.dp)).padding(10.dp)) {

@@ -226,6 +226,7 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
     Column(Modifier.fillMaxSize().background(Night).verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().imePadding()) {
         IconButton(onBack, Modifier.padding(4.dp)) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
         Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Art("signin", Modifier.fillMaxWidth().height(170.dp))
             Text(if (signup) "Create your account" else "Welcome back", style = MaterialTheme.typography.displaySmall)
             Text(if (signup) "Save cars, get dealer quotes and rate the showroom you bought from." else "Sign in to see your saved cars and quotes.", color = Mute)
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Panel2).padding(4.dp)) {

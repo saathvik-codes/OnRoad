@@ -142,6 +142,7 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     Text(status ?: "Nearest city for prices, nearest showrooms by distance", color = Mute, style = MaterialTheme.typography.bodySmall)
                 }
             }
+            if (locOff) Art("location-permission", Modifier.fillMaxWidth().height(150.dp))
             if (locOff) Text("Turn on location", color = Ignition, style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(start = 20.dp, bottom = 8.dp).clickable { com.onroad.app.data.openLocationSettings(ctx) })
             OutlinedTextField(q, { q = it }, placeholder = { Text("Search city or state") }, singleLine = true, shape = RoundedCornerShape(16.dp),

@@ -125,6 +125,21 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 }
             }
         }
+        if (acc != null && saved.isEmpty() && quotes.isEmpty()) item {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Art("empty-garage", Modifier.size(180.dp))
+                Text("Your garage is empty", style = MaterialTheme.typography.titleMedium)
+                Text("Save a car to track its price, or ask showrooms for a quote.", color = Mute, style = MaterialTheme.typography.bodySmall,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        }
+        if (acc != null && saved.isNotEmpty() && quotes.isEmpty()) item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Art("empty-quotes", Modifier.size(84.dp)); Spacer(Modifier.width(12.dp))
+                Text("No quote requests yet. Tap “Get best price” on any car and nearby showrooms reply here.", color = Mute,
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            }
+        }
         if (saved.isNotEmpty()) {
             item { Section("Saved cars", Icons.Outlined.Bookmark, "${saved.size}") }
             items(saved, key = { it.variantId + it.city }) { c ->

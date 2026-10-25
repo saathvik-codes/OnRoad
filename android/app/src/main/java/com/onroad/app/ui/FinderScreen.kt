@@ -126,6 +126,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
             item { ScreenHeader("Find my ${if (a.bike) "bike" else "car"}", "Ranked on official prices for $city, crash tests and specs", onBack) }
+            item { Art("hero-finder", androidx.compose.ui.Modifier.fillMaxWidth().height(150.dp).padding(horizontal = 16.dp)) }
             item {
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Pills(listOf("car" to "Car", "bike" to "Bike / scooter"), if (a.bike) "bike" else "car") { t ->

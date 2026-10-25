@@ -89,6 +89,7 @@ fun GuideScreen(onBack: () -> Unit) {
                         Text("From quote to\nnumber plate", style = MaterialTheme.typography.displaySmall)
                         Spacer(Modifier.height(8.dp))
                         Text("${GUIDE.size} steps every buyer in India goes through. Tick them off as you go.", color = Mute)
+                        Art("hero-guide", Modifier.fillMaxWidth().height(170.dp).padding(top = 8.dp))
                         Spacer(Modifier.height(16.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             LinearProgressIndicator(progress = { done.size / GUIDE.size.toFloat() }, Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(50)),

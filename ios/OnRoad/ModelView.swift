@@ -187,7 +187,11 @@ struct EmiRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Divider().overlay(Palette.line)
-            Text("EMI \(rupees(emi)) / month").font(.title3.bold()).foregroundStyle(Palette.electric)
+            HStack {
+                Text("EMI \(rupees(emi)) / month").font(.title3.bold()).foregroundStyle(Palette.electric)
+                Spacer()
+                Art(name: "hero-emi", height: 56)
+            }
             Text("\(Int(down * 100))% down · \(Int(years)) years · \(String(format: "%.1f", rate))%").font(.caption).foregroundStyle(Palette.mute)
             Slider(value: $down, in: 0...0.8, step: 0.05)
             Slider(value: $years, in: 1...8, step: 1)
@@ -262,6 +266,7 @@ struct QuoteSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section { Art(name: msg == nil ? "hero-quote" : "success-quote-sent", height: 130).frame(maxWidth: .infinity) }.listRowBackground(Color.clear)
                 Section { Text(variant.name).font(.headline); Text("Dealers in \(state.city) send you their best on-road price.").foregroundStyle(Palette.mute) }
                 Section("Anything dealers should know?") { TextField("Colour, exchange, finance…", text: $note, axis: .vertical) }
                 Section { Text("Your name and contact go only to the official showrooms near you that answer this request.").font(.caption).foregroundStyle(Palette.mute) }

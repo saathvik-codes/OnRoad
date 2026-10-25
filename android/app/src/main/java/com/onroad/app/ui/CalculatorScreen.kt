@@ -73,6 +73,7 @@ fun CalculatorScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
             Column { Text("On-road calculator", style = MaterialTheme.typography.titleLarge); Text("Rules for $city", color = Mute) }
         }
+        Art("hero-calculator", Modifier.fillMaxWidth().height(150.dp).padding(horizontal = 16.dp))
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             pills(listOf("car" to "Car", "bike" to "Bike / scooter"), type) { type = it; if (fuel !in fuels) fuel = "Petrol"; result = null }
             OutlinedTextField(price, { price = it.filter(Char::isDigit).take(10) }, Modifier.fillMaxWidth(), singleLine = true,

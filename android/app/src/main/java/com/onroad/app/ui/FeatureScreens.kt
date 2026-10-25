@@ -336,7 +336,10 @@ fun EmiCard(onRoad: Long, electric: Boolean, rates: List<LoanRate>, open: (Strin
     val emi = if (r == 0.0) loan / n else (loan * r * (1 + r).pow(n) / ((1 + r).pow(n) - 1)).roundToLong()
     Tile(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("EMI", color = Mute, style = MaterialTheme.typography.labelSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("EMI", color = Mute, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                Art("hero-emi", Modifier.width(96.dp).height(64.dp))
+            }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(rupees(emi), style = MaterialTheme.typography.headlineMedium); Text(" /month", color = Mute)
             }
@@ -375,9 +378,10 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
     val scope = rememberCoroutineScope()
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = Panel) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Art("hero-quote", Modifier.fillMaxWidth().height(130.dp))
             Text("Get dealer quotes", style = MaterialTheme.typography.headlineSmall)
             Text("$variantName · $city. Showrooms of this brand near you send their best on-road price with offers and waiting time.", color = Mute)
-            if (done != null) { Text(done!!, color = Good, fontWeight = FontWeight.SemiBold); Button(onClose, Modifier.fillMaxWidth()) { Text("Done") }; return@Column }
+            if (done != null) { Art("success-quote-sent", Modifier.fillMaxWidth().height(170.dp)); Text(done!!, color = Good, fontWeight = FontWeight.SemiBold); Button(onClose, Modifier.fillMaxWidth()) { Text("Done") }; return@Column }
             androidx.compose.material3.OutlinedTextField(pin, { pin = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true,
                 label = { Text("Your PIN code (optional)") })
             Text("Buying in", fontWeight = FontWeight.SemiBold)
