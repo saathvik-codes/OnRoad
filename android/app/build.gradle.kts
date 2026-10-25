@@ -30,7 +30,8 @@ android {
             firebaseAppDistribution {
                 artifactType = "APK"
                 serviceCredentialsFile = rootProject.file("../onroad-6c950-firebase-adminsdk-fbsvc-78d608a81d.json").path
-                testers = "saathvikk202@gmail.com"
+                testersFile = rootProject.file("../firebase/testers.txt").path      # one email per line
+                groups = "internal-testers"
                 releaseNotes = "OnRoad test build"
             }
             // production API on Render (also editable in Profile → Server)
