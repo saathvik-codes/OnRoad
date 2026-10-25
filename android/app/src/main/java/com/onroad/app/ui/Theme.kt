@@ -90,6 +90,15 @@ fun OnRoadTheme(content: @Composable () -> Unit) {
     val c = when (mode) { "dark" -> DarkColors; "light" -> LightColors
         else -> if (androidx.compose.foundation.isSystemInDarkTheme()) DarkColors else LightColors }
     if (Pal.c != c) Pal.c = c
+    // status / navigation bar icons dark on light, light on dark, also when the theme is switched in Profile
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) androidx.compose.runtime.SideEffect {
+        (view.context as? android.app.Activity)?.window?.let { w ->
+            androidx.core.view.WindowCompat.getInsetsController(w, view).apply {
+                isAppearanceLightStatusBars = !c.dark; isAppearanceLightNavigationBars = !c.dark
+            }
+        }
+    }
     val scheme = if (c.dark) darkColorScheme(primary = c.ignition, onPrimary = Color.White, secondary = c.electric, background = c.night,
         onBackground = c.ink, surface = c.panel, onSurface = c.ink, surfaceVariant = c.panel2, onSurfaceVariant = c.mute, outline = c.line,
         surfaceContainer = c.panel, surfaceContainerLow = c.night, surfaceContainerHigh = c.panel2, error = Color(0xFFFF5C7A))

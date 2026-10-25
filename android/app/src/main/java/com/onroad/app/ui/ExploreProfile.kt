@@ -91,7 +91,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF4A1A12), Color(0xFF241020), Night)))
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(if (IsDark) listOf(Color(0xFF4A1A12), Color(0xFF241020), Night) else listOf(Color(0xFFFFE1D8), Color(0xFFFFF1EC), Night)))
                 .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 20.dp)) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {

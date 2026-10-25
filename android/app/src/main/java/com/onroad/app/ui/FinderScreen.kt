@@ -268,7 +268,7 @@ private fun MatchCard(i: Int, x: Reco, a: Ask, vm: BrowseVM, onOpen: () -> Unit)
             Box {
                 VehicleImage(vm.prefs.img(x.imageUrl, 480), x.name, Modifier.width(118.dp).aspectRatio(16 / 10f))
                 Text("#${i + 1}", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clip(RoundedCornerShape(bottomEnd = 10.dp, topStart = 10.dp)).background(if (i == 0) Ignition else Night.copy(alpha = 0.8f))
+                    modifier = Modifier.clip(RoundedCornerShape(bottomEnd = 10.dp, topStart = 10.dp)).background(if (i == 0) Ignition else Color.Black.copy(alpha = 0.6f))
                         .padding(horizontal = 8.dp, vertical = 3.dp))
             }
             Spacer(Modifier.width(12.dp))

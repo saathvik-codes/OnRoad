@@ -232,7 +232,7 @@ private fun FeaturedShowroom(d: NearDealer, vm: BrowseVM, call: (NearDealer) -> 
                     modifier = Modifier.padding(10.dp).clip(RoundedCornerShape(50)).background(Ignition).padding(horizontal = 10.dp, vertical = 4.dp))
                 d.distanceKm?.let { km ->
                     Text("%.1f km".format(km), color = Color.White, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).clip(RoundedCornerShape(50)).background(Night.copy(alpha = 0.75f))
+                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.6f))
                             .padding(horizontal = 10.dp, vertical = 4.dp))
                 }
             }
