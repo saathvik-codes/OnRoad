@@ -20,8 +20,8 @@ android {
         applicationId = "com.onroad.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.0.2"
         // Same API as the OnRoad website. Change it in Settings (tunnel / server URL).
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8101\"")      // local API, reachable only from the emulator
         buildConfigField("String", "LIVE_SERVER", "\"https://onroad-uu9c.onrender.com\"")
@@ -46,6 +46,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Google's test banner: a developer's own phone must never request (or click) real ads
+            buildConfigField("String", "BANNER_AD", "\"ca-app-pub-3940256099942544/9214589741\"")
+        }
         release {
             // ./gradlew assembleRelease appDistributionUploadRelease  (key file stays outside git; needs the
             // "Firebase App Distribution Admin" role on that service account)
