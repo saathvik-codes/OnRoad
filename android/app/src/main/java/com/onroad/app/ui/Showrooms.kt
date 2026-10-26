@@ -184,12 +184,15 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     reviews?.let { d -> ReviewsSheet(d, vm, onRate = { reviews = null; rating = d }) { reviews = null } }
 }
 
+/** Showroom photos are off for now (brand mark shown instead); set to true to bring them back. */
+private const val SHOW_SHOWROOM_PHOTOS = false
+
 @Composable
 private fun ShowroomPhoto(d: NearDealer, vm: BrowseVM, modifier: Modifier, big: Boolean) = Box(
     modifier.clip(RoundedCornerShape(if (big) 20.dp else 14.dp))
         .background(Panel2), contentAlignment = Alignment.Center,
 ) {
-    if (d.photoUrl != null) {
+    if (SHOW_SHOWROOM_PHOTOS && d.photoUrl != null) {
         AsyncImage(vm.prefs.img(d.photoUrl, if (big) 1000 else 400), d.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
     } else {
         // no photo published: the brand's mark on a tinted tile, never a stock picture
@@ -238,7 +241,7 @@ private fun FeaturedShowroom(d: NearDealer, vm: BrowseVM, call: (NearDealer) -> 
                             .padding(horizontal = 10.dp, vertical = 4.dp))
                 }
             }
-            d.photoCredit?.takeIf { d.photoUrl != null }?.let { Text(it, color = Mute, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp)) }
+            d.photoCredit?.takeIf { SHOW_SHOWROOM_PHOTOS && d.photoUrl != null }?.let { Text(it, color = Mute, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp)) }
             Spacer(Modifier.height(10.dp))
             Chip(d.brandName, Ignition)
             Text(d.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
