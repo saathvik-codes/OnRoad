@@ -236,11 +236,17 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
                             .clickable { signup = k; error = null }.padding(vertical = 10.dp))
                 }
             }
-            androidx.compose.material3.OutlinedButton(::google, Modifier.fillMaxWidth().height(54.dp), enabled = !busy,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Line), shape = Corner) {
-                Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-                androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-                Text("Continue with Google", color = Ink, fontWeight = FontWeight.SemiBold)
+            // Google's own "Sign in with Google" button: official G mark, Roboto Medium, the light/dark colours
+            // from the branding guidelines (developers.google.com/identity/branding-guidelines)
+            androidx.compose.material3.OutlinedButton(::google, Modifier.fillMaxWidth().height(52.dp), enabled = !busy,
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (IsDark) Color(0xFF8E918F) else Color(0xFF747775)),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (IsDark) Color(0xFF131314) else Color.White),
+                shape = Corner) {
+                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.onroad.app.R.drawable.ic_google_g), null,
+                    Modifier.size(20.dp))
+                androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
+                Text("Continue with Google", color = if (IsDark) Color(0xFFE3E3E3) else Color(0xFF1F1F1F),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = androidx.compose.ui.unit.TextUnit(15f, androidx.compose.ui.unit.TextUnitType.Sp))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f).height(1.dp).background(Line)); Text("  or with email  ", color = Mute, style = MaterialTheme.typography.bodySmall)

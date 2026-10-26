@@ -118,6 +118,12 @@ def main():
         i += 1; done += 1
         state("city_cursor", i)
 
+    def tidy():
+        from onroad import spec_repair
+        with closing(db.connect()) as conn, conn:
+            log.info("spec repair: %s", spec_repair.repair(conn))
+    step("spec repair", tidy)            # wrong labels / formats from older parsers never reach the app
+
     m = snapshot.build(Path(args.out))
     log.info("snapshot: %s", m)
 

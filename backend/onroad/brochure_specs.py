@@ -348,12 +348,12 @@ def _tyres(v):
 
 # (label pattern, group, canonical label, value reader): a brochure row is kept only when both match
 CANON = [
-    (r"\b(?:overall )?length\b(?!.*(?:boot|cargo|load|bed))", "Dimensions", "Length", _mm(1500, 6500)),
+    (r"^(?!.*\bseat)(?!.*\bsaddle).*\b(?:overall )?length\b(?!.*(?:boot|cargo|load|bed))", "Dimensions", "Length", _mm(1500, 6500)),
     (r"\b(?:overall )?width\b(?!.*(?:mirror|track|tyre|tire))", "Dimensions", "Width", _mm(600, 2600)),
-    (r"\b(?:overall )?height\b(?!.*seat)", "Dimensions", "Height", _mm(900, 2300)),
+    (r"^(?!.*\bseat)(?!.*\bsaddle).*\b(?:overall )?height\b", "Dimensions", "Height", _mm(900, 2300)),
     (r"wheel ?base", "Dimensions", "Wheelbase", _mm(1100, 3800)),
     (r"ground clearance", "Dimensions", "Ground clearance", _mm(100, 350)),
-    (r"seat height", "Dimensions", "Seat height", _mm(550, 1000)),
+    (r"seat height|saddle height", "Dimensions", "Seat height", _mm(550, 1000)),
     (r"\b(?:boot|luggage|cargo)\b(?!.*(?:light|lamp|net|cover))", "Dimensions", "Boot space",
      _unit(r"(\d{1,2}[ ,]?\d{3}|\d{2,4})\s*(?:l|litres?|liters?)\b", 10, 3000, "{} L")),
     (r"fuel tank|tank capacity", "Dimensions", "Fuel tank", _unit(r"(\d{1,3}(?:\.\d+)?)\s*(?:l|litres?|liters?)?\b", 2, 160, "{} L")),
@@ -362,7 +362,7 @@ CANON = [
     (r"turning (?:circle )?radius", "Dimensions", "Turning radius", _unit(r"(\d(?:\.\d{1,2})?)\s*m\b", 1.5, 8, "{} m")),
     (r"seating capacity|no\.? of seats|^seats?$", "Dimensions", "Seating capacity", _unit(r"\b([1-9])\b", 1, 9, "{}")),
     (r"displacement|engine capacity|cubic capacity|swept volume|engine size", "Engine", "Displacement", _cc),
-    (r"max(?:imum)?\.? ?(?:net )?power|^power\b|power output|peak power", "Engine", "Max power", _power),
+    (r"^(?!.*(?:weight|ratio|to-weight|/\s*kg|\bper\b|steering|window|outlet|socket|seat|mode|tailgate|mirror))(?:.*(?:max(?:imum)?\.? ?(?:net )?power|power output|peak power)|power\b)", "Engine", "Max power", _power),
     (r"max(?:imum)?\.? ?(?:net )?torque|^torque\b|peak torque", "Engine", "Max torque", _torque),
     (r"no\.? of cylinders|^cylinders?\b", "Engine", "Cylinders", _unit(r"\b([1-8])\b", 1, 12, "{}")),
     (r"transmission|gear ?box", "Engine", "Transmission",
