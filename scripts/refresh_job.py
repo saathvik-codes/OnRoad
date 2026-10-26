@@ -106,6 +106,11 @@ def main():
         with closing(db.connect()) as conn:
             brands = [r[0] for r in conn.execute("SELECT DISTINCT brand_slug FROM models WHERE active = 1 AND coalesce(vehicle_type,'car') = 'car'")]
         variant_specs_fill.run(brands)
+    def tidy_first():
+        from onroad import spec_repair
+        with closing(db.connect()) as conn, conn:
+            log.info("spec repair: %s", spec_repair.repair(conn))
+    step("spec repair (before fill)", tidy_first)     # wrong engine figures go first, so the fill can replace them
     weekly("variant_specs", variant_specs)
 
     # other cities in rotation until the budget is spent (leave 10 minutes to build the snapshot)

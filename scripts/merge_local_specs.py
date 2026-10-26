@@ -31,10 +31,11 @@ def main():
     with closing(sqlite3.connect(SNAP)) as c:
         c.execute("ATTACH ? AS loc", (str(local),))
         before = c.execute("SELECT COUNT(*) FROM specs").fetchone()[0]
-        # only rows for variants the snapshot has, only where it has no row with that key yet
+        # fallback (online_*) rows: this machine's set is the reviewed one, so it replaces the snapshot's for every
+        # variant it covers; manufacturer rows are never touched
+        c.execute("""DELETE FROM specs WHERE key LIKE 'online_%' AND variant_id IN (SELECT DISTINCT variant_id FROM loc.specs)""")
         c.execute("""INSERT OR IGNORE INTO specs SELECT l.* FROM loc.specs l
-                     WHERE l.key LIKE 'online_%' AND EXISTS (SELECT 1 FROM variants v WHERE v.id = l.variant_id)
-                     AND NOT EXISTS (SELECT 1 FROM specs s WHERE s.variant_id = l.variant_id AND s.key = l.key)""")
+                     WHERE l.key LIKE 'online_%' AND EXISTS (SELECT 1 FROM variants v WHERE v.id = l.variant_id)""")
         c.commit()
         print("spec rows added:", c.execute("SELECT COUNT(*) FROM specs").fetchone()[0] - before)
     from onroad import snapshot, spec_repair, db

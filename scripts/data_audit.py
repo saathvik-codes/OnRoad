@@ -85,7 +85,7 @@ def main():
         kinds[b[0]] += 1
     print("spec rows checked:", len(rows))
     print("problems:", dict(kinds))
-    for b in bad[:25]:
+    for b in sorted(bad, key=lambda x: x[0] != "power does not fit engine")[:25]:
         print("  ", b)
     print("price outliers:", len(price_flags))
     for f in price_flags[:20]:

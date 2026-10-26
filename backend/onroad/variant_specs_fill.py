@@ -28,6 +28,7 @@ from .online_specs import BRAND, KEEP, SLUG, _fuel
 MILEAGE_L = re.compile(r"^(arai |claimed |city |highway )?(mileage|fuel efficiency|fuel economy)( \(arai\))?$", re.I)
 MILEAGE_V = re.compile(r"(\d{1,2}(?:\.\d{1,2})?)\s*(kmpl|km/l|km/kg|kmpkg)", re.I)
 WANT = KEEP | {"Mileage"}
+ENGINE_FIGS = {"Max power", "Max torque", "Displacement", "Mileage", "Cylinders", "Kerb weight", "Top speed"}
 NEEDED = {"Max power", "Max torque", "Ground clearance", "Mileage", "Kerb weight", "Displacement", "Fuel tank"}
 AUTO = re.compile(r"\b(at|amt|ags|dct|dca|ivt|cvt|tc|automatic|e-?cvt|dsg|\d(at|dct|dsg|ivt|cvt|tc))\b", re.I)
 TURBO = re.compile(r"turbo|\btsi\b|t-?gdi|turbojet|mstallion", re.I)
@@ -91,7 +92,9 @@ def run_model(c: httpx.Client, conn, model_id: str) -> dict:
     for nm, u in theirs:
         fuel = "diesel" if re.search(r"diesel", nm, re.I) else "cng" if re.search(r"cng", nm, re.I) else \
             "electric" if re.search(r"electric|\bev\b|kwh|long range|\blr\b", nm, re.I) else "petrol"
-        cands.append({"url": u, "fuel": fuel, "auto": bool(AUTO.search(nm)), "turbo": bool(TURBO.search(nm)), "trim": _tok(nm) - mwords})
+        d = re.search(r"\b(\d\.\d)\b", nm)
+        cands.append({"url": u, "fuel": fuel, "auto": bool(AUTO.search(nm)), "turbo": bool(TURBO.search(nm)), "trim": _tok(nm) - mwords,
+                      "disp": d.group(1) if d else None})
     vs = conn.execute("SELECT id, name, fuel, transmission, engine_cc FROM variants WHERE model_id = ? AND COALESCE(active, 1) = 1",
                       (model_id,)).fetchall()
     if any(_fuel(v[2]) == "electric" for v in vs):
@@ -115,23 +118,45 @@ def run_model(c: httpx.Client, conn, model_id: str) -> dict:
         if not pool:
             continue
         mine = _tok(vname) - mwords
-        best = max(pool, key=lambda x: (len(mine & x["trim"]), -len(x["trim"] - mine)))
+        my_disp = (re.search(r"(?<![\d.])(\d\.\d)(?![\d.])", vname or "") or [None, None])[1]
+        hint = re.search(r"(?:tce|e-tech|tsi|tgdi|t-gdi|\bhp|\bps)\s*(\d{2,3})\b", vname or "", re.I)
+        hint = int(hint.group(1)) if hint else None
+        if my_disp:
+            pool = [x for x in pool if x["disp"] in (None, my_disp)] or pool
+        # several engine sizes left and nothing in our name says which: engine figures would be a guess
+        ambiguous = not my_disp and not hint and len({x["disp"] for x in pool} - {None}) > 1
+        ranked = sorted(pool, key=lambda x: (-len(mine & x["trim"]), len(x["trim"] - mine)))
+        best = specs = None
+        for cand in ranked[:3]:
+            if cand["url"] not in pages:
+                r = c.get(cand["url"])
+                pages[cand["url"]] = read_variant(r.text) if r.status_code == 200 else ({}, None)
+                time.sleep(1.2)
+            sp, pfuel = pages[cand["url"]]
+            if not sp or (pfuel and _fuel(pfuel) != f):
+                continue
+            m = re.match(r"(\d+) cc", sp.get("Displacement", (None, ""))[1])
+            if vcc and m and abs(vcc - int(m.group(1))) > 60:
+                continue
+            if hint:                                    # "TCe 160" must be the ~160 PS engine
+                pm = re.match(r"([\d.]+)\s*(bhp|ps|kw|hp)", sp.get("Max power", (None, ""))[1], re.I)
+                if not pm:
+                    continue
+                ps = float(pm.group(1)) * {"bhp": 1.014, "hp": 1.014, "ps": 1.0, "kw": 1.36}[pm.group(2).lower()]
+                if abs(ps - hint) / hint > 0.12:
+                    continue
+            best, specs = cand, sp
+            break
+        if not best:
+            continue
         exact = bool(mine & best["trim"])
-        if best["url"] not in pages:
-            r = c.get(best["url"])
-            pages[best["url"]] = read_variant(r.text) if r.status_code == 200 else ({}, None)
-            time.sleep(1.2)
-        specs, pfuel = pages[best["url"]]
-        if not specs or (pfuel and _fuel(pfuel) != f):
-            continue
-        m = re.match(r"(\d+) cc", specs.get("Displacement", (None, ""))[1])
-        if vcc and m and abs(vcc - int(m.group(1))) > 60:
-            continue
         matched += 1
         for label, (grp, value) in specs.items():
             if label not in need:
                 continue
             if not exact and label in ("Kerb weight", "Tyre size", "Seating capacity", "Boot space"):
+                continue
+            if ambiguous and label in ENGINE_FIGS:
                 continue
             if label != "Mileage" and not plausible(label, value, "car"):
                 continue

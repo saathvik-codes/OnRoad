@@ -61,7 +61,45 @@ def repair(conn) -> dict:
         if label in PLAUS and re.fullmatch(r"\d+(\.\d+)? (mm|kg|L)", new) and not plausible(label, new, "bike" if vt == "bike" else "car"):
             conn.execute("DELETE FROM specs WHERE rowid = ?", (rowid,))
             n["removed"] += 1
+    n["removed"] += engine_conflicts(conn)
     return n
+
+
+ENGINE_SIG = re.compile(r"(?:tce|tsi|tgdi|t-gdi|gdi|crdi|mpi|vtvt|ecoboost|e-tech)\s*\d{2,3}|\d\.\d|turbo|hybrid|e-tech|cng|t-gdi", re.I)
+
+
+def engine_conflicts(conn) -> int:
+    """Power / torque rows a brochure gave to every variant although the model has several engines (CNG and petrol,
+    TCe 100 and TCe 160...), one row naming several engines' figures, or a turbo figure on a non-turbo variant. These
+    are removed (manufacturer rows only); the per-variant fill then supplies each engine's own figure."""
+    sig, by_model = {}, {}
+    for mid, vid, name, fuel in conn.execute("""SELECT v.model_id, v.id, v.name, v.fuel FROM variants v JOIN models m ON m.id = v.model_id
+                                                WHERE v.active = 1 AND m.active = 1"""):
+        sig[vid] = (fuel or "").lower() + "|" + ",".join(sorted({x.lower().replace(" ", "") for x in ENGINE_SIG.findall(name or "")}))
+        by_model.setdefault(mid, []).append((vid, name or ""))
+    gone = 0
+    for mid, vs in by_model.items():
+        engines = {sig[v] for v, _ in vs}
+        for word, unit in (("power", r"(?:ps|kw|bhp|hp)"), ("torque", r"nm")):
+            rows = conn.execute(f"""SELECT s.rowid, s.variant_id, s.value FROM specs s JOIN variants v ON v.id = s.variant_id
+                                    WHERE v.model_id = ? AND v.active = 1 AND s.key NOT LIKE 'online_%' AND lower(s.label) LIKE '%{word}%'
+                                    AND lower(s.label) NOT LIKE '%weight%' AND lower(s.label) NOT LIKE '%steering%'""", (mid,)).fetchall()
+            names = dict(vs)
+            for rowid, vid, value in rows:
+                v = (value or "").lower()
+                turbo_on_na = "turbo" in v and "turbo" not in names.get(vid, "").lower() and not re.search(r"tce|tsi|tgdi|t-gdi", names.get(vid, ""), re.I)
+                if (len(re.findall(unit, v)) >= 3) or turbo_on_na:
+                    conn.execute("DELETE FROM specs WHERE rowid = ?", (rowid,)); gone += 1
+            if len(engines) < 2:
+                continue
+            rows = conn.execute(f"""SELECT s.rowid, s.variant_id, s.value FROM specs s JOIN variants v ON v.id = s.variant_id
+                                    WHERE v.model_id = ? AND v.active = 1 AND s.key NOT LIKE 'online_%' AND lower(s.label) LIKE '%{word}%'
+                                    AND lower(s.label) NOT LIKE '%weight%' AND lower(s.label) NOT LIKE '%steering%'""", (mid,)).fetchall()
+            vals = {r[2] for r in rows}
+            if len(rows) >= 2 and len(vals) == 1 and len({sig.get(r[1]) for r in rows}) > 1:
+                for rowid, _, _ in rows:
+                    conn.execute("DELETE FROM specs WHERE rowid = ?", (rowid,)); gone += 1
+    return gone
 
 
 if __name__ == "__main__":
