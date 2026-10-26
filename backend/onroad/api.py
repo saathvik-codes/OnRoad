@@ -1342,7 +1342,7 @@ def _link_offer_models(rows: list[dict]) -> None:
     unmatched = [r for r in rows if not r.get("model_image")]
     if not unmatched:
         return
-    nm = lambda t: re.sub(r"[^a-z0-9]", "", re.sub(r"(the|new|all)", "", (t or "").lower()))
+    nm = lambda t: re.sub(r"[^a-z0-9]", "", re.sub(r"\b(the|new|all)\b", "", (t or "").lower()))
     cat: dict[str, list[dict]] = {}
     for m in q("SELECT id, brand_slug, name, image_url FROM models WHERE active = 1 AND image_url IS NOT NULL AND image_url != ''"):
         cat.setdefault(m["brand_slug"], []).append(m)

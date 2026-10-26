@@ -65,7 +65,7 @@ def repair(conn) -> dict:
     return n
 
 
-ENGINE_SIG = re.compile(r"(?:tce|tsi|tgdi|t-gdi|gdi|crdi|mpi|vtvt|ecoboost|e-tech)\s*\d{2,3}|\d\.\d|turbo|hybrid|e-tech|cng|t-gdi", re.I)
+ENGINE_SIG = re.compile(r"\b(?:tce|tsi|tgdi|t-gdi|gdi|crdi|mpi|vtvt|ecoboost|e-tech)\s*\d{2,3}\b|\b\d\.\d\b|turbo|hybrid|e-tech|\bcng\b|t-gdi", re.I)
 
 
 def engine_conflicts(conn) -> int:
@@ -80,7 +80,7 @@ def engine_conflicts(conn) -> int:
     gone = 0
     for mid, vs in by_model.items():
         engines = {sig[v] for v, _ in vs}
-        for word, unit in (("power", r"(?:ps|kw|bhp|hp)"), ("torque", r"nm")):
+        for word, unit in (("power", r"\b(?:ps|kw|bhp|hp)\b"), ("torque", r"\bnm\b")):
             rows = conn.execute(f"""SELECT s.rowid, s.variant_id, s.value FROM specs s JOIN variants v ON v.id = s.variant_id
                                     WHERE v.model_id = ? AND v.active = 1 AND s.key NOT LIKE 'online_%' AND lower(s.label) LIKE '%{word}%'
                                     AND lower(s.label) NOT LIKE '%weight%' AND lower(s.label) NOT LIKE '%steering%'""", (mid,)).fetchall()
