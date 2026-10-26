@@ -61,7 +61,7 @@ fun AdBanner(modifier: Modifier = Modifier.padding(horizontal = 16.dp, vertical 
         if (loaded) Text("Sponsored", color = Mute, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 4.dp))
         AndroidView(factory = { ctx ->
             AdView(ctx).apply {
-                setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(ctx, width))
+                setAdSize(AdSize.getLargeAnchoredAdaptiveBannerAdSize(ctx, width))
                 adUnitId = BuildConfig.BANNER_AD
                 adListener = object : AdListener() {
                     override fun onAdLoaded() { loaded = true }
