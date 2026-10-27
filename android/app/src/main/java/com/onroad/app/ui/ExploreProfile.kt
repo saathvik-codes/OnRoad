@@ -214,6 +214,45 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 SettingRow(Icons.Outlined.Verified, Good, "Where prices come from", "Manufacturers' own sites; taxes from your state's transport rules")
             }
         }
+        item { Section("App & Updates", null, null) }
+        item {
+            Group {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                var updateInfo by remember { mutableStateOf<com.onroad.app.data.AppVersion?>(null) }
+                var checking by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    updateInfo = runCatching { vm.api.appVersion() }.getOrNull()
+                }
+                val hasUpdate = updateInfo != null && updateInfo!!.versionCode > com.onroad.app.BuildConfig.VERSION_CODE
+                SettingRow(
+                    if (hasUpdate) Icons.Outlined.Notifications else Icons.Outlined.Verified,
+                    if (hasUpdate) Ignition else Good,
+                    if (hasUpdate) "Update available (v${updateInfo?.versionName})" else "App version (v${com.onroad.app.BuildConfig.VERSION_NAME})",
+                    if (hasUpdate) (updateInfo?.notes?.takeIf { it.isNotBlank() } ?: "Tap to download and install the update")
+                    else "You are on the latest version",
+                    onClick = {
+                        if (hasUpdate) {
+                            val url = updateInfo?.downloadUrl?.takeIf { it.isNotBlank() } ?: "https://onroad-frontend.onrender.com/download"
+                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        } else {
+                            scope.launch {
+                                checking = true
+                                updateInfo = runCatching { vm.api.appVersion() }.getOrNull()
+                                checking = false
+                            }
+                        }
+                    }
+                ) {
+                    if (hasUpdate) {
+                        Chip("Update", Ignition)
+                    } else if (checking) {
+                        androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Ignition)
+                    } else {
+                        Chip("Latest", Good)
+                    }
+                }
+            }
+        }
         if (acc != null) item {
             Spacer(Modifier.height(14.dp))
             Group {

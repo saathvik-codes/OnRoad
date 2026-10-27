@@ -110,8 +110,11 @@ import javax.inject.Singleton
 @Serializable data class GoogleConfig(val clientId: String? = null)
 @Serializable data class SignupIn(val name: String, val email: String, val phone: String? = null, val password: String, val role: String = "buyer")
 @Serializable data class Account(val id: Long = 0, val email: String = "", val name: String = "", val phone: String? = null, val role: String = "buyer")
+@Serializable data class AppVersion(val versionCode: Int = 0, val versionName: String = "", val downloadUrl: String = "",
+    val apkUrl: String = "", val notes: String = "", val forceUpdate: Boolean = false)
 
 interface Api {
+    @GET("api/app/version") suspend fun appVersion(): AppVersion
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
     @POST("api/auth/google") suspend fun google(@Body body: GoogleIn): Account
     @POST("api/me/push-token") suspend fun pushToken(@Body body: PushTokenIn): kotlinx.serialization.json.JsonObject

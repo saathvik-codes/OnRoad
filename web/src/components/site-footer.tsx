@@ -19,7 +19,7 @@ export function SiteFooter() {
         </div>
         <div className="text-sm">
           <p className="mb-3 text-ink">Explore</p>
-          {[["/cars", "All cars"], ["/bikes", "Bikes"], ["/brands", "Brands"], ["/calculator", "On-road calculator"], ["/compare", "Compare"], ["/buying-guide", "Buying & registration guide"]].map(([h, l]) => (
+          {[["/cars", "All cars"], ["/bikes", "Bikes"], ["/brands", "Brands"], ["/calculator", "On-road calculator"], ["/compare", "Compare"], ["/buying-guide", "Buying & registration guide"], ["/download", "Android App"]].map(([h, l]) => (
             <Link key={h} href={h} className="block py-1 text-mute hover:text-accent">{l}</Link>
           ))}
         </div>

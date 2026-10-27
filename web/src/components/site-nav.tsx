@@ -18,6 +18,7 @@ const LINKS = [
   { href: "/brands", label: "Brands" },
   { href: "/calculator", label: "On-road calculator" },
   { href: "/compare", label: "Compare" },
+  { href: "/download", label: "Get App" },
 ];
 
 export function SiteNav() {

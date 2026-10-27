@@ -1635,6 +1635,20 @@ def health():
     return out
 
 
+@app.get("/api/app/version")
+def app_version():
+    """Returns the latest mobile app version, release notes, and download links."""
+    return {
+        "version_code": 6,
+        "version_name": "1.0.4",
+        "download_url": "https://onroad-frontend.onrender.com/download",
+        "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
+        "notes": "Instant home loading, zero blank screen, and performance optimizations.",
+        "force_update": False,
+    }
+
+
+
 # ── Self-refresh when deployed (Render etc.): set REFRESH_EVERY_HOURS, e.g. 6 ────────────────────────────
 def _refresh_loop(hours: float) -> None:
     """Keeps prices, offers, dealers and specs current on a small server.

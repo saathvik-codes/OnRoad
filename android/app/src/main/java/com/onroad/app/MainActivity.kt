@@ -33,7 +33,17 @@ import com.onroad.app.ui.AccountScreen
 import com.onroad.app.ui.AuthScreen
 import com.onroad.app.ui.WelcomeScreen
 import javax.inject.Inject
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Home
@@ -140,7 +150,29 @@ class MainActivity : ComponentActivity() {
                 val tabs = listOf(Triple("home", "Home", Icons.Outlined.Home), Triple("explore", "Explore", Icons.Outlined.Explore),
                     Triple("offers", "Offers", Icons.Outlined.LocalOffer), Triple("calc", "Calculator", Icons.Outlined.Calculate),
                     Triple("account", "Profile", Icons.Outlined.Person))
+                var updateInfo by remember { androidx.compose.runtime.mutableStateOf<com.onroad.app.data.AppVersion?>(null) }
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    val info = runCatching { api.appVersion() }.getOrNull()
+                    if (info != null && info.versionCode > BuildConfig.VERSION_CODE) {
+                        updateInfo = info
+                    }
+                }
                 Column(Modifier.fillMaxSize().background(Night).statusBarsPadding()) {
+                    updateInfo?.let { u ->
+                        val ctx = androidx.compose.ui.platform.LocalContext.current
+                        Row(
+                            Modifier.fillMaxWidth().background(Ignition).clickable {
+                                val url = u.downloadUrl.takeIf { it.isNotBlank() } ?: "https://onroad-frontend.onrender.com/download"
+                                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                            }.padding(horizontal = 16.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.LocalOffer, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Update v${u.versionName} available: Tap to install", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                            Text("Update →", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 NavHost(nav, start, Modifier.weight(1f)) {
                     composable("welcome") {
                         WelcomeScreen(onCity = { nav.navigate("city") }, onDone = { signIn ->
