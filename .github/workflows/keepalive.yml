@@ -13,11 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping the OnRoad API
+      - name: Ping Frontend and Backend APIs
         run: |
           for i in 1 2 3; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 https://onroad-uu9c.onrender.com/api/meta) && echo "status $code"
-            [ "$code" = "200" ] && exit 0
-            sleep 20
+            echo "Attempt $i: Pinging OnRoad backend..."
+            b_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 https://onroad-uu9c.onrender.com/api/health) && echo "Backend HTTP: $b_code"
+            echo "Attempt $i: Pinging OnRoad frontend proxy..."
+            f_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 https://onroad-frontend.onrender.com/api/health) && echo "Frontend HTTP: $f_code"
+            if [ "$b_code" = "200" ] && [ "$f_code" = "200" ]; then
+              echo "Both services are awake and healthy."
+              exit 0
+            fi
+            sleep 15
           done
-          echo "API did not answer"; exit 1
+          echo "One or more services did not answer with 200"; exit 1

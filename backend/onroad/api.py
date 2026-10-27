@@ -23,6 +23,7 @@ from contextlib import closing
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -34,6 +35,27 @@ app = FastAPI(
     docs_url="/api/docs" if ENABLE_DOCS else None, 
     openapi_url="/api/openapi.json" if ENABLE_DOCS else None,
     redoc_url=None
+)
+
+# ── Cross-Origin Resource Sharing (CORS) ──────────────────────────────────────────────
+_raw_cors = os.getenv("CORS_ORIGINS", "")
+_configured_origins = [o.strip() for o in _raw_cors.split(",") if o.strip()]
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://onroad-frontend.onrender.com",
+    "https://onroad-uu9c.onrender.com",
+]
+_allowed_origins = list(dict.fromkeys(_configured_origins + _default_origins))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.onrender\.com)(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.middleware("http")

@@ -5,6 +5,41 @@ function getTargetBase(): string {
   return /^https?:\/\//.test(raw) ? raw.replace(/\/$/, "") : `http://${raw.replace(/\/$/, "")}`;
 }
 
+async function doFetchWithRetry(
+  url: string,
+  init: RequestInit,
+  isIdempotent: boolean
+): Promise<Response> {
+  const maxAttempts = isIdempotent ? 2 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(60000), // 60s timeout to tolerate Render free-tier cold starts
+      });
+
+      // If Render router returns 502/503/504 while waking the container, retry once for safe methods
+      if (isIdempotent && [502, 503, 504].includes(res.status) && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
+
 async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const targetBase = getTargetBase();
@@ -36,14 +71,20 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
     }
   }
 
+  const isIdempotent = ["GET", "HEAD"].includes(method);
+
   try {
-    const upstreamRes = await fetch(targetUrl.toString(), {
-      method,
-      headers,
-      body,
-      redirect: "manual",
-      cache: "no-store",
-    });
+    const upstreamRes = await doFetchWithRetry(
+      targetUrl.toString(),
+      {
+        method,
+        headers,
+        body,
+        redirect: "manual",
+        cache: "no-store",
+      },
+      isIdempotent
+    );
 
     const resData = await upstreamRes.arrayBuffer();
     const responseHeaders = new Headers();
@@ -65,7 +106,13 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
   } catch (err: unknown) {
     console.error(`[API Proxy Error] failed to proxy to ${targetUrl}:`, err);
     return NextResponse.json(
-      { error: "Backend proxy unreachable", detail: err instanceof Error ? err.message : String(err) },
+      {
+        error: "Backend proxy unreachable",
+        detail:
+          err instanceof Error
+            ? err.message
+            : "The backend server is either waking up from sleep or temporarily unreachable. Please retry shortly.",
+      },
       { status: 502 }
     );
   }
