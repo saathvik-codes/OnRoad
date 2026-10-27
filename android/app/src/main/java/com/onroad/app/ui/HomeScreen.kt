@@ -55,6 +55,8 @@ import com.onroad.app.data.Brand
 import com.onroad.app.data.ModelSummary
 import com.onroad.app.data.Prefs
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -90,15 +92,28 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
     fun retry() { viewModelScope.launch { load(prefs.city.value, type.value) } }
     private suspend fun load(city: String, t: String) {
         _s.value = _s.value.copy(type = t, loading = true, error = null)
-        runCatching { api.brands(city, t) to api.explore(city, type = t) }
-            .onSuccess { (b, all) ->
+        try {
+            coroutineScope {
+                val brandsDeferred = async { api.brands(city, t) }
+                val exploreDeferred = async { api.explore(city, type = t) }
+                val offersDeferred = async { runCatching { api.offers(city, 40) }.getOrElse { emptyList() } }
+                val bandsDeferred = async { runCatching { api.bands() }.getOrElse { emptyList() } }
+
+                val b = brandsDeferred.await()
+                val all = exploreDeferred.await()
                 val p = all.take(10)
                 val bset = b.map { it.slug }.toSet()
-                val offers = runCatching { api.offers(city, 40) }.getOrElse { emptyList() }.filter { it.brandSlug in bset }
-                val bands = runCatching { api.bands() }.getOrElse { emptyList() }
+                val offers = offersDeferred.await().filter { it.brandSlug in bset }
+                val bands = bandsDeferred.await()
                 _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, bands, false, rivals = rivalPairs(all))
             }
-            .onFailure { _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check your internet connection.") }
+        } catch (e: Exception) {
+            if (_s.value.popular.isEmpty() && _s.value.brands.isEmpty()) {
+                _s.value = _s.value.copy(loading = false, error = "Can't reach OnRoad. Check your internet connection.")
+            } else {
+                _s.value = _s.value.copy(loading = false)
+            }
+        }
     }
 }
 
@@ -179,9 +194,38 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 Text("Ranked by official monthly sales", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
         }
-        items(s.popular.take(6), span = { GridItemSpan(3) }) { m -> PopularRow(m, vm.prefs.img(m.imageUrl, 480)) { onModel(m.id) } }
+        if (s.loading && s.popular.isEmpty()) {
+            item(span = { GridItemSpan(3) }) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel2.copy(alpha = 0.7f)).padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp,
+                        color = Ignition
+                    )
+                    Column {
+                        Text("Loading latest on-road prices…", style = MaterialTheme.typography.titleSmall, color = Ink)
+                        Text("Connecting to server & official price catalogue", style = MaterialTheme.typography.bodySmall, color = Mute)
+                    }
+                }
+            }
+            items(3, span = { GridItemSpan(3) }) {
+                SkeletonPopularRow()
+            }
+        } else {
+            items(s.popular.take(6), span = { GridItemSpan(3) }) { m -> PopularRow(m, vm.prefs.img(m.imageUrl, 480)) { onModel(m.id) } }
+        }
         item(span = { GridItemSpan(3) }) { Text("Browse by brand", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 14.dp)) }
-        items(s.brands, key = { it.slug }) { b -> BrandTile(b, vm.prefs.img(b.logo, 240)) { onBrand(b) } }
+        if (s.loading && s.brands.isEmpty()) {
+            items(6) {
+                SkeletonBrandTile()
+            }
+        } else {
+            items(s.brands, key = { it.slug }) { b -> BrandTile(b, vm.prefs.img(b.logo, 240)) { onBrand(b) } }
+        }
     }
 }
 
@@ -246,3 +290,31 @@ private fun QuickAction(icon: ImageVector, label: String, tint: Color, modifier:
     Spacer(Modifier.height(8.dp))
     Text(label, style = MaterialTheme.typography.labelMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
 }
+
+@Composable
+private fun SkeletonPopularRow() = Tile(Modifier.fillMaxWidth(), pad = 12) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(130.dp).aspectRatio(16 / 10f).clip(RoundedCornerShape(14.dp)).background(Panel2))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Box(Modifier.width(70.dp).height(18.dp).clip(Corner).background(Panel2))
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth(0.85f).height(18.dp).clip(Corner).background(Panel2))
+            Spacer(Modifier.height(6.dp))
+            Box(Modifier.fillMaxWidth(0.5f).height(14.dp).clip(Corner).background(Panel2))
+        }
+    }
+}
+
+@Composable
+private fun SkeletonBrandTile() = Box(
+    Modifier.aspectRatio(1f).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.85f)).padding(10.dp),
+    contentAlignment = Alignment.Center,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(Panel2))
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.width(52.dp).height(12.dp).clip(Corner).background(Panel2))
+    }
+}
+

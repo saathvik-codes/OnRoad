@@ -94,6 +94,7 @@ async def cache_public_reads(request: Request, call_next):
         return response
     body = b"".join([chunk async for chunk in response.body_iterator])
     headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "set-cookie")}
+    headers["Cache-Control"] = f"public, max-age={int(_CACHE_TTL)}, stale-while-revalidate=86400"
     if len(_RESP_CACHE) > 2000:
         _RESP_CACHE.clear()
     _RESP_CACHE[key] = (_time.time() + _CACHE_TTL, 200, body, headers)
