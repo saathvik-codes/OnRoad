@@ -1,11 +1,13 @@
 "use client";
 
+import { GrandRevealSection } from "@/components/grand-reveal";
+
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useRef } from "react";
 import useSWR from "swr";
-import { ArrowRight, BadgeIndianRupee, Building2, Calculator, Car, Clock, Compass, Crown, Flame, Gem, Handshake, Layers3, MapPin, Sparkles, Tag, Wallet } from "lucide-react";
+import { ArrowRight, BadgeIndianRupee, Building2, Calculator, Car, Clock, Compass, Crown, Flame, Gem, Handshake, Layers3, MapPin, BadgeCheck, Tag, Wallet } from "lucide-react";
 import { fetcher, type Brand, type Breakdown, type Meta, type ModelSummary, type Offer } from "@/lib/api";
 import { inr, lakh, range } from "@/lib/format";
 import { BrandGrid, BodyRow } from "@/components/browse";
@@ -38,10 +40,17 @@ const CHAPTERS = [
 function Chapter({ i, progress, children }: { i: number; progress: MotionValue<number>; children: React.ReactNode }) {
   const n = CHAPTERS.length;
   const [start, end] = CHAPTERS[i].r;
-  // the first chapter is visible before any scrolling; the last one stays up at the end
   const opacity = useTransform(progress, [start, start + 0.03, end - 0.03, end], [i === 0 ? 1 : 0, 1, 1, i === n - 1 ? 1 : 0]);
   const y = useTransform(progress, [start, start + 0.04], [i === 0 ? 0 : 40, 0]);
-  return <motion.div style={{ opacity, y }} className="absolute inset-0 flex items-center px-5">{children}</motion.div>;
+  const pointerEvents = useTransform(opacity, (o) => (o > 0.5 ? 'auto' : 'none'));
+  const zIndex = useTransform(opacity, (o) => (o > 0.5 ? 20 : 0));
+  return (
+    <motion.div style={{ opacity, y, pointerEvents, zIndex }} className="absolute inset-0 flex items-center px-5 pointer-events-none">
+      <div className="pointer-events-auto">
+        {children}
+      </div>
+    </motion.div>
+  );
 }
 
 function Story() {
@@ -50,7 +59,7 @@ function Story() {
   return (
     <section ref={ref} data-invert className="relative h-[900vh] bg-[#05060a]">
       <div className="sticky top-0 h-screen overflow-hidden bg-[#05060a]">
-        <CarStage progress={scrollYProgress} lookOffset={1.6} className="absolute inset-0" />
+        <CarStage progress={scrollYProgress} lookOffset={1.6} className="absolute inset-0 pointer-events-none" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#05060a] via-[#05060a]/60 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#05060a] to-transparent" />
         <div className="relative mx-auto h-full max-w-7xl px-5">
@@ -62,10 +71,10 @@ function Story() {
                 <p className="mt-5 max-w-md text-base text-white/70 sm:mt-6 sm:text-lg">{c.body}</p>
                 {i === 0 && (
                   <div className="pointer-events-auto mt-9 flex flex-wrap gap-3">
-                    <Link href="/cars?finder=1" className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 font-medium text-white shadow-[0_0_40px_-6px_rgba(255,77,46,0.8)]">
+                    <Link href="/cars?finder=1" className="cursor-pointer transition hover:brightness-110 active:scale-95 inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 font-medium text-white shadow-[0_0_40px_-6px_rgba(255,77,46,0.8)]">
                       Find my car <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <Link href="/calculator?quote=1" className="inline-flex h-12 items-center gap-2 rounded-full border border-white/20 px-7 text-white hover:bg-white/5">
+                    <Link href="/calculator?quote=1" className="cursor-pointer transition hover:bg-white/10 active:scale-95 inline-flex h-12 items-center gap-2 rounded-full border border-white/20 px-7 text-white hover:bg-white/5">
                       <Calculator className="h-4 w-4" /> Check a quote
                     </Link>
                   </div>
@@ -86,7 +95,7 @@ const BAND_CONFIG = [
   { icon: Car, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/25 group-hover:bg-sky-500/20" },
   { icon: Compass, color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-500/25 group-hover:bg-indigo-500/20" },
   { icon: Flame, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/25 group-hover:bg-amber-500/20" },
-  { icon: Sparkles, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/25 group-hover:bg-purple-500/20" },
+  { icon: Flame, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/25 group-hover:bg-amber-500/20" },
   { icon: Crown, color: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/25 group-hover:bg-rose-500/20" },
 ];
 
@@ -123,6 +132,10 @@ export default function Home() {
         <div className="mt-8"><BrandGrid limit={12} /></div>
         <h3 className="mt-14 mb-5 font-[family-name:var(--font-display)] text-2xl font-bold text-white">Browse by body type</h3>
         <BodyRow />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 pb-20">
+        <GrandRevealSection />
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-24">
@@ -224,7 +237,7 @@ export default function Home() {
                 <span>TCS (1% on ex-showroom above ₹10 lakh under Sec 206C(1F)) comes back to you when you file your income-tax return.</span>
               </p>
               <p className="flex gap-3">
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                 <span>Own-damage insurance is an upper estimate: get 2–3 insurer quotes and it usually drops by ₹8,000–₹15,000.</span>
               </p>
             </div>

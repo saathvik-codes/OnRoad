@@ -59,7 +59,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             ))}
           </div>
         )}
-        {(mode === "login" || role === "buyer") && <GoogleButton onDone={onGoogle} onError={onGoogleError} />}
+        {(mode === "login" || role === "buyer") && <GoogleButton className="mt-6" onDone={onGoogle} onError={onGoogleError} />}
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "signup" && <div><Label>Full name</Label><Input required value={form.name} onChange={set("name")} /></div>}
           <div><Label>Email</Label><Input required type="email" value={form.email} onChange={set("email")} autoComplete="email" /></div>

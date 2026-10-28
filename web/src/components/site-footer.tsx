@@ -18,15 +18,30 @@ export function SiteFooter() {
           </p>
         </div>
         <div className="text-sm">
-          <p className="mb-3 text-ink">Explore</p>
-          {[["/cars", "All cars"], ["/bikes", "Bikes"], ["/brands", "Brands"], ["/calculator", "On-road calculator"], ["/compare", "Compare"], ["/buying-guide", "Buying & registration guide"], ["/download", "Android App"]].map(([h, l]) => (
-            <Link key={h} href={h} className="block py-1 text-mute hover:text-accent">{l}</Link>
+          <p className="mb-3 text-ink font-semibold">Explore</p>
+          {[
+            ["/cars", "All cars"],
+            ["/bikes", "Bikes"],
+            ["/brands", "Brands"],
+            ["/calculator", "Price calculator"],
+            ["/compare", "Compare"],
+            ["/news", "News & vehicle reveals"],
+            ["/buying-guide", "Buying & registration guide"],
+            ["/download", "Mobile App (Android & iOS)"],
+          ].map(([h, l]) => (
+            <Link key={h} href={h} className="block py-1 text-mute hover:text-accent transition">
+              {l}
+            </Link>
           ))}
         </div>
         <div className="text-sm">
-          <p className="mb-3 text-ink">For dealers</p>
-          <Link href="/signup?role=dealer" className="block py-1 text-mute hover:text-accent">List your showroom</Link>
-          <Link href="/dealer" className="block py-1 text-mute hover:text-accent">Dealer desk</Link>
+          <p className="mb-3 text-ink font-semibold">For dealers</p>
+          <Link href="/signup?role=dealer" className="block py-1 text-mute hover:text-accent transition">
+            List your showroom
+          </Link>
+          <Link href="/dealer" className="block py-1 text-mute hover:text-accent transition">
+            Dealer desk
+          </Link>
         </div>
       </div>
       <div className="mx-auto max-w-7xl space-y-1 px-5 pb-10 text-xs text-mute/70">

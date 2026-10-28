@@ -9,7 +9,7 @@ import {
   ArrowRight, 
   Car, 
   Bike,
-  Sparkles,
+  Award,
   Layers
 } from "lucide-react";
 import { fetcher, type ModelSummary } from "@/lib/api";
@@ -176,7 +176,7 @@ export function TopTenLeaderboard() {
 
                       {m.six_month_units ? (
                         <p className="mt-2 text-[11px] font-mono text-emerald-400/90 flex items-center gap-1">
-                          <Sparkles className="h-2.5 w-2.5 shrink-0" />
+                          <Award className="h-2.5 w-2.5 shrink-0 text-accent" />
                           {m.six_month_units.toLocaleString("en-IN")} units (H1)
                         </p>
                       ) : null}

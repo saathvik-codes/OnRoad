@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { 
-  Sparkles, 
+  Award, 
   Car, 
   Gauge, 
   Fuel, 
@@ -74,7 +74,7 @@ export function CustomerCuration() {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 border border-accent/25 px-3 py-0.5 text-xs font-bold text-accent">
-                <Sparkles className="h-3.5 w-3.5" />
+                <Award className="h-3.5 w-3.5 text-accent" />
                 {firstName ? `CURATED FOR ${firstName.toUpperCase()}` : "INTELLIGENT BUYER ONBOARDING & CURATION"}
               </span>
 

@@ -12,7 +12,7 @@ import {
   Car, 
   Bike, 
   Layers, 
-  Sparkles, 
+  SlidersHorizontal, 
   Filter, 
   CheckCircle2, 
   Search
@@ -78,8 +78,8 @@ function CarsHeaderControls({ onOpenAdvisor }: { onOpenAdvisor: () => void }) {
           onClick={onOpenAdvisor}
           className="border-line bg-panel-soft text-ink hover:border-accent hover:text-accent gap-2 h-10 px-4 text-xs sm:text-sm font-medium shadow-xs"
         >
-          <Sparkles className="h-4 w-4 text-accent" />
-          <span>Car Match Finder</span>
+          <SlidersHorizontal className="h-4 w-4 text-accent" />
+          <span>Vehicle Match Finder</span>
         </Button>
       </div>
     </div>
@@ -321,7 +321,7 @@ function BrandLineup({ slug, onOpenAdvisor }: { slug: string; onOpenAdvisor: () 
         </div>
         <div className="ml-auto flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={onOpenAdvisor} className="border-line bg-panel-soft text-ink hover:border-accent hover:text-accent gap-1.5 text-xs h-9 font-medium shadow-xs">
-            <Sparkles className="h-3.5 w-3.5 text-accent" /> Car Match Advisor
+            <SlidersHorizontal className="h-3.5 w-3.5 text-accent" /> Car Match Advisor
           </Button>
           <Link href="/cars" className="text-xs sm:text-sm text-accent hover:underline">
             Change manufacturer

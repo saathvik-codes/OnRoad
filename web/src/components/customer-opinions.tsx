@@ -15,7 +15,7 @@ import {
   ThumbsUp,
   MapPin,
   Calendar,
-  Sparkles
+  
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetcher } from "@/lib/api";

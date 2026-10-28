@@ -38,6 +38,7 @@ import { Button, Card, cn, Input, Label, Pill, Select, Skeleton } from "@/compon
 import { VariantSpecs } from "@/components/variant-specs";
 import { ShowroomMap } from "@/components/dealer-map";
 import { BankLoansComparison } from "@/components/bank-loans";
+import { OwnershipSupportHub } from "@/components/ownership-support";
 
 function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
   const { data: me } = useSWR<Account>("/auth/me", fetcher, { shouldRetryOnError: false });
@@ -95,7 +96,7 @@ function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
 function ModelInner() {
   const { brand, model } = useParams<{ brand: string; model: string }>();
   const { city } = useCity();
-  const [activeTab, setActiveTab] = useState<"pricing" | "loan" | "specs" | "safety" | "showrooms" | "offers">("pricing");
+  const [activeTab, setActiveTab] = useState<"pricing" | "loan" | "specs" | "safety" | "showrooms" | "offers" | "support">("pricing");
   const [fuel, setFuel] = useState("");
   const [trans, setTrans] = useState("");
   const [sel, setSel] = useState<string | null>(null);
@@ -220,7 +221,7 @@ function ModelInner() {
                 : "text-mute hover:bg-panel-soft hover:text-ink"
             )}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Layers className="h-3.5 w-3.5" />
             <span>Equipment & specs</span>
           </button>
 
@@ -383,7 +384,7 @@ function ModelInner() {
               {chosen && (
                 <div className="rounded-2xl border border-line bg-panel-soft p-4 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-accent" />
+                    <Gauge className="h-5 w-5 text-accent" />
                     <div>
                       <p className="text-sm font-semibold text-ink">Want to see all equipment included in {chosen.name}?</p>
                       <p className="text-xs text-mute">Explore safety, infotainment, comfort features and technical homologation.</p>
@@ -574,6 +575,30 @@ function ModelInner() {
             )}
           </div>
         )}
+
+        {/* TAB 5.5: INSURANCE, ACCESSORIES & RTA SUPPORT */}
+
+        {activeTab === "support" && (
+
+          <OwnershipSupportHub
+
+            modelName={m.name}
+
+            brandName={m.brand_name}
+
+            city={city}
+
+            stateCode={bd?.state || "TS"}
+
+            variant={chosen}
+
+            exShowroomPrice={chosen?.ex_showroom_inr || variants[0]?.ex_showroom_inr || 1000000}
+
+          />
+
+        )}
+
+
 
         {/* TAB 6: OFFERS & DISCOUNTS */}
         {activeTab === "offers" && (

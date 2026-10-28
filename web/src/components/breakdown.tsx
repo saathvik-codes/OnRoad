@@ -9,7 +9,6 @@ import {
   RotateCcw, 
   ShieldAlert, 
   ShieldCheck, 
-  Sparkles, 
   User, 
   Users, 
   Building2,
@@ -76,7 +75,7 @@ export function BreakdownView({ b, compact = false }: { b: B; compact?: boolean 
             </div>
             {buyerType === "individual_female" && (
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                <Sparkles className="h-2.5 w-2.5" /> Concession
+                <BadgeCheck className="h-2.5 w-2.5" /> Concession
               </span>
             )}
             {buyerType === "corporate" && (
@@ -112,7 +111,7 @@ export function BreakdownView({ b, compact = false }: { b: B; compact?: boolean 
                   : "text-mute hover:text-white hover:bg-white/5"
               )}
             >
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
               <span className="truncate">Female Buyer</span>
             </button>
 
@@ -138,7 +137,7 @@ export function BreakdownView({ b, compact = false }: { b: B; compact?: boolean 
               animate={{ opacity: 1, height: "auto" }}
               className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300"
             >
-              <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+              <BadgeCheck className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
               <div>
                 <span className="font-bold">Female Buyer Concession Active: Saves ~{inr(femaleConcession)}!</span>
                 <p className="mt-0.5 text-[11px] opacity-90 leading-relaxed">

@@ -174,3 +174,9 @@ html.light .hover\:bg-white\/\[0\.04\]:hover, html.light .hover\:bg-white\/\[0\.
   background-color: rgba(0, 0, 0, 0.03) !important;
 }
 
+
+/* Ensure Google GIS iframe never paints opaque white rectangular canvas in dark mode */
+iframe[src*="accounts.google.com"] {
+  background-color: transparent !important;
+  color-scheme: light !important;
+}

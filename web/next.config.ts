@@ -18,6 +18,22 @@ const nextConfig: NextConfig = {
       "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" },
     },
   },
+  async redirects() {
+    return [
+      {
+        source: "/onroad.apk",
+        has: [
+          {
+            type: "header",
+            key: "user-agent",
+            value: ".*(iPhone|iPad|iPod|Macintosh.*Mobile).*",
+          },
+        ],
+        destination: "/app",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -10,7 +10,7 @@ import {
   MapPin, 
   Tag, 
   Bike, 
-  Sparkles, 
+  SlidersHorizontal, 
   Filter, 
   CheckCircle2, 
   Search,
@@ -211,8 +211,8 @@ function ChooseBikeBrand({ onOpenAdvisor }: { onOpenAdvisor: () => void }) {
           onClick={onOpenAdvisor}
           className="border-line bg-panel-soft text-ink hover:border-accent hover:text-accent gap-2 h-10 px-4 text-xs sm:text-sm font-medium shadow-xs"
         >
-          <Sparkles className="h-4 w-4 text-accent" />
-          <span>Bike Match Finder</span>
+          <SlidersHorizontal className="h-4 w-4 text-accent" />
+          <span>Two-Wheeler Match Finder</span>
         </Button>
       </div>
 
@@ -301,7 +301,7 @@ function BikeBrandLineup({ slug, onOpenAdvisor }: { slug: string; onOpenAdvisor:
         </div>
         <div className="ml-auto flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={onOpenAdvisor} className="border-line bg-panel-soft text-ink hover:border-accent hover:text-accent gap-1.5 text-xs h-9 font-medium shadow-xs">
-            <Sparkles className="h-3.5 w-3.5 text-accent" /> Bike Match Advisor
+            <SlidersHorizontal className="h-3.5 w-3.5 text-accent" /> Bike Match Advisor
           </Button>
           <Link href="/bikes" className="text-xs sm:text-sm text-accent hover:underline">
             Change brand
@@ -488,6 +488,9 @@ function FilteredBikes({ onOpenAdvisor }: { onOpenAdvisor: () => void }) {
 function BikesInner() {
   const sp = useSearchParams();
   const [advisorOpen, setAdvisorOpen] = useState(false);
+  const finderParam = sp.get("finder") === "1";
+  const [finderSeen, setFinderSeen] = useState(false);
+  if (finderParam && !finderSeen && !advisorOpen) { setFinderSeen(true); setAdvisorOpen(true); }
   const brand = sp.get("brand");
   const isFiltered = ["band", "body", "fuel", "q", "sort"].some((k) => sp.get(k));
 
