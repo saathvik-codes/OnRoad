@@ -25,7 +25,8 @@ from . import db
 
 log = logging.getLogger("onroad.firestore")
 TABLES = {"accounts": ("id",), "saved_cars": ("account_id", "variant_id"), "quote_requests": ("id",), "quotes": ("id",),
-          "dealer_reviews": ("id",), "outreach": ("id",), "push_tokens": ("token",)}
+          "dealer_reviews": ("id",), "outreach": ("id",), "push_tokens": ("token",), "opinions": ("id",), "activity": ("id",)}
+_STATUS: dict = {}
 _dirty = threading.Event()
 _hash: dict[str, dict[str, str]] = {}
 _client = None
@@ -156,6 +157,11 @@ def restore() -> dict:
     return {"restored": got}
 
 
+def status() -> dict:
+    """For /api/health: is the backup on, what did the last restore bring back, when did the last push happen."""
+    return {"enabled": enabled(), **_STATUS}
+
+
 def mark_dirty() -> None:
     _dirty.set()
 
@@ -167,7 +173,8 @@ def start() -> None:
         return
 
     try:                                               # before serving: a wiped disk gets its users back first
-        log.info("firestore restore: %s", restore())
+        r = restore(); _STATUS["restore"] = r
+        log.info("firestore restore: %s", r)
     except Exception as e:
         log.warning("firestore restore failed: %s", e)
 
@@ -179,9 +186,11 @@ def start() -> None:
             _dirty.clear()
             try:
                 r = push()
+                _STATUS["last_push"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()); _STATUS["last_push_result"] = r
                 if r.get("written") or r.get("deleted") or time.time() - last > 3600:
                     log.info("firestore push: %s", r); last = time.time()
             except Exception as e:
+                _STATUS["last_error"] = str(e)[:200]
                 log.warning("firestore push failed: %s", e)
                 _dirty.set(); time.sleep(60)
     threading.Thread(target=loop, daemon=True, name="firestore-sync").start()

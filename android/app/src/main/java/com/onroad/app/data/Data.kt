@@ -113,7 +113,29 @@ import javax.inject.Singleton
 @Serializable data class AppVersion(val versionCode: Int = 0, val versionName: String = "", val downloadUrl: String = "",
     val apkUrl: String = "", val notes: String = "", val forceUpdate: Boolean = false)
 
+@Serializable data class NewsItem(val id: String, val title: String, val summary: String = "", val url: String, val imageUrl: String? = null,
+    val source: String = "", val published: String = "", val modelId: String? = null, val modelName: String? = null, val topic: String = "industry")
+@Serializable data class UpdateItem(val kind: String, val date: String, val modelId: String? = null, val title: String, val detail: String = "",
+    val sourceUrl: String? = null, val imageUrl: String? = null)
+@Serializable data class OwnLine(val label: String, val amountInr: Long? = null, val basis: String = "", val verified: Boolean = true)
+@Serializable data class OwnLink(val name: String? = null, val title: String? = null, val url: String)
+@Serializable data class OwnRule(val item: String, val status: String = "")
+@Serializable data class OwnInsurance(val lines: List<OwnLine> = emptyList(), val tips: List<String> = emptyList(), val insurers: List<OwnLink> = emptyList(),
+    val compare: List<OwnLink> = emptyList(), val disclosure: String = "")
+@Serializable data class OwnEv(val lifeTaxExempt: Boolean? = null, val order: String? = null, val validTo: String? = null)
+@Serializable data class OwnRta(val state: String = "", val charges: List<OwnLine> = emptyList(), val steps: List<String> = emptyList(),
+    val notAllowed: List<OwnRule> = emptyList(), val optional: List<OwnRule> = emptyList(), val sources: List<OwnLink> = emptyList(),
+    val links: List<OwnLink> = emptyList(), val ev: OwnEv? = null, val roadTaxBasis: String? = null, val asOf: String? = null)
+@Serializable data class OwnAccessoryLink(val url: String, val checked: String? = null)
+@Serializable data class OwnAccessories(val official: OwnAccessoryLink? = null, val advice: List<String> = emptyList())
+@Serializable data class Ownership(val insurance: OwnInsurance = OwnInsurance(), val rta: OwnRta = OwnRta(),
+    val accessories: OwnAccessories = OwnAccessories(), val updates: List<UpdateItem> = emptyList())
+
 interface Api {
+    @GET("api/news") suspend fun news(@Query("limit") limit: Int = 40, @Query("topic") topic: String? = null,
+                                      @Query("model_id") modelId: String? = null): List<NewsItem>
+    @GET("api/updates") suspend fun updates(@Query("vehicle_type") type: String = "car", @Query("limit") limit: Int = 60): List<UpdateItem>
+    @GET("api/ownership") suspend fun ownership(@Query("variant_id") variantId: String, @Query("city") city: String): Ownership
     @GET("api/app/version") suspend fun appVersion(): AppVersion
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
     @POST("api/auth/google") suspend fun google(@Body body: GoogleIn): Account

@@ -115,12 +115,12 @@ private fun matches(m: ModelSummary, f: Filters, budgets: List<Budget>, skip: St
 fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: String = "car", initBudget: String? = null,
                   brand: Pair<String, String>? = null, onBack: (() -> Unit)? = null, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
-    var type by remember { mutableStateOf(initType) }
-    var f by remember { mutableStateOf(Filters(budget = initBudget)) }
-    var sort by remember { mutableStateOf("popular") }
+    var type by rememberKept("explore.type") { initType }
+    var f by rememberKept("explore.filters") { Filters(budget = initBudget) }
+    var sort by rememberKept("explore.sort") { "popular" }
     var bands by remember { mutableStateOf<List<Band>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Brand>>(emptyList()) }
-    var all by remember { mutableStateOf<List<ModelSummary>?>(null) }
+    var all by rememberKept<List<ModelSummary>?>("explore.results") { null }
     var failed by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
     var sheet by remember { mutableStateOf<String?>(null) }      // "sort" | "filters"
@@ -137,9 +137,12 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
         brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models }
         if (bands.isEmpty()) bands = runCatching { vm.api.bands() }.getOrElse { emptyList() }
     }
+    var loadedFor by rememberKept("explore.loadedFor") { "" }
     LaunchedEffect(city, type, tick) {
+        val key = "$city|$type|$tick"
+        if (key == loadedFor && all != null) return@LaunchedEffect      // back from a car: keep results and scroll
         all = null; failed = false
-        runCatching { vm.api.explore(city, type = type) }.onSuccess { all = it }.onFailure { failed = true }
+        runCatching { vm.api.explore(city, type = type) }.onSuccess { all = it; loadedFor = key }.onFailure { failed = true }
     }
     val scoped = all?.filter { m -> brand == null || m.brandSlug == brand.first }
     val shown = scoped?.filter { matches(it, f, budgets) }?.let { l ->
@@ -152,7 +155,8 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
     }
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 90.dp)) {
+        val listState by rememberKept("explore.scroll") { androidx.compose.foundation.lazy.LazyListState() }
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 90.dp)) {
             item {
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

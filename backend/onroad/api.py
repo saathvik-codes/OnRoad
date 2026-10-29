@@ -77,12 +77,42 @@ _CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/
 _CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "300"))
 
 
+def _log_activity(request: Request) -> None:
+    """One row per car page view / search by a signed-in buyer. Anonymous visits are not recorded."""
+    try:
+        path = request.url.path
+        if request.method != "GET" or not (path.startswith("/api/models/") or path == "/api/search"):
+            return
+        uid = _uid(request.cookies.get(COOKIE))
+        if not uid:
+            return
+        qp = request.query_params
+        if path == "/api/search":
+            kind, ref = "search", (qp.get("q") or "").strip()[:80]
+            if len(ref) < 2:
+                return
+        else:
+            kind, ref = "view", path[len("/api/models/"):].strip("/")[:120]
+        with closing(db.connect()) as conn, conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER, kind TEXT,
+                            ref TEXT, city TEXT, created TEXT DEFAULT (datetime('now')))""")
+            last = conn.execute("SELECT kind, ref FROM activity WHERE account_id = ? ORDER BY id DESC LIMIT 1", (uid,)).fetchone()
+            if last and tuple(last) == (kind, ref):
+                return                                   # the same page again: one row is enough
+            conn.execute("INSERT INTO activity (account_id, kind, ref, city) VALUES (?, ?, ?, ?)", (uid, kind, ref, qp.get("city")))
+        from . import firestore_sync
+        firestore_sync.mark_dirty()
+    except Exception:
+        pass
+
+
 @app.middleware("http")
 async def cache_public_reads(request: Request, call_next):
     """Public catalogue reads are identical for everyone until the next data refresh, so keep them for a few minutes."""
     import time as _time
     from fastapi.responses import Response as _Resp
     path = request.url.path
+    _log_activity(request)                         # signed-in buyers' views and searches (Recently viewed, follow-ups)
     if request.method != "GET" or not path.startswith(_CACHEABLE) or _CACHE_TTL <= 0:
         return await call_next(request)
     key = str(request.url.path) + "?" + str(request.url.query)
@@ -684,6 +714,21 @@ def updates_feed(vehicle_type: str | None = None, model_id: str | None = None, l
     """Price revisions, new models and new offers, from OnRoad's own records."""
     from . import ownership as _own
     return _own.updates(vehicle_type=vehicle_type, model_id=model_id, limit=limit)
+
+
+@app.get("/api/me/activity")
+def my_activity(acc: dict = Depends(account), limit: int = Query(20, le=100)):
+    """This buyer's recently viewed cars (latest first, one per car) and recent searches."""
+    try:
+        rows = q("""SELECT kind, ref, city, MAX(created) AS at FROM activity WHERE account_id = ? GROUP BY kind, ref
+                    ORDER BY at DESC LIMIT ?""", (acc["id"], limit * 2))
+    except Exception:
+        rows = []
+    views = [r for r in rows if r["kind"] == "view"][:limit]
+    names = {m["id"]: m for m in q(f"""SELECT m.id, m.name, b.name AS brand, m.image_url FROM models m JOIN brands b ON b.slug = m.brand_slug
+                                       WHERE m.id IN ({','.join('?' * len(views)) or "''"})""", tuple(r["ref"] for r in views))} if views else {}
+    return {"viewed": [{**names[r["ref"]], "city": r["city"], "at": r["at"]} for r in views if r["ref"] in names],
+            "searches": [{"q": r["ref"], "at": r["at"]} for r in rows if r["kind"] == "search"][:limit]}
 
 
 @app.get("/api/news")
@@ -1656,7 +1701,12 @@ def root():
 @app.get("/api/health")
 def health():
     """Liveness, plus whether the self-refresh is running and when prices last changed (no secrets)."""
-    out = {"ok": True, "refresh_every_hours": os.getenv("REFRESH_EVERY_HOURS")}
+    out = {"ok": True, "refresh_every_hours": os.getenv("REFRESH_EVERY_HOURS"), "api_secret_from_env": bool(os.getenv("API_SECRET"))}
+    try:
+        from . import firestore_sync
+        out["firestore"] = firestore_sync.status()
+    except Exception:
+        pass
     try:
         st = {r["k"]: r["v"] for r in q("SELECT k, v FROM app_state")}
         out.update(refresh_step=st.get("refresh_step"), refresh_last_step=st.get("refresh_last_step"),

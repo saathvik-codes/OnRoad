@@ -106,7 +106,7 @@ private suspend fun ask(vm: BrowseVM, city: String, a: Ask, limit: Int): List<Re
 @Composable
 fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
-    var a by remember { mutableStateOf(Ask()) }
+    var a by rememberKept("finder.ask") { Ask() }
     var res by remember { mutableStateOf<List<Reco>?>(null) }
     var failed by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }

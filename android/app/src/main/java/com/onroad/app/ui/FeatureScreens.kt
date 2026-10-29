@@ -156,8 +156,8 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     val ctx = LocalContext.current
     var failed by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
-    var f by remember { mutableStateOf(OfferFilters()) }
-    var sort by remember { mutableStateOf("benefit") }
+    var f by rememberKept("offers.filters") { OfferFilters() }
+    var sort by rememberKept("offers.sort") { "benefit" }
     var sheet by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(city, tick) {
         failed = false; list = null
