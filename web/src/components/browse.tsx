@@ -15,7 +15,8 @@ export function BrandGrid({ limit, vehicleType = "car" }: { limit?: number; vehi
   const { city } = useCity();
   const url = withCity(`/brands?vehicle_type=${encodeURIComponent(vehicleType)}`, city);
   const { data } = useSWR<Brand[]>(url, fetcher);
-  const live = (data ?? []).filter((b) => b.models > 0).sort((a, b) => (b.models - a.models));
+  // the server orders brands by starting price, cheapest first (price on request last)
+  const live = (data ?? []).filter((b) => b.models > 0);
   // Brands we track but can't price right now (site down / blocked) stay visible, greyed, with the reason on their page.
   const waiting = limit ? [] : (data ?? []).filter((b) => b.models === 0).sort((a, b) => a.name.localeCompare(b.name));
   const brands = [...live, ...waiting].slice(0, limit);

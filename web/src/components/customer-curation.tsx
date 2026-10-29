@@ -15,7 +15,6 @@ import {
   ThumbsUp, 
   SlidersHorizontal,
   UserCheck,
-  Zap,
   LogIn
 } from "lucide-react";
 import { fetcher, type Account } from "@/lib/api";

@@ -14,7 +14,6 @@ import {
   IndianRupee, 
   MapPin, 
   Phone, 
-  Sparkles, 
   Tag, 
   CheckCircle2, 
   ChevronRight, 

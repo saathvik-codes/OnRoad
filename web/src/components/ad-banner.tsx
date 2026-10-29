@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { ChevronLeft, ChevronRight, ExternalLink, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { fetcher } from "@/lib/api";
 import { useCity, withCity } from "@/components/city";
 import { cn } from "@/components/ui";
@@ -33,7 +33,7 @@ export function AdBanner({ className }: { className?: string }) {
       <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-[11px] font-bold tracking-wider text-accent">
-            <Zap className="h-3 w-3" />{s.tag}
+            {s.tag}
           </span>
           <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl font-bold text-ink sm:text-2xl">{s.title}</h3>
           <p className="mt-1 text-2xl font-black text-good">{s.highlight}</p>

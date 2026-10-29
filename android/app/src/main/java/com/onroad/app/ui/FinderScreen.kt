@@ -115,7 +115,7 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
 
     LaunchedEffect(a.bike, city) {
         brands = runCatching { vm.api.brands(city, if (a.bike) "bike" else "car") }.getOrElse { emptyList() }
-            .filter { it.models > 0 }.sortedByDescending { it.models }
+            .filter { it.models > 0 }
     }
     // results follow every change; a newer change cancels the older request, so stale picks never show
     LaunchedEffect(a, city, tick) {

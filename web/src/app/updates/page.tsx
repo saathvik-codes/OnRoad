@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
-import { ExternalLink, Sparkles, Tag, TrendingDown, TrendingUp } from "lucide-react";
+import { CirclePlus, ExternalLink, Tag, TrendingDown, TrendingUp } from "lucide-react";
 import { fetcher } from "@/lib/api";
 import { Card, cn, Empty, SectionTitle, Skeleton } from "@/components/ui";
 import { ago, NewsShowcase, TOPIC, type News } from "@/components/news-showcase";
@@ -19,7 +19,7 @@ type Update = { kind: "price" | "new" | "offer"; date: string; model_id: string 
 const TOPICS = ["all", "launch", "price", "ev", "safety", "policy", "spied", "sales"] as const;
 
 function UpdateIcon({ u }: { u: Update }) {
-  if (u.kind === "new") return <Sparkles className="h-4 w-4 text-accent-2" />;
+  if (u.kind === "new") return <CirclePlus className="h-4 w-4 text-accent-2" />;
   if (u.kind === "offer") return <Tag className="h-4 w-4 text-good" />;
   return / down/.test(u.title) ? <TrendingDown className="h-4 w-4 text-good" /> : <TrendingUp className="h-4 w-4 text-accent" />;
 }

@@ -101,6 +101,17 @@ def main():
         gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
     weekly("photos", galleries)
 
+    def every_day(name, fn):
+        last = float(state(f"last_{name}") or 0)
+        if time.time() - last > 86400 and time.time() < deadline - 1800:
+            step(name, fn)
+            state(f"last_{name}", time.time())
+
+    def cardekho():
+        from onroad import cardekho_fill
+        cardekho_fill.run(write=True)
+    every_day("cardekho_lineups", cardekho)   # models the makers don't price or list (luxury brands, Eeco, X-Trail)
+
     def variant_specs():
         from onroad import variant_specs_fill
         with closing(db.connect()) as conn:

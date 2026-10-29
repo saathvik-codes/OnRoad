@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from . import db, onroad_calc, ingest
 
-ENABLE_DOCS = os.getenv("ENABLE_DOCS", "1") == "1"
+ENABLE_DOCS = os.getenv("ENABLE_DOCS", "0") == "1"          # API docs only when explicitly enabled (local dev)
 app = FastAPI(
     title="OnRoad API", 
     docs_url="/api/docs" if ENABLE_DOCS else None, 
@@ -40,23 +40,11 @@ app = FastAPI(
 # ── Cross-Origin Resource Sharing (CORS) ──────────────────────────────────────────────
 _raw_cors = os.getenv("CORS_ORIGINS", "")
 _configured_origins = [o.strip() for o in _raw_cors.split(",") if o.strip()]
-_default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://onroad-frontend.onrender.com",
-    "https://onroad-uu9c.onrender.com",
-]
+_default_origins = ["https://onroad-frontend.onrender.com"] + (
+    ["http://localhost:3000", "http://127.0.0.1:3000"] if os.getenv("DEV_CORS") == "1" else [])
 _allowed_origins = list(dict.fromkeys(_configured_origins + _default_origins))
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.onrender\.com)(:\d+)?$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+# CORS is added at the end of this file so it wraps every other middleware (including the response cache)
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -123,7 +111,8 @@ async def cache_public_reads(request: Request, call_next):
     if response.status_code != 200:
         return response
     body = b"".join([chunk async for chunk in response.body_iterator])
-    headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "set-cookie")}
+    headers = {k: v for k, v in response.headers.items()
+               if k.lower() not in ("content-length", "set-cookie", "vary") and not k.lower().startswith("access-control-")}
     headers["Cache-Control"] = f"public, max-age={int(_CACHE_TTL)}, stale-while-revalidate=86400"
     if len(_RESP_CACHE) > 2000:
         _RESP_CACHE.clear()
@@ -431,7 +420,9 @@ def brands(city: str = "Hyderabad", vehicle_type: str | None = None):
                           WHERE m.brand_slug = b.slug AND v.active = 1) AS from_inr,
                        (SELECT COUNT(*) FROM dealers d WHERE d.brand_slug = b.slug AND d.active = 1 AND lower(d.city) = lower(?)) AS dealers_here,
                        (SELECT COUNT(*) FROM offers o WHERE o.brand_slug = b.slug AND {LIVE}) AS offers
-                FROM brands b WHERE 1=1 {vt_cond} ORDER BY b.segment = 'luxury', b.name""", (*cp, city, city, *vt_params))
+                FROM brands b WHERE 1=1 {vt_cond}""", (*cp, city, city, *vt_params))
+    # cheapest starting price first; brands without a public price (price on request) go last, by name
+    rows.sort(key=lambda r: (r["from_inr"] is None, r["from_inr"] or 0, r["name"]))
     for r in rows:
         r["logo"] = _logo_url(r["slug"])
     return rows
@@ -1695,12 +1686,18 @@ def sync_status():
 
 @app.get("/")
 def root():
-    return {"name": "OnRoad API", "status": "online", "docs": "/api/docs", "health": "/api/health"}
+    return {"ok": True}
 
 
 @app.get("/api/health")
 def health():
-    """Liveness, plus whether the self-refresh is running and when prices last changed (no secrets)."""
+    """Public liveness only."""
+    return {"ok": True}
+
+
+@app.get("/api/admin/status")
+def admin_status(acc: dict = Depends(role("admin"))):
+    """Refresh, snapshot and backup status, for admins."""
     out = {"ok": True, "refresh_every_hours": os.getenv("REFRESH_EVERY_HOURS"), "api_secret_from_env": bool(os.getenv("API_SECRET"))}
     try:
         from . import firestore_sync
@@ -1839,3 +1836,15 @@ if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "githu
         _RESP_CACHE.clear()
         _PRICE_ORDER.clear()
     _snap.start(on_applied=_after_snapshot)
+
+
+# outermost: decides cross-site access per request, so cached responses never carry another site's CORS headers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    # only OnRoad's own sites may call with a signed-in buyer's cookie (no wildcard hosts)
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$" if os.getenv("DEV_CORS") == "1" else None,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)

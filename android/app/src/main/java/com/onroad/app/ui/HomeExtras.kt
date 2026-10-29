@@ -23,7 +23,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,7 +72,6 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
                 .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }.padding(16.dp)) {
                     Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Bolt, null, tint = Ignition, modifier = Modifier.size(13.dp)); Spacer(Modifier.width(3.dp))
                         Text("MANUFACTURER OFFER", style = MaterialTheme.typography.labelSmall, color = Ignition)
                     }
                     Spacer(Modifier.height(12.dp))

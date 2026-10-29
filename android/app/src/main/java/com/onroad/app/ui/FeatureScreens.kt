@@ -165,7 +165,7 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     }
     val all = list.orEmpty()
     val brands = all.groupBy { it.brandSlug }.map { (slug, l) -> com.onroad.app.data.Brand(slug, l.first().brandName ?: slug, "/api/logos/$slug", l.size) }
-        .sortedByDescending { it.models }
+        
     val shown = list?.filter { offerMatches(it, f) }?.let { l ->
         when (sort) {
             "benefit" -> l.sortedByDescending { it.amountInr ?: 0 }

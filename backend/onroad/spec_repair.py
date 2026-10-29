@@ -65,6 +65,8 @@ def repair(conn) -> dict:
     # model photos known to show a different car (an older adapter reused a sibling's image)
     for mid, bad in WRONG_IMAGES.items():
         conn.execute("UPDATE models SET image_url = NULL WHERE id = ? AND image_url LIKE ?", (mid, bad + "%"))
+    from . import model_dedupe
+    n["duplicate_models_retired"] = len(model_dedupe.dedupe(conn))          # one model, one listing
     from . import image_repair
     n.update({"images_" + k: v for k, v in image_repair.repair(conn).items()})   # every model keeps only its own photos
     return n

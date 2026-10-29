@@ -105,7 +105,7 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
                 val bset = b.map { it.slug }.toSet()
                 val offers = offersDeferred.await().filter { it.brandSlug in bset }
                 val bands = bandsDeferred.await()
-                _s.value = HomeState(t, b.filter { it.models > 0 }.sortedByDescending { it.models }, p, offers, bands, false, rivals = rivalPairs(all))
+                _s.value = HomeState(t, b.filter { it.models > 0 }, p, offers, bands, false, rivals = rivalPairs(all))
             }
         } catch (e: Exception) {
             if (_s.value.popular.isEmpty() && _s.value.brands.isEmpty()) {

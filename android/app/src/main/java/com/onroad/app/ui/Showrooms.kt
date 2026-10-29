@@ -103,7 +103,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     }
     LaunchedEffect(Unit) { if (here == null) locate() }
     LaunchedEffect(type, cityNow) {
-        brands = runCatching { vm.api.brands(cityNow, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models }
+        brands = runCatching { vm.api.brands(cityNow, type) }.getOrElse { emptyList() }.filter { it.models > 0 }
     }
     LaunchedEffect(here, type, brand, tick) {
         val h = here ?: return@LaunchedEffect
