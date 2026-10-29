@@ -84,7 +84,7 @@ export function CityPicker({ className, onDone }: { className?: string; onDone?:
         <MapPin className="h-4 w-4 text-accent" /><span className="max-w-[84px] truncate sm:max-w-[110px]">{city}</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[320px] overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl backdrop-blur-xl">
+        <div className="absolute left-0 z-50 mt-2 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl backdrop-blur-xl">
           <div className="border-b border-line p-3.5 bg-panel-soft/60">
             <p className="text-xs text-mute font-medium">Prices and road tax follow your city</p>
             <button onClick={locate} disabled={locating} className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-white hover:brightness-110 shadow-xs cursor-pointer">
