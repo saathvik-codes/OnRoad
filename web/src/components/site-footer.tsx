@@ -33,8 +33,8 @@ export function SiteFooter() {
       <div className="border-t border-line">
         <div className="mx-auto max-w-7xl space-y-3 px-5 py-8 text-xs leading-relaxed text-mute">
           <p>
-            <b className="font-semibold text-ink">Where the numbers come from.</b> Ex-showroom prices are taken from each manufacturer&apos;s
-            website; where a manufacturer doesn&apos;t publish one, from CarDekho or BikeDekho, and the page says so. Road tax, registration
+            <b className="font-semibold text-ink">Where the numbers come from.</b> Ex-showroom prices are taken from manufacturers&apos;
+            websites and published price lists, and each price links to its source. Road tax, registration
             and insurance are calculated from state transport department rules, central registration fees and IRDAI third-party premiums.
             Showroom prices appear only when a showroom quotes them. Prices can change without notice: confirm the final figure with the
             showroom before you pay.

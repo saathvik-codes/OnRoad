@@ -109,18 +109,7 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
     Column(Modifier.padding(horizontal = 16.dp)) {
         // headline specs
         val keyVals = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(sp.specs, rx)?.let { label to it } }.take(6)
-        if (keyVals.isNotEmpty()) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
-                items(keyVals, key = { it.first }) { (l, v) ->
-                    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 14.dp, vertical = 12.dp).width(120.dp)) {
-                        Text(l.uppercase(), style = MaterialTheme.typography.labelSmall, color = Mute)
-                        Spacer(Modifier.height(4.dp))
-                        Text(v, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-        }
+        if (keyVals.isNotEmpty()) { KeySpecGrid(keyVals); Spacer(Modifier.height(14.dp)) }
         // view switch
         Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
             listOf("features" to "Features (${sp.features.size})", "specs" to "Specifications").forEach { (k, l) ->
@@ -155,12 +144,16 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
                 val photos = sp.features.filter { sp.photos.containsKey(it.key) }
                 if (photos.isNotEmpty() && filter != "no") {
                     Spacer(Modifier.height(12.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(photos, key = { "ph" + it.key }) { f ->
-                            Column(Modifier.width(220.dp).clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))) {
-                                AsyncImage(img(sp.photos[f.key]?.imageUrl), f.label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(130.dp))
-                                Text(f.label, style = MaterialTheme.typography.labelLarge, maxLines = 2, modifier = Modifier.padding(10.dp))
+                    // two-up grid that scrolls with the page (no sideways strips)
+                    photos.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            pair.forEach { f ->
+                                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))) {
+                                    AsyncImage(img(sp.photos[f.key]?.imageUrl), f.label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(4 / 3f))
+                                    Text(f.label, style = MaterialTheme.typography.labelLarge, maxLines = 2, modifier = Modifier.padding(10.dp))
+                                }
                             }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
@@ -176,6 +169,26 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
         }
         Spacer(Modifier.height(8.dp))
         Text("From $brand's official spec sheet for this variant.", color = Mute, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** Key figures in a three-column grid (wraps to as many rows as needed). */
+@Composable
+fun KeySpecGrid(items: List<Pair<String, String>>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (l, v) ->
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Text(l, style = MaterialTheme.typography.labelSmall, color = Mute, maxLines = 1)
+                        Spacer(Modifier.height(2.dp))
+                        Text(v, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
 

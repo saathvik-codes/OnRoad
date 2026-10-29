@@ -27,7 +27,7 @@ struct LaneMarks: View {
     }
 }
 
-/// Launch animation (~1.4 s, like Cars24 / Myntra): the ring draws itself, a lane races through it and dissolves, the
+/// Launch animation: the ring draws itself, a lane races through it and dissolves, the
 /// ring settles into the "o" of the wordmark while "nroad" unrolls out of it, a light streak crosses, then it fades out.
 struct BrandIntro: View {
     let done: () -> Void

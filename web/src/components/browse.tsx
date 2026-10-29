@@ -1,6 +1,6 @@
 "use client";
 
-// Cars24 / Zoomcar-style browsing blocks: brand logo tiles, body-type icons and budget chips, in OnRoad's dark style.
+// Browsing blocks: brand logo tiles, body-type icons and budget chips.
 
 import Link from "next/link";
 import useSWR from "swr";

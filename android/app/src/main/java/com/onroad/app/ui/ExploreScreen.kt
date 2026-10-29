@@ -109,7 +109,7 @@ private fun matches(m: ModelSummary, f: Filters, budgets: List<Budget>, skip: St
     return true
 }
 
-/** Browse every listed model, Myntra-style: sort + filters pinned above the tab bar, filters in a two-pane sheet. */
+/** Browse every listed model: sort + filters pinned above the tab bar, filters in a two-pane sheet. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: String = "car", initBudget: String? = null,
@@ -220,7 +220,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                 }
             }
         }
-        // pinned action bar (Myntra-style), just above the bottom navigation
+        // pinned action bar, just above the bottom navigation
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Night.copy(alpha = 0.95f), Night)))
             .then(if (onBack != null) Modifier.navigationBarsPadding() else Modifier)

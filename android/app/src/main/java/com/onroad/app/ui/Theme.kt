@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.util.Locale
 
-/** OnRoad colours. Light follows CarDekho / Cars24-style clean white surfaces; dark is the original "night drive". */
+/** OnRoad colours. Light uses clean white surfaces; dark is the original "night drive". */
 data class OnRoadColors(val night: Color, val panel: Color, val panel2: Color, val line: Color, val mute: Color, val ink: Color,
                         val ignition: Color, val electric: Color, val good: Color, val amber: Color, val dark: Boolean)
 

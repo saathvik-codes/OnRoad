@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
                     composable("city") { CityScreen(onBack = { nav.popBackStack() }) }
                     composable("showrooms") { com.onroad.app.ui.ShowroomsScreen(onBack = { nav.popBackStack() }) }
                 }
-                // Cars24 / ACKO-style persistent tab bar on the top-level screens
+                // persistent tab bar on the top-level screens
                 if (route in tabs.map { it.first }) NavigationBar(containerColor = Panel, tonalElevation = 0.dp) {
                     tabs.forEach { (r, label, icon) ->
                         NavigationBarItem(selected = route == r, label = { Text(label) }, icon = { Icon(icon, label) },
