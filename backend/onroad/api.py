@@ -60,6 +60,12 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 _RESP_CACHE: dict[str, tuple[float, int, bytes, dict]] = {}
+_RESP_BYTES = 0
+
+
+def _cache_reset() -> None:
+    global _RESP_BYTES
+    _RESP_CACHE.clear(); _RESP_BYTES = 0
 _CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/api/models/", "/api/bands", "/api/cities",
               "/api/meta", "/api/variant-specs", "/api/updates", "/api/ownership", "/api/news", "/api/loan-rates", "/api/states", "/api/model-features")
 _CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "300"))
@@ -114,9 +120,13 @@ async def cache_public_reads(request: Request, call_next):
     headers = {k: v for k, v in response.headers.items()
                if k.lower() not in ("content-length", "set-cookie", "vary") and not k.lower().startswith("access-control-")}
     headers["Cache-Control"] = f"public, max-age={int(_CACHE_TTL)}, stale-while-revalidate=86400"
-    if len(_RESP_CACHE) > 2000:
-        _RESP_CACHE.clear()
-    _RESP_CACHE[key] = (_time.time() + _CACHE_TTL, 200, body, headers)
+    # bounded: at most ~300 responses / 40 MB (the server has 512 MB), and very large ones aren't kept
+    if len(body) < 1_500_000:
+        global _RESP_BYTES
+        if len(_RESP_CACHE) >= 300 or _RESP_BYTES + len(body) > 40_000_000:
+            _RESP_CACHE.clear(); _RESP_BYTES = 0
+        _RESP_CACHE[key] = (_time.time() + _CACHE_TTL, 200, body, headers)
+        _RESP_BYTES += len(body)
     return _Resp(content=body, status_code=200, headers=headers)
 
 
@@ -852,6 +862,10 @@ def _img_path(u: str, w: int):
     return IMG_CACHE / f"{hashlib.sha1(f'{u}|{w}'.encode()).hexdigest()}.webp"
 
 
+import threading as _threading
+_IMG_LOCK = _threading.Lock()
+
+
 def _render_images(u: str, widths) -> None:
     """Download one manufacturer image once and write every missing width as WebP (atomic writes, small memory)."""
     import io
@@ -861,18 +875,34 @@ def _render_images(u: str, widths) -> None:
     if not todo:
         return
     IMG_CACHE.mkdir(parents=True, exist_ok=True)
-    r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
-                   timeout=30, follow_redirects=True)
-    r.raise_for_status()
-    with Image.open(io.BytesIO(r.content)) as src:
-        src.draft("RGB", (max(todo), max(todo)))          # JPEGs decode straight at a smaller size
-        base = src.convert("RGBA") if src.mode in ("P", "LA", "RGBA") or "transparency" in src.info else src.convert("RGB")
-    for w in sorted(todo, reverse=True):
-        im = base if base.width <= w else base.resize((w, round(base.height * w / base.width)), Image.LANCZOS)
-        f = _img_path(u, w)
-        tmp = f.with_suffix(".tmp")
-        im.save(tmp, "WEBP", quality=84, method=4)
-        tmp.replace(f)                                    # a half-written file is never served
+    import gc
+    with _IMG_LOCK:                                       # one decode at a time: big PNGs need ~100 MB each
+        if not [w for w in todo if not _img_path(u, w).exists()]:
+            return                                        # another request rendered it while we waited
+        r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
+                       timeout=30, follow_redirects=True)
+        r.raise_for_status()
+        if len(r.content) > 15_000_000:
+            raise ValueError("image too large")
+        with Image.open(io.BytesIO(r.content)) as src:
+            if src.width * src.height > 40_000_000:
+                raise ValueError("image too large")
+            src.draft("RGB", (max(todo), max(todo)))      # JPEGs decode straight at a smaller size
+            src.load()
+            mode = "RGBA" if src.mode in ("P", "LA", "RGBA") or "transparency" in src.info else "RGB"
+            # shrink first (one copy at the largest width needed), then convert the small image
+            big = max(todo)
+            base = src.resize((big, round(src.height * big / src.width)), Image.LANCZOS) if src.width > big else src.copy()
+        del r
+        base = base if base.mode == mode else base.convert(mode)
+        for w in sorted(todo, reverse=True):
+            im = base if base.width <= w else base.resize((w, round(base.height * w / base.width)), Image.LANCZOS)
+            f = _img_path(u, w)
+            tmp = f.with_suffix(".tmp")
+            im.save(tmp, "WEBP", quality=84, method=4)
+            tmp.replace(f)                                # a half-written file is never served
+        del base
+        gc.collect()
 
 
 def _img_file(u: str, w: int):
@@ -1799,7 +1829,7 @@ def _refresh_loop(hours: float) -> None:
                         from . import gallery_sync, image_check
                         gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
                         mark.touch()
-                _RESP_CACHE.clear()
+                _cache_reset()
                 with closing(db.connect()) as conn, conn:
                     conn.execute("INSERT OR REPLACE INTO app_state VALUES ('refresh_last_ok', ?)",
                                  (_t.strftime('%Y-%m-%dT%H:%M:%SZ', _t.gmtime()),))
@@ -1827,13 +1857,13 @@ if os.getenv("REFRESH_EVERY_HOURS"):
 
 if os.getenv("NEWS_FETCH", "1") == "1":            # headlines every hour; tiny RSS requests (onroad/news.py)
     from . import news as _news_mod
-    _news_mod.start(on_new=lambda: _RESP_CACHE.clear())
+    _news_mod.start(on_new=_cache_reset)
 
 if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "github") != "server":
     from . import snapshot as _snap
 
     def _after_snapshot():
-        _RESP_CACHE.clear()
+        _cache_reset()
         _PRICE_ORDER.clear()
     _snap.start(on_applied=_after_snapshot)
 
