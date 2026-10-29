@@ -16,7 +16,7 @@ const LINKS = [
   { href: "/cars", label: "Cars" },
   { href: "/bikes", label: "Bikes" },
   { href: "/brands", label: "Brands" },
-  { href: "/news", label: "News & Reviews" },
+  { href: "/updates", label: "Updates" },
   { href: "/calculator", label: "Calculator" },
   { href: "/compare", label: "Compare" },
 ];

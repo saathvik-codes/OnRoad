@@ -73,7 +73,7 @@ async def add_security_headers(request: Request, call_next):
 
 _RESP_CACHE: dict[str, tuple[float, int, bytes, dict]] = {}
 _CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/api/models/", "/api/bands", "/api/cities",
-              "/api/meta", "/api/variant-specs", "/api/loan-rates", "/api/states", "/api/model-features")
+              "/api/meta", "/api/variant-specs", "/api/updates", "/api/ownership", "/api/news", "/api/loan-rates", "/api/states", "/api/model-features")
 _CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "300"))
 
 
@@ -626,8 +626,15 @@ def model(brand: str, model: str, city: str = "Hyderabad", lat: float | None = N
     dealers = _dealers_for(brand, city, lat, lng)
     offers = _offers("o.brand_slug = ? AND (o.model_name IS NULL OR o.model_name = '' OR lower(o.model_name) = lower(?))",
                      (brand, m["name"]), city)
-    history = q("""SELECT p.variant_id, p.city, p.ex_showroom_inr, p.fetched_at FROM prices p JOIN variants v ON v.id = p.variant_id
-                   WHERE v.model_id = ? ORDER BY p.fetched_at""", (mid,))
+    from .ownership import stable as _stable
+    _hist: dict = {}
+    for r in q("""SELECT p.variant_id, p.city, p.ex_showroom_inr, p.fetched_at FROM prices p JOIN variants v ON v.id = p.variant_id
+                  WHERE v.model_id = ? ORDER BY p.fetched_at""", (mid,)):
+        _hist.setdefault((r["variant_id"], r["city"]), []).append(r)
+    def _clean(seq):                    # glitches dropped, but the chart always ends on the price shown today
+        s = _stable(seq)
+        return s + [seq[-1]] if s[-1]["ex_showroom_inr"] != seq[-1]["ex_showroom_inr"] else s
+    history = sorted((r for seq in _hist.values() for r in _clean(seq)), key=lambda r: r["fetched_at"])
     best_quotes = q("""SELECT qt.on_road_inr, qt.discount_inr, qt.created, d.name AS dealer, v.name AS variant FROM quotes qt
                        JOIN quote_requests r ON r.id = qt.request_id JOIN variants v ON v.id = r.variant_id
                        JOIN dealers d ON d.id = qt.dealer_id WHERE v.model_id = ? AND lower(r.city) = lower(?)
@@ -658,6 +665,32 @@ def onroad(variant_id: str, city: str = "Hyderabad", loan: bool = False, ownersh
     b = onroad_calc.estimate(p["ex_showroom_inr"], city=city, fuel=v["fuel"], engine_cc=_engine_cc(v), battery_kwh=v["battery_kwh"],
                              ownership=ownership, loan=loan, vehicle_type=vt)
     return {**b.to_dict(), "price_city": p["city"], "price_as_of": p["fetched_at"], "price_source": p["source_url"], "vehicle_type": vt}
+
+
+@app.get("/api/ownership")
+def ownership_help(variant_id: str, city: str = "Hyderabad"):
+    """Insurance, registration (RTA), accessories and recent changes for one variant in one city."""
+    from . import ownership as _own
+    v = one("""SELECT v.*, m.vehicle_type, m.brand_slug, m.id AS mid FROM variants v
+               JOIN models m ON m.id = v.model_id WHERE v.id = ?""", (variant_id,))
+    if not v:
+        raise HTTPException(404, "Unknown variant")
+    b = onroad(variant_id, city)
+    return _own.ownership(v, {"id": v["mid"], "brand_slug": v["brand_slug"], "vehicle_type": v["vehicle_type"]}, city, b)
+
+
+@app.get("/api/updates")
+def updates_feed(vehicle_type: str | None = None, model_id: str | None = None, limit: int = Query(40, le=100)):
+    """Price revisions, new models and new offers, from OnRoad's own records."""
+    from . import ownership as _own
+    return _own.updates(vehicle_type=vehicle_type, model_id=model_id, limit=limit)
+
+
+@app.get("/api/news")
+def news_feed(limit: int = Query(40, le=100), topic: str | None = None, model_id: str | None = None, brand: str | None = None):
+    """Latest automotive headlines from Indian publishers' RSS feeds, linked to the source (onroad/news.py)."""
+    from . import news as _news
+    return _news.latest(limit=limit, topic=topic, model_id=model_id, brand=brand)
 
 
 @app.get("/api/onroad/quick")
@@ -1744,6 +1777,10 @@ if os.getenv("FIRESTORE_SYNC", "1") == "1":       # user data mirrored to Firest
 
 if os.getenv("REFRESH_EVERY_HOURS"):
     _refresh_loop(float(os.getenv("REFRESH_EVERY_HOURS")))
+
+if os.getenv("NEWS_FETCH", "1") == "1":            # headlines every hour; tiny RSS requests (onroad/news.py)
+    from . import news as _news_mod
+    _news_mod.start(on_new=lambda: _RESP_CACHE.clear())
 
 if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "github") != "server":
     from . import snapshot as _snap

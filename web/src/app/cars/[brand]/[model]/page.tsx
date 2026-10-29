@@ -267,6 +267,19 @@ function ModelInner() {
               <span>Offers ({m.offers.length})</span>
             </button>
           )}
+
+          <button
+            onClick={() => setActiveTab("support")}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition cursor-pointer",
+              activeTab === "support"
+                ? "bg-accent text-white shadow-md shadow-accent/25"
+                : "text-mute hover:bg-panel-soft hover:text-ink"
+            )}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Insurance & RTA</span>
+          </button>
         </div>
       </section>
 

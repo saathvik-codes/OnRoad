@@ -25,7 +25,7 @@ export function SiteFooter() {
             ["/brands", "Brands"],
             ["/calculator", "Price calculator"],
             ["/compare", "Compare"],
-            ["/news", "News & vehicle reveals"],
+            ["/updates", "Price changes & new launches"],
             ["/buying-guide", "Buying & registration guide"],
             ["/download", "Mobile App (Android & iOS)"],
           ].map(([h, l]) => (

@@ -179,6 +179,19 @@ def refresh_brand(a, city: str) -> dict:
             v.city = national_label(v.city)
             last = conn.execute("SELECT ex_showroom_inr FROM prices WHERE variant_id = ? AND city = ? ORDER BY fetched_at DESC LIMIT 1",
                                 (vid, v.city)).fetchone()
+            # a changed price is written only when the next refresh returns the same new figure: some makers'
+            # feeds intermittently serve an older list, and a one-off reading must not move the price buyers see
+            if last and last["ex_showroom_inr"] != v.ex_showroom_inr:
+                conn.execute("""CREATE TABLE IF NOT EXISTS price_pending (variant_id TEXT, city TEXT, ex_showroom_inr INTEGER,
+                                source_url TEXT, first_seen TEXT, PRIMARY KEY (variant_id, city))""")
+                pend = conn.execute("SELECT ex_showroom_inr FROM price_pending WHERE variant_id = ? AND city = ?", (vid, v.city)).fetchone()
+                if not pend or pend[0] != int(v.ex_showroom_inr):
+                    conn.execute("INSERT OR REPLACE INTO price_pending VALUES (?, ?, ?, ?, ?)",
+                                 (vid, v.city, int(v.ex_showroom_inr), v.source_url, v.fetched_at))
+                    continue
+                conn.execute("DELETE FROM price_pending WHERE variant_id = ? AND city = ?", (vid, v.city))
+            elif last:
+                conn.execute("DELETE FROM price_pending WHERE variant_id = ? AND city = ?", (vid, v.city))                     if conn.execute("SELECT name FROM sqlite_master WHERE name = 'price_pending'").fetchone() else None
             if not last or last["ex_showroom_inr"] != v.ex_showroom_inr:
                 conn.execute("INSERT OR IGNORE INTO prices (variant_id, city, ex_showroom_inr, source_url, fetched_at) VALUES (?, ?, ?, ?, ?)",
                              (vid, v.city, int(v.ex_showroom_inr), v.source_url, v.fetched_at))

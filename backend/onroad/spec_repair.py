@@ -62,7 +62,16 @@ def repair(conn) -> dict:
             conn.execute("DELETE FROM specs WHERE rowid = ?", (rowid,))
             n["removed"] += 1
     n["removed"] += engine_conflicts(conn)
+    # model photos known to show a different car (an older adapter reused a sibling's image)
+    for mid, bad in WRONG_IMAGES.items():
+        conn.execute("UPDATE models SET image_url = NULL WHERE id = ? AND image_url LIKE ?", (mid, bad + "%"))
     return n
+
+
+WRONG_IMAGES = {
+    "mg/hector-plus": "https://mgmotor.scene7.com/is/image/mgmotor/mgi-hector-thm-img-0001",
+    "mg/gloster": "https://mgmotor.scene7.com/is/image/mgmotor/004-khaki-green-s-black-image",
+}
 
 
 ENGINE_SIG = re.compile(r"\b(?:tce|tsi|tgdi|t-gdi|gdi|crdi|mpi|vtvt|ecoboost|e-tech)\s*\d{2,3}\b|\b\d\.\d\b|turbo|hybrid|e-tech|\bcng\b|t-gdi", re.I)

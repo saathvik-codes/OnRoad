@@ -29,7 +29,8 @@ log = logging.getLogger("onroad.snapshot")
 RELEASE = os.getenv("SNAPSHOT_RELEASE", "https://github.com/saathvik-codes/OnRoad/releases/download/data-latest")
 # everything people create; never shipped in a snapshot and never replaced by one
 USER_TABLES = {"accounts", "sessions", "saved_cars", "quote_requests", "quotes", "dealer_reviews", "opinions", "outreach",
-               "push_tokens", "dealer_claims", "app_state", "refresh_runs", "sqlite_sequence"}
+               "push_tokens", "dealer_claims", "app_state", "refresh_runs", "sqlite_sequence",
+               "news"}                            # the server fetches news itself
 RESEARCH = ("popularity.json", "crash_tests.json")
 
 

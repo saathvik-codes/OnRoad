@@ -1,0 +1,232 @@
+{
+ "aston_martin": {
+  "name": "Aston Martin",
+  "url": "https://www.astonmartin.com/en/owners/accessories",
+  "checked": "2026-10-29"
+ },
+ "audi": {
+  "name": "Audi",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "bentley": {
+  "name": "Bentley",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "ferrari": {
+  "name": "Ferrari",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "honda": {
+  "name": "Honda",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "hyundai": {
+  "name": "Hyundai",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "jaguar": {
+  "name": "Jaguar",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "kia": {
+  "name": "Kia",
+  "url": "https://www.kia.com/in/service/kia-owners/accessories.html",
+  "checked": "2026-10-29"
+ },
+ "lamborghini": {
+  "name": "Lamborghini",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "land_rover": {
+  "name": "Land Rover",
+  "url": "https://www.landrover.in/defender/accessories/index.html",
+  "checked": "2026-10-29"
+ },
+ "lexus": {
+  "name": "Lexus",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "lotus": {
+  "name": "Lotus",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "mahindra": {
+  "name": "Mahindra",
+  "url": "https://auto.mahindra.com/accessories",
+  "checked": "2026-10-29"
+ },
+ "maruti_suzuki": {
+  "name": "Maruti Suzuki",
+  "url": "https://www.marutisuzuki.com/genuine-accessories",
+  "checked": "2026-10-29"
+ },
+ "maserati": {
+  "name": "Maserati",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "mclaren": {
+  "name": "McLaren",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "mercedes_benz": {
+  "name": "Mercedes-Benz",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "mg": {
+  "name": "MG Motor",
+  "url": "https://www.mgmotor.co.in/original-spare-parts-accessories",
+  "checked": "2026-10-29"
+ },
+ "nissan": {
+  "name": "Nissan",
+  "url": "https://www.nissan.in/ownership/nissan-genuine-accessories.html",
+  "checked": "2026-10-29"
+ },
+ "porsche": {
+  "name": "Porsche",
+  "url": "https://www.porsche.com/middle-east/_india_/accessoriesandservice/vehicle-accessories/",
+  "checked": "2026-10-29"
+ },
+ "renault": {
+  "name": "Renault",
+  "url": "https://www.renault.co.in/renault-service/accessories.html",
+  "checked": "2026-10-29"
+ },
+ "skoda": {
+  "name": "Skoda",
+  "url": "https://www.skoda-auto.co.in/service-and-parts/genuine-accessories",
+  "checked": "2026-10-29"
+ },
+ "tata_motors": {
+  "name": "Tata Motors",
+  "url": "https://tata.cars/accessories/overview.html",
+  "checked": "2026-10-29"
+ },
+ "toyota": {
+  "name": "Toyota",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "volkswagen": {
+  "name": "Volkswagen",
+  "url": "https://www.volkswagen.co.in/en/owners-and-services/accessories.html",
+  "checked": "2026-10-29"
+ },
+ "volvo": {
+  "name": "Volvo",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "byd": {
+  "name": "BYD",
+  "url": "https://www.bydautoindia.com/accessories",
+  "checked": "2026-10-29"
+ },
+ "force_motors": {
+  "name": "Force Motors",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "isuzu": {
+  "name": "Isuzu",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "citroen": {
+  "name": "Citro\u00ebn",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "jeep": {
+  "name": "Jeep",
+  "url": "https://www.jeep-india.com/accessories.html",
+  "checked": "2026-10-29"
+ },
+ "royal_enfield": {
+  "name": "Royal Enfield",
+  "url": "https://www.royalenfield.com/in/en/gma/",
+  "checked": "2026-10-29"
+ },
+ "hero": {
+  "name": "Hero MotoCorp",
+  "url": "https://www.heromotocorp.com/en-in/hero-accessories.html",
+  "checked": "2026-10-29"
+ },
+ "tvs": {
+  "name": "TVS Motor Company",
+  "url": "https://shop.tvsmotor.com/pages/accessories",
+  "checked": "2026-10-29"
+ },
+ "bajaj": {
+  "name": "Bajaj Auto",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "yamaha": {
+  "name": "Yamaha Motor India",
+  "url": "https://www.yamaha-motor-india.com/parts-accessories.html?part=ev",
+  "checked": "2026-10-29"
+ },
+ "honda_2wheelers": {
+  "name": "Honda 2Wheelers",
+  "url": "https://www.honda2wheelersindia.com/accessories",
+  "checked": "2026-10-29"
+ },
+ "ather": {
+  "name": "Ather Energy",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "ola_electric": {
+  "name": "Ola Electric",
+  "url": "https://book.olaelectric.com/accessorystore",
+  "checked": "2026-10-29"
+ },
+ "ktm": {
+  "name": "KTM India",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "suzuki_2wheelers": {
+  "name": "Suzuki Two Wheelers",
+  "url": "https://www.suzukimotorcycle.co.in/accessories",
+  "checked": "2026-10-29"
+ },
+ "kawasaki": {
+  "name": "Kawasaki Motors",
+  "url": "https://www.kawasaki-india.com/en/parts-and-accessories.html",
+  "checked": "2026-10-29"
+ },
+ "triumph": {
+  "name": "Triumph Motorcycles",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "jawa": {
+  "name": "Jawa Yezdi Motorcycles",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "harley_davidson": {
+  "name": "Harley-Davidson India",
+  "url": null,
+  "checked": "2026-10-29"
+ },
+ "aprilia": {
+  "name": "Aprilia India",
+  "url": null,
+  "checked": "2026-10-29"
+ }
+}

@@ -1,6 +1,5 @@
 "use client";
 
-import { GrandRevealSection } from "@/components/grand-reveal";
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -16,6 +15,7 @@ import { CarImage } from "@/components/car-image";
 import { useCity, withCity } from "@/components/city";
 import { Card, SectionTitle, Skeleton, cn } from "@/components/ui";
 import { AdBanner } from "@/components/ad-banner";
+import { NewsShowcase } from "@/components/news-showcase";
 import { TopTenLeaderboard } from "@/components/top-ten-leaderboard";
 
 const CarStage = dynamic(() => import("@/components/three/car-stage").then((m) => m.CarStage), { ssr: false,
@@ -135,7 +135,11 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-20">
-        <GrandRevealSection />
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <SectionTitle eyebrow="Updates" title="What's new in the auto world" sub="Launches, price changes and new rules, from India's auto publishers." />
+          <Link href="/updates" className="hidden shrink-0 text-sm text-accent hover:underline sm:block">All updates →</Link>
+        </div>
+        <NewsShowcase />
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-24">

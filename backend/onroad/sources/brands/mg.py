@@ -133,8 +133,6 @@ class MGAdapter(BrandAdapter):
 
     MODEL_IMAGES = {
         "MG Hector": "https://mgmotor.scene7.com/is/image/mgmotor/mgi-hector-thm-img-0001?fmt=png-alpha",
-        "MG Hector Plus": "https://mgmotor.scene7.com/is/image/mgmotor/mgi-hector-thm-img-0001?fmt=png-alpha",
-        "MG Gloster": "https://mgmotor.scene7.com/is/image/mgmotor/004-khaki-green-s-black-image?wid=1600&fmt=webp-alpha&resMode=bisharp&fit=constrain&qlt=80",
         "MG Cyberster": "https://mgmotor.scene7.com/is/image/mgmotor/Cyberster_4?fmt=webp-alpha&resMode=bisharp&fit=constrain&qlt=85&wid=1080",
         "MG M9": "https://mgmotor.scene7.com/is/image/mgmotor/m9_5?fmt=webp-alpha&resMode=bisharp&fit=constrain&qlt=85&wid=720",
         "MG Majestor": "https://mgmotor.scene7.com/is/image/mgmotor/004-khaki-green-s-black-image?wid=1600&fmt=webp-alpha&resMode=bisharp&fit=constrain&qlt=80",
