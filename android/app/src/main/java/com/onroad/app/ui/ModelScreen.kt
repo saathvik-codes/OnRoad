@@ -84,6 +84,10 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
         runCatching { vm.api.model(b, s, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { m = it } .onFailure { e -> android.util.Log.e("model", "load failed", e); err = "Couldn't load this car." }
     }
     var retry by remember { mutableStateOf(0) }
+    val loadedAt = remember { longArrayOf(System.currentTimeMillis()) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        if (System.currentTimeMillis() - loadedAt[0] > 120_000) { loadedAt[0] = System.currentTimeMillis(); retry++ }
+    }
     LaunchedEffect(retry) { if (retry > 0) { err = null; val (b2, s2) = id.split("/", limit = 2)
         runCatching { vm.api.model(b2, s2, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { m = it }.onFailure { err = "Couldn't load this car. Check your connection." } } }
     val model = m ?: return Column(Modifier.fillMaxSize()) {

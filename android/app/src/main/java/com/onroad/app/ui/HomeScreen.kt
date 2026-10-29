@@ -124,6 +124,11 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
     val newsState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<com.onroad.app.data.NewsItem>>(emptyList()) }
     val news = newsState.value
     androidx.compose.runtime.LaunchedEffect(Unit) { newsState.value = vm.news() }
+    // back in the foreground after a while: fresh prices, offers and news without pulling to refresh
+    val loadedAt = androidx.compose.runtime.remember { longArrayOf(System.currentTimeMillis()) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        if (System.currentTimeMillis() - loadedAt[0] > 120_000) { loadedAt[0] = System.currentTimeMillis(); vm.retry() }
+    }
     val s by vm.s.collectAsStateWithLifecycle()
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),

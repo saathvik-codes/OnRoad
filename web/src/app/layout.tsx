@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { LiveData } from "@/components/live-data";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="grain min-h-screen">
         <ThemeProvider>
+          <LiveData>
           <SmoothScroll />
           <CityProvider>
             <Suspense><SiteNav /></Suspense>
@@ -51,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Suspense><SiteFooter /></Suspense>
             <MobileNav />
           </CityProvider>
+          </LiveData>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
               <Analytics />
