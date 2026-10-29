@@ -1721,7 +1721,7 @@ def app_version():
     return {
         "version_code": 7,
         "version_name": "1.1.0",
-        "download_url": "https://onroad-frontend.onrender.com/download",
+        "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
         "notes": "Live auto news, insurance and registration help, genuine accessories, a new variant picker and a cleaner compare.",
         "force_update": False,
