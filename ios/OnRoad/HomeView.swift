@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var offers: [Offer] = []
     @State private var failed = false
     @State private var picking = false
+    @State private var news: [NewsItem] = []
 
     var body: some View {
         ScrollView {
@@ -29,6 +30,8 @@ struct HomeView: View {
                     NavigationLink { ShowroomsView() } label: { QuickAction(icon: "mappin.and.ellipse", title: "Showrooms") }
                     NavigationLink { OffersView() } label: { QuickAction(icon: "tag", title: "Offers") }
                 }.buttonStyle(.plain)
+
+                NewsCarousel(news: news)
 
                 if !offers.isEmpty {
                     Text("Offers this month").font(.title3.bold())
@@ -63,6 +66,7 @@ struct HomeView: View {
             async let o: [Offer] = API.shared.get("api/offers", ["city": state.city, "limit": "20"])
             popular = try await p
             offers = (try? await o) ?? []
+            news = (try? await API.shared.get("api/news", ["limit": "12"])) ?? []
         } catch { failed = true }
     }
 }

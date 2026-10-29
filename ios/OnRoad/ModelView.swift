@@ -9,6 +9,7 @@ struct ModelView: View {
     @State private var tab = "price"
     @State private var specs: VariantSpecs?
     @State private var quoting = false
+    @State private var picking = false
 
     var variant: Variant? { m?.variants.first { $0.id == sel } ?? m?.variants.first { $0.exShowroomInr != nil } ?? m?.variants.first }
 
@@ -25,33 +26,19 @@ struct ModelView: View {
                         Text(priceLabel(variant?.priceCity, state.city) + " · \(m.variants.count) variants").font(.caption).foregroundStyle(Palette.mute)
                     }.padding(.horizontal, 16)
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(m.variants) { v in
-                                Button { sel = v.id } label: {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(v.name).font(.subheadline.weight(.semibold)).lineLimit(1)
-                                        Text([v.fuel, v.transmission].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Palette.mute)
-                                        Text(rupees(v.exShowroomInr)).font(.subheadline.bold())
-                                    }.frame(width: 160, alignment: .leading).padding(12)
-                                    .background(v.id == variant?.id ? Palette.ignition.opacity(0.16) : Palette.panel)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(v.id == variant?.id ? Palette.ignition : Palette.line))
-                                }.buttonStyle(.plain)
-                            }
-                        }.padding(.horizontal, 16)
-                    }
+                    VariantCard(v: variant, count: m.variants.count) { picking = true }
 
                     KeySpecs(specs: specs)
 
                     Picker("", selection: $tab) {
-                        Text("Price").tag("price"); Text("Specs").tag("specs"); Text("Safety").tag("safety"); Text("Showrooms").tag("dealers")
+                        Text("Price").tag("price"); Text("Specs").tag("specs"); Text("Insurance").tag("own"); Text("Safety").tag("safety"); Text("Showrooms").tag("dealers")
                         if m.offers?.isEmpty == false { Text("Offers").tag("offers") }
                     }.pickerStyle(.segmented).padding(.horizontal, 16)
 
                     Group {
                         switch tab {
                         case "specs": SpecsList(specs: specs)
+                        case "own": OwnershipView(variantId: variant?.id, brand: m.brandName ?? "")
                         case "safety": SafetyList(tests: m.crashTests ?? [], name: m.name)
                         case "dealers": DealersList(dealers: m.dealers, city: state.city)
                         case "offers": ForEach(m.offers ?? [], id: \.self) { o in
@@ -90,6 +77,7 @@ struct ModelView: View {
         .task(id: state.city) { await load() }
         .task(id: variant?.id) { specs = nil; if let v = variant { specs = try? await API.shared.get("api/variant-specs", ["variant_id": v.id]) } }
         .sheet(isPresented: $quoting) { if let v = variant { QuoteSheet(variant: v) } }
+        .sheet(isPresented: $picking) { if let m { VariantPickerSheet(variants: m.variants, selected: variant?.id) { sel = $0; Track.pickVariant($0) } } }
     }
 
     func load() async {
@@ -98,7 +86,7 @@ struct ModelView: View {
         guard parts.count == 2 else { failed = true; return }
         var q: [String: String?] = ["city": state.city]
         if let c = state.coord { q["lat"] = String(c.latitude); q["lng"] = String(c.longitude) }
-        do { m = try await API.shared.get("api/models/\(parts[0])/\(parts[1])", q) } catch { failed = true }
+        do { m = try await API.shared.get("api/models/\(parts[0])/\(parts[1])", q); Track.viewCar(id, brand: parts[0], city: state.city) } catch { failed = true }
     }
 }
 
@@ -113,18 +101,16 @@ struct KeySpecs: View {
             rows.first { $0.label.range(of: rx, options: [.regularExpression, .caseInsensitive]) != nil }.map { (label, $0.value) }
         }
         if !glance.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(glance.indices, id: \.self) { i in
-                        let item = glance[i]
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(item.0.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(Palette.mute)
-                            Text(item.1).font(.subheadline.weight(.semibold)).lineLimit(2)
-                        }.frame(width: 120, alignment: .leading).padding(12).background(Palette.panel)
-                            .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.line))
-                    }
-                }.padding(.horizontal, 16)
-            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(glance.indices, id: \.self) { i in
+                    let item = glance[i]
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.0).font(.caption2.weight(.semibold)).foregroundStyle(Palette.mute)
+                        Text(item.1).font(.subheadline.weight(.semibold)).lineLimit(2)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10).background(Palette.panel)
+                        .clipShape(RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(Palette.line))
+                }
+            }.padding(.horizontal, 16)
         }
     }
 }
@@ -275,7 +261,7 @@ struct QuoteSheet: View {
                     guard state.account != nil else { msg = "Sign in from the Profile tab first."; return }
                     busy = true
                     Task {
-                        do { let _: OK = try await API.shared.post("api/quotes/request", QuoteIn(variantId: variant.id, city: state.city, note: note)); dismiss() }
+                        do { let _: OK = try await API.shared.post("api/quotes/request", QuoteIn(variantId: variant.id, city: state.city, note: note)); Track.quote(variant.id, city: state.city); dismiss() }
                         catch { msg = error.localizedDescription }
                         busy = false
                     }
