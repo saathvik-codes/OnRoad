@@ -36,6 +36,20 @@ def main():
         c.execute("""DELETE FROM specs WHERE key LIKE 'online_%' AND variant_id IN (SELECT DISTINCT variant_id FROM loc.specs)""")
         c.execute("""INSERT OR IGNORE INTO specs SELECT l.* FROM loc.specs l
                      WHERE l.key LIKE 'online_%' AND EXISTS (SELECT 1 FROM variants v WHERE v.id = l.variant_id)""")
+        # models, variants and prices gathered here (line-ups the makers don't publish), only where the snapshot lacks them
+        for t in ("models", "variants"):
+            c.execute(f"INSERT OR IGNORE INTO {t} SELECT * FROM loc.{t}")
+        c.execute("""INSERT OR IGNORE INTO prices SELECT l.* FROM loc.prices l WHERE l.source_url LIKE 'https://www.cardekho.com/%'
+                     AND NOT EXISTS (SELECT 1 FROM prices p WHERE p.variant_id = l.variant_id AND p.city = l.city AND p.fetched_at = l.fetched_at)""")
+        # equipment lists for variants the snapshot has none for
+        c.execute("""INSERT OR IGNORE INTO features SELECT l.* FROM loc.features l
+                     WHERE NOT EXISTS (SELECT 1 FROM features f WHERE f.variant_id = l.variant_id)""")
+        # accessory catalogues
+        has = c.execute("SELECT 1 FROM loc.sqlite_master WHERE name = 'accessories'").fetchone()
+        if has:
+            sql = c.execute("SELECT sql FROM loc.sqlite_master WHERE name = 'accessories'").fetchone()[0]
+            c.execute(sql.replace("CREATE TABLE accessories", "CREATE TABLE IF NOT EXISTS accessories"))
+            c.execute("DELETE FROM accessories"); c.execute("INSERT INTO accessories SELECT * FROM loc.accessories")
         c.commit()
         print("spec rows added:", c.execute("SELECT COUNT(*) FROM specs").fetchone()[0] - before)
     from onroad import snapshot, spec_repair, db

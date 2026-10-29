@@ -3,7 +3,6 @@ package com.onroad.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,36 +87,30 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ScreenHeader("Compare", "Up to 3 · on-road prices for $city", onBack)
         if (slots.isEmpty()) Art("hero-compare", Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 16.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // equal columns, no sideways scrolling: two or three cars always fit the screen
+        var pickVariantFor by remember { mutableStateOf<Slot?>(null) }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             slots.forEachIndexed { i, s ->
-                Column(Modifier.width(170.dp).clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(20.dp)).padding(10.dp)) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp)).padding(8.dp)) {
                     Box {
                         AsyncImage(vm.prefs.img(s.variant?.imageUrl ?: s.model.imageUrl, 480), s.model.name, contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(16 / 10f).clickable { onModel(s.model.id) })
-                        IconButton({ slots.removeAt(i) }, Modifier.align(Alignment.TopEnd).size(28.dp)) { Icon(Icons.Outlined.Close, "Remove", tint = Mute) }
+                            modifier = Modifier.fillMaxWidth().aspectRatio(4 / 3f).clickable { onModel(s.model.id) })
+                        IconButton({ slots.removeAt(i) }, Modifier.align(Alignment.TopEnd).size(26.dp)) { Icon(Icons.Outlined.Close, "Remove", tint = Mute) }
                     }
-                    Text(s.model.brandName, color = Mute, style = MaterialTheme.typography.labelMedium)
-                    Text(s.model.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    var open by remember { mutableStateOf(false) }
-                    Box {
-                        Text((s.variant?.name ?: "Pick a variant") + "  ▾", color = Ignition, style = MaterialTheme.typography.labelLarge, maxLines = 2,
-                            modifier = Modifier.padding(top = 4.dp).clickable { open = true })
-                        DropdownMenu(open, { open = false }) {
-                            s.model.variants.filter { it.exShowroomInr != null }.sortedBy { it.exShowroomInr }.forEach { v ->
-                                DropdownMenuItem(text = { Text("${v.name} · ${lakh(v.exShowroomInr)}") }, onClick = { s.variantId = v.id; open = false })
-                            }
-                        }
-                    }
+                    Text(s.model.brandName, color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    Text(s.model.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(s.variant?.name ?: "Pick a variant", color = Ignition, style = MaterialTheme.typography.labelMedium, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).clickable { pickVariantFor = s })
                 }
             }
-            if (slots.size < 3) Column(Modifier.width(170.dp).height(210.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, Line, RoundedCornerShape(20.dp))
-                .clickable { picking = true }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ignition.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Add, null, tint = Ignition)
-                }
-                Spacer(Modifier.height(8.dp)); Text(if (slots.isEmpty()) "Add a car or bike" else "Add another", color = Mute)
+            if (slots.size < 3) Column(Modifier.weight(1f).height(if (slots.isEmpty()) 160.dp else 180.dp).clip(RoundedCornerShape(18.dp))
+                .border(1.dp, Line, RoundedCornerShape(18.dp)).clickable { picking = true },
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Icon(Icons.Outlined.Add, null, tint = Ignition)
+                Spacer(Modifier.height(6.dp)); Text(if (slots.isEmpty()) "Add a car or bike" else "Add another", color = Mute, style = MaterialTheme.typography.labelLarge)
             }
         }
+        pickVariantFor?.let { s -> VariantPicker(s.model.variants, s.variantId, onPick = { s.variantId = it }, onClose = { pickVariantFor = null }) }
         if (slots.size >= 2) {
             Spacer(Modifier.height(18.dp))
             CompareTable(slots, city)
@@ -162,30 +153,36 @@ private fun CompareTable(slots: List<Slot>, city: String) {
         return known.filter { it.value == best }.singleOrNull()?.index
     }
     @Composable
+    fun section(title: String) = Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp))
+    @Composable
     fun row(label: String, values: List<String?>, best: Int? = null) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = Mute, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = Mute, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 values.forEachIndexed { i, v ->
-                    Text(v ?: "—", fontWeight = if (i == best) FontWeight.Bold else FontWeight.Medium, color = if (i == best) Good else Ink,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (i == best) Good.copy(alpha = 0.08f) else Panel)
-                            .padding(10.dp), style = MaterialTheme.typography.bodyMedium)
+                    Text(v ?: "—", fontWeight = if (i == best) FontWeight.Bold else FontWeight.Normal, color = if (i == best) Good else Ink,
+                        modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 }
+                if (values.size < 3) Spacer(Modifier.weight((3 - values.size).toFloat()))
             }
+            androidx.compose.material3.HorizontalDivider(color = Line, modifier = Modifier.padding(top = 10.dp))
         }
     }
     val onRoad = slots.map { s -> s.variant?.onroad?.let { it.totalInr - it.refundableInr } }
+    section("Price")
     row("On-road in $city", onRoad.map { it?.let(::rupees) }, winner(onRoad, lowest = true))
     row("Ex-showroom", slots.map { lakh(it.variant?.exShowroomInr) })
+    section("Engine & economy")
     row("Fuel · gearbox", slots.map { s -> listOfNotNull(s.variant?.fuel, s.variant?.transmission).joinToString(" · ").ifBlank { null } })
-    val feats = slots.map { it.specs?.features?.size }
-    row("Listed features", feats.map { it?.toString() }, winner(feats.map { it?.takeIf { n -> n > 0 } }, lowest = false))
-    val stars = slots.map { s -> s.model.crashTests.mapNotNull { it.adultStars }.maxOrNull() }
-    row("Crash rating (adult)", stars.map { it?.let { n -> "$n★ official" } }, winner(stars, lowest = false))
     HEADLINE_SPECS.forEach { (label, rx) ->
         val vals = slots.map { s -> findSpec(s.specs?.specs, rx) }
         if (vals.any { it != null }) row(label, vals)
     }
-    Text("Prices from each manufacturer for $city; specs from their official sheets. Green marks the best value in a row.",
+    section("Safety & features")
+    val stars = slots.map { s -> s.model.crashTests.mapNotNull { it.adultStars }.maxOrNull() }
+    row("Crash rating (adult)", stars.map { it?.let { n -> "$n★ official" } }, winner(stars, lowest = false))
+    val feats = slots.map { it.specs?.features?.size }
+    row("Listed features", feats.map { it?.toString() }, winner(feats.map { it?.takeIf { n -> n > 0 } }, lowest = false))
+    Text("On-road prices for $city. Green marks the better value in a row.",
         color = Mute, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp))
 }

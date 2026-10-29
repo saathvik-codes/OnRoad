@@ -120,14 +120,18 @@ import javax.inject.Singleton
 @Serializable data class OwnLine(val label: String, val amountInr: Long? = null, val basis: String = "", val verified: Boolean = true)
 @Serializable data class OwnLink(val name: String? = null, val title: String? = null, val url: String)
 @Serializable data class OwnRule(val item: String, val status: String = "")
-@Serializable data class OwnInsurance(val lines: List<OwnLine> = emptyList(), val tips: List<String> = emptyList(), val insurers: List<OwnLink> = emptyList(),
+@Serializable data class Insurer(val name: String, val url: String, val logoUrl: String? = null, val logoDark: Boolean = false,
+    val garages: String? = null, val statedOn: String? = null)
+@Serializable data class OwnInsurance(val lines: List<OwnLine> = emptyList(), val tips: List<String> = emptyList(), val insurers: List<Insurer> = emptyList(),
     val compare: List<OwnLink> = emptyList(), val disclosure: String = "")
 @Serializable data class OwnEv(val lifeTaxExempt: Boolean? = null, val order: String? = null, val validTo: String? = null)
 @Serializable data class OwnRta(val state: String = "", val charges: List<OwnLine> = emptyList(), val steps: List<String> = emptyList(),
     val notAllowed: List<OwnRule> = emptyList(), val optional: List<OwnRule> = emptyList(), val sources: List<OwnLink> = emptyList(),
     val links: List<OwnLink> = emptyList(), val ev: OwnEv? = null, val roadTaxBasis: String? = null, val asOf: String? = null)
 @Serializable data class OwnAccessoryLink(val url: String, val checked: String? = null)
-@Serializable data class OwnAccessories(val official: OwnAccessoryLink? = null, val advice: List<String> = emptyList())
+@Serializable data class Accessory(val code: String = "", val name: String, val category: String? = null, val priceInr: Long? = null,
+    val imageUrl: String? = null, val description: String? = null)
+@Serializable data class OwnAccessories(val items: List<Accessory> = emptyList(), val official: OwnAccessoryLink? = null, val advice: List<String> = emptyList())
 @Serializable data class Ownership(val insurance: OwnInsurance = OwnInsurance(), val rta: OwnRta = OwnRta(),
     val accessories: OwnAccessories = OwnAccessories(), val updates: List<UpdateItem> = emptyList())
 

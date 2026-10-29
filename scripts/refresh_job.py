@@ -101,6 +101,11 @@ def main():
         gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
     weekly("photos", galleries)
 
+    def accessory_catalogues():
+        from onroad import accessories
+        log.info("accessories: %s", accessories.run())
+    weekly("accessories", accessory_catalogues)
+
     def every_day(name, fn):
         last = float(state(f"last_{name}") or 0)
         if time.time() - last > 86400 and time.time() < deadline - 1800:

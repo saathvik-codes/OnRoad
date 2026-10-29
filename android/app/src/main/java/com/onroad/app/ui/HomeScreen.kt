@@ -85,6 +85,7 @@ fun rivalPairs(all: List<ModelSummary>, max: Int = 6): List<Pair<ModelSummary, M
 
 @HiltViewModel
 class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewModel() {
+    suspend fun news(): List<com.onroad.app.data.NewsItem> = runCatching { api.news(12) }.getOrElse { emptyList() }
     private val _s = MutableStateFlow(HomeState()); val s = _s.asStateFlow()
     private val type = MutableStateFlow("car")
     init { viewModelScope.launch { kotlinx.coroutines.flow.combine(prefs.city, type) { c, t -> c to t }.collectLatest { (c, t) -> load(c, t) } } }
@@ -119,7 +120,10 @@ class HomeVM @Inject constructor(private val api: Api, val prefs: Prefs) : ViewM
 
 @Composable
 fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: () -> Unit, onCity: () -> Unit, onCalc: () -> Unit, onAccount: () -> Unit, onOffers: () -> Unit, onFinder: () -> Unit, onShowrooms: () -> Unit,
-               onCompare: () -> Unit, onCompareThese: (String, String) -> Unit = { _, _ -> }, onGuide: () -> Unit, onBudget: (type: String, budget: String) -> Unit, vm: HomeVM = hiltViewModel()) {
+               onCompare: () -> Unit, onCompareThese: (String, String) -> Unit = { _, _ -> }, onGuide: () -> Unit, onBudget: (type: String, budget: String) -> Unit, onUpdates: () -> Unit = {}, vm: HomeVM = hiltViewModel()) {
+    val newsState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<com.onroad.app.data.NewsItem>>(emptyList()) }
+    val news = newsState.value
+    androidx.compose.runtime.LaunchedEffect(Unit) { newsState.value = vm.news() }
     val s by vm.s.collectAsStateWithLifecycle()
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     LazyVerticalGrid(GridCells.Fixed(3), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
@@ -163,6 +167,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 s.error?.let { ErrorState(it) { vm.retry() } }
                 Spacer(Modifier.height(22.dp))
+                if (news.isNotEmpty()) { NewsCarousel(news, onModel, onUpdates); Spacer(Modifier.height(22.dp)) }
                 if (s.offers.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Live offers in $city", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

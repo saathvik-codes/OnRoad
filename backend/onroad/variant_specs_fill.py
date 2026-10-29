@@ -64,6 +64,30 @@ def read_variant(html: str) -> tuple[dict, str | None]:
     return out, fuel
 
 
+def read_features(html: str) -> list[tuple[str, str]]:
+    """(label, value) of every equipment item the variant page marks as fitted: a tick, or a value such as "6" for
+    the number of airbags. Items marked with a cross are left out."""
+    out, seen = [], set()
+    for sec in re.finditer(r'<h3[^>]*data-vani-focus="([^"]+)"[^>]*>.*?</h3>\s*<table[^>]*>(.*?)</table>', html, re.S):
+        group = re.sub(r"&amp;", "&", sec.group(1))
+        if re.search(r"engine|transmission|fuel|suspension|steering|brake|dimension|capacit|performance", group, re.I):
+            continue                                              # these sections are specifications, read elsewhere
+        for row in re.finditer(r"<tr>(.*?)</tr>", sec.group(2), re.S):
+            cells = re.findall(r"<td[^>]*>(.*?)</td>", row.group(1), re.S)
+            if len(cells) < 2:
+                continue
+            label = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", cells[0])).strip()
+            cell = cells[1]
+            if not label or label in seen or "icon-delete" in cell or "icon-cross" in cell or "icon-close" in cell:
+                continue
+            value = "" if "icon-check" in cell else re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", cell)).strip()
+            if value.lower() in ("no", "not available", "-", "na", "n/a"):
+                continue
+            seen.add(label)
+            out.append((label, value))
+    return out
+
+
 def _tok(s: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9+]+", (s or "").lower())
             if w not in NOISE and not re.fullmatch(r"\d+(\.\d+)?|[dg]\d\.\d\w*|\d(mt|at|dct|ivt|cvt|amt|tc|dsg)", w)}
@@ -103,19 +127,24 @@ def run_model(c: httpx.Client, conn, model_id: str) -> dict:
                 x["fuel"] = "electric"
     mixed = len({bool(TURBO.search(v[1] or "")) for v in vs}) > 1
     pages, ts, n, matched = {}, time.strftime("%Y-%m-%dT%H:%M:%S"), 0, 0
+    feats_of: dict[str, list] = {}
+    from .sources.brands._spec_common import feature_keys, feature_label
     for vid, vname, vfuel, vtrans, vcc in vs:
         have = {_canon_label(x[0]) or x[0] for x in conn.execute("SELECT label FROM specs WHERE variant_id = ?", (vid,))}
         if any(re.search(r"mileage|fuel efficiency|fuel economy", h or "", re.I) for h in have):
             have.add("Mileage")
         need = WANT - have
-        if not need & NEEDED:
+        no_feats = not conn.execute("SELECT 1 FROM features WHERE variant_id = ? LIMIT 1", (vid,)).fetchone()
+        if not need & NEEDED and not no_feats:
             continue
         f = _fuel(vfuel)
         auto = (vtrans or "manual").lower() != "manual"
         pool = [x for x in cands if x["fuel"] == f and (x["auto"] == auto or f == "electric")]
         if mixed:
             pool = [x for x in pool if x["turbo"] == bool(TURBO.search(vname or ""))]
-        if not pool:
+        own = conn.execute("""SELECT source_url FROM prices WHERE variant_id = ? AND source_url LIKE 'https://www.cardekho.com/overview/%'
+                              ORDER BY fetched_at DESC LIMIT 1""", (vid,)).fetchone()
+        if not pool and not own:
             continue
         mine = _tok(vname) - mwords
         my_disp = (re.search(r"(?<![\d.])(\d\.\d)(?![\d.])", vname or "") or [None, None])[1]
@@ -126,14 +155,22 @@ def run_model(c: httpx.Client, conn, model_id: str) -> dict:
         # several engine sizes left and nothing in our name says which: engine figures would be a guess
         ambiguous = not my_disp and not hint and len({x["disp"] for x in pool} - {None}) > 1
         ranked = sorted(pool, key=lambda x: (-len(mine & x["trim"]), len(x["trim"] - mine)))
+        # a variant we priced from a variant page already knows its page: use it, exactly
+        if own:
+            ranked = [x for x in cands if x["url"] == own[0]] or [{"url": own[0], "fuel": f, "auto": auto, "turbo": False,
+                                                                  "trim": mine, "disp": None}]
+            mine = ranked[0]["trim"] | mine
+            pool = ranked
+            ambiguous = False
         best = specs = None
         for cand in ranked[:3]:
             if cand["url"] not in pages:
                 r = c.get(cand["url"])
                 pages[cand["url"]] = read_variant(r.text) if r.status_code == 200 else ({}, None)
+                feats_of[cand["url"]] = read_features(r.text) if r.status_code == 200 else []
                 time.sleep(1.2)
             sp, pfuel = pages[cand["url"]]
-            if not sp or (pfuel and _fuel(pfuel) != f):
+            if (not sp and not (own and feats_of.get(cand["url"]))) or (pfuel and _fuel(pfuel) != f and not own):
                 continue
             m = re.match(r"(\d+) cc", sp.get("Displacement", (None, ""))[1])
             if vcc and m and abs(vcc - int(m.group(1))) > 60:
@@ -151,6 +188,13 @@ def run_model(c: httpx.Client, conn, model_id: str) -> dict:
             continue
         exact = bool(mine & best["trim"])
         matched += 1
+        if no_feats and exact:
+            for label, value in feats_of.get(best["url"], []):
+                for key in feature_keys(label, value):
+                    k = key if key != "other" else "cd_" + re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:40]
+                    conn.execute("INSERT OR IGNORE INTO features (variant_id, key, label, source_url, fetched_at) VALUES (?, ?, ?, ?, ?)",
+                                 (vid, k, feature_label(label, value), best["url"], ts))
+                    n += 1
         for label, (grp, value) in specs.items():
             if label not in need:
                 continue

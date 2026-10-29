@@ -58,7 +58,8 @@ import coil3.compose.AsyncImage
 import com.onroad.app.data.ModelDetail
 import com.onroad.app.data.VariantSpecs
 
-private enum class Tab(val label: String) { Price("On-road price"), Emi("EMI & loans"), Specs("Specs & features"), Safety("Safety"), Showrooms("Showrooms"), Offers("Offers") }
+private enum class Tab(val label: String) { Price("On-road price"), Specs("Specs & features"), Ownership("Insurance & RTA"), Emi("EMI & loans"),
+    Safety("Safety"), Showrooms("Showrooms"), Offers("Offers") }
 
 @Composable
 fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onModel: (String) -> Unit = {}, vm: BrowseVM = hiltViewModel()) {
@@ -73,6 +74,9 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     val acc by vm.prefs.account.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askQuote by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
+    var ownership by remember { mutableStateOf<com.onroad.app.data.Ownership?>(null) }
+    var ownFailed by remember { mutableStateOf(false) }
     LaunchedEffect(m?.id) { m?.let { md -> rates = runCatching { vm.api.loanRates(md.brandVehicleType ?: md.vehicleType ?: "car") }.getOrElse { emptyList() } } }
     val ctx = LocalContext.current
     LaunchedEffect(id, city) {
@@ -91,6 +95,10 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     }
     val variant = model.variants.firstOrNull { it.id == sel } ?: model.variants.firstOrNull { it.exShowroomInr != null } ?: model.variants.firstOrNull()
     LaunchedEffect(variant?.id) { specs = null; specs = variant?.let { v -> runCatching { vm.api.specs(v.id) }.getOrNull() } }
+    LaunchedEffect(variant?.id, city, tab) {
+        if (tab == Tab.Ownership && variant != null) { ownership = null; ownFailed = false
+            runCatching { vm.api.ownership(variant.id, city) }.onSuccess { ownership = it }.onFailure { ownFailed = true } }
+    }
     LaunchedEffect(model.id) { com.onroad.app.data.Track.viewCar(model.id, model.brandSlug, city, model.variants.mapNotNull { it.exShowroomInr }.minOrNull()) }
     LaunchedEffect(sel) { sel?.let { s -> com.onroad.app.data.Track.pickVariant(s, variant?.onroad?.let { it.totalInr - it.refundableInr }) } }
     // the costliest variant's equipment = everything the model offers; used to show what this variant lacks
@@ -127,28 +135,10 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                 } + " · ${model.variants.size} variants", color = Mute)
             }
             // key specs at a glance (engine, power, mileage / range, seats), from this variant's official sheet
-            val glance = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(specs?.specs, rx)?.let { label to it } }.take(5)
-            if (glance.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(glance, key = { it.first }) { (l, v) ->
-                    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp).width(112.dp)) {
-                        Text(l.uppercase(), style = MaterialTheme.typography.labelSmall, color = Mute)
-                        Text(v, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-                    }
-                }
-            }
             Spacer(Modifier.height(14.dp))
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(model.variants, key = { it.id }) { v ->
-                    val on = v.id == variant?.id
-                    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(if (on) Ignition.copy(alpha = 0.16f) else Panel)
-                        .border(1.dp, if (on) Ignition else Line, RoundedCornerShape(16.dp)).clickable { sel = v.id }.padding(12.dp).width(170.dp)) {
-                        Text(v.name, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                        Text(listOfNotNull(v.fuel, v.transmission).joinToString(" · "), color = Mute, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                        Text(lakh(v.exShowroomInr), fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            VariantCard(variant, model.variants.size) { picking = true }
+            val glance = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(specs?.specs, rx)?.let { label to it } }.take(6)
+            if (glance.isNotEmpty()) Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { KeySpecGrid(glance) }
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tab.entries.filter { it != Tab.Offers || model.offers.isNotEmpty() }.forEach { t ->
                     Text(t.label, style = MaterialTheme.typography.labelLarge, color = if (t == tab) androidx.compose.ui.graphics.Color.White else Mute,
@@ -183,6 +173,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                     else EmiCard(total, variant.fuel == "Electric", rates) { u -> ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) }
                 }
             }
+            Tab.Ownership -> item { OwnershipTab(ownership, model.brandName, ownFailed) }
             Tab.Specs -> item {
                 SpecsSection(model.brandName, variant?.name ?: "", specs, topSpecs) { u -> vm.prefs.img(u, 640) }
             }
@@ -257,4 +248,5 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
         }
     }
     if (askQuote) variant?.let { v -> QuoteSheet(v.id, v.name, city, onClose = { askQuote = false }, vm = vm) }
+    if (picking) VariantPicker(model.variants, variant?.id, onPick = { sel = it }, onClose = { picking = false })
 }

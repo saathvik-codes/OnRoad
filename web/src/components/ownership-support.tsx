@@ -14,17 +14,19 @@ import type { Variant } from "@/lib/api";
 
 type Line = { label: string; amount_inr: number | null; basis: string; verified?: boolean };
 type LinkT = { name?: string; title?: string; url: string };
+type Insurer = { name: string; url: string; logo_url: string | null; logo_dark?: boolean; garages: string | null; stated_on: string | null };
 type Rule = { item: string; status: string };
 type Update = { kind: "price" | "new" | "offer"; date: string; title: string; detail: string; source_url?: string | null };
 type Ownership = {
-  insurance: { lines: Line[]; tips: string[]; insurers: LinkT[]; compare: LinkT[]; regulator: LinkT; disclosure: string };
+  insurance: { lines: Line[]; tips: string[]; insurers: Insurer[]; compare: LinkT[]; regulator: LinkT; disclosure: string };
   rta: {
     state: string; coverage: string; road_tax_basis?: string | null; fuel_differential?: string | null;
     second_vehicle_rule?: string | null; ev?: { life_tax_exempt?: boolean; order?: string; valid_to?: string; conditions?: string } | null;
     charges: Line[]; steps: string[]; not_allowed: Rule[]; optional: Rule[]; sources: { title: string; url: string }[];
     links: LinkT[]; as_of?: string;
   };
-  accessories: { official: { url: string; checked: string } | null; advice: string[] };
+  accessories: { items: { code: string; name: string; category: string | null; price_inr: number | null; image_url: string | null; description: string | null }[];
+    official: { url: string; checked: string } | null; advice: string[] };
   updates: Update[];
 };
 
@@ -94,10 +96,23 @@ export function OwnershipSupportHub({ modelName, brandName, city, variant }: {
           <Card className="space-y-4 p-6">
             <p className="font-semibold text-ink">Get your own quotes</p>
             <p className="text-sm text-mute">Enter the same insured value and add-ons on each site, then compare with the dealer&apos;s quote.</p>
-            <div className="flex flex-wrap gap-2">{o.insurance.insurers.map((x) => <Out key={x.url} href={x.url}>{x.name}</Out>)}</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {o.insurance.insurers.map((x) => (
+                <a key={x.url} href={x.url} target="_blank" rel="noopener noreferrer"
+                   className="group rounded-2xl border border-line bg-panel p-3 transition hover:border-mute">
+                  <div className={cn("grid h-12 place-items-center rounded-xl px-3", x.logo_dark ? "bg-[#1b1f2a]" : "bg-white")}>
+                    {x.logo_url
+                      ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={x.logo_url} alt={x.name} className="max-h-8 w-auto object-contain" />
+                      : <span className="font-semibold text-[#1b1f2a]">{x.name}</span>}
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-ink group-hover:underline">{x.name}</p>
+                  <p className="text-xs text-mute">{x.garages ? `${x.garages} cashless garages*` : "Get a quote"}</p>
+                </a>
+              ))}
+            </div>
             <p className="pt-2 text-sm font-medium text-ink">Compare many insurers at once</p>
             <div className="flex flex-wrap gap-2">{o.insurance.compare.map((x) => <Out key={x.url} href={x.url}>{x.name}</Out>)}</div>
-            <p className="text-xs text-mute">{o.insurance.disclosure} Check an insurer&apos;s registration with the{" "}
+            <p className="text-xs text-mute">* As stated on each insurer&apos;s website. {o.insurance.disclosure} Check an insurer&apos;s registration with the{" "}
               <a className="underline" href={o.insurance.regulator.url} target="_blank" rel="noopener noreferrer">IRDAI</a>.</p>
           </Card>
         </div>
@@ -141,6 +156,26 @@ export function OwnershipSupportHub({ modelName, brandName, city, variant }: {
       {o && tab === "accessories" && (
         <Card className="space-y-4 p-6">
           <p className="font-semibold text-ink">Genuine {brandName} accessories</p>
+          {o.accessories.items.length > 0 && (
+            <>
+              <p className="text-sm text-mute">{o.accessories.items.length} items at {brandName}&apos;s list prices. Fitting charges may apply at the dealer.</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {o.accessories.items.map((a) => (
+                  <div key={a.code} className="overflow-hidden rounded-2xl border border-line bg-panel">
+                    <div className="aspect-[4/3] bg-white">
+                      {a.image_url && /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={a.image_url} alt={a.name} loading="lazy" className="h-full w-full object-cover" />}
+                    </div>
+                    <div className="space-y-0.5 p-3">
+                      {a.category && <p className="text-[11px] uppercase tracking-wide text-mute">{a.category}</p>}
+                      <p className="line-clamp-2 text-sm font-medium text-ink">{a.name}</p>
+                      {a.price_inr != null && <p className="font-mono text-sm font-semibold text-ink">{inr(a.price_inr)}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           {o.accessories.official
             ? <Out href={o.accessories.official.url}>{brandName} accessories store</Out>
             : <p className="text-sm text-mute">{brandName} doesn&apos;t publish an accessory catalogue online. Ask the dealer for the itemised genuine accessories price list.</p>}

@@ -15,19 +15,26 @@ ACCESSORIES = Path(__file__).resolve().parents[2] / "data" / "research" / "acces
 
 # official car / two-wheeler insurance quote pages (checked 2026-10-29). Listed alphabetically, no ranking, no
 # commission: OnRoad has no tie-up with any of them.
+# Official car / two-wheeler insurance pages, logos from each insurer's own site and the cashless-garage count each
+# states there (checked 2026-10-29). Listed alphabetically, no ranking, no commission: OnRoad has no tie-up with any.
 INSURERS = {
     "car": [
-        ("Acko", "https://www.acko.com/car-insurance/"),
-        ("Bajaj General", "https://www.bajajgeneralinsurance.com/motor-insurance/car-insurance-online.html"),
-        ("Digit", "https://www.godigit.com/motor-insurance/car-insurance"),
-        ("HDFC ERGO", "https://www.hdfcergo.com/car-insurance"),
-        ("ICICI Lombard", "https://www.icicilombard.com/motor-insurance/car-insurance"),
-        ("Tata AIG", "https://www.tataaig.com/motor-insurance/car-insurance"),
+        {"name": "Acko", "url": "https://www.acko.com/car-insurance/", "logo": "ins_acko", "logo_dark": True,
+         "garages": "4,000+", "stated_on": "https://www.acko.com/car-insurance/"},
+        {"name": "Bajaj General", "url": "https://www.bajajgeneralinsurance.com/motor-insurance/car-insurance-online.html", "logo": "ins_bajaj_general",
+         "garages": "10,000+", "stated_on": "https://www.bajajgeneralinsurance.com/motor-insurance/car-insurance-online.html"},
+        {"name": "Digit", "url": "https://www.godigit.com/motor-insurance/car-insurance", "logo": "ins_digit",
+         "garages": "10,000+", "stated_on": "https://www.godigit.com/motor-insurance/car-insurance"},
+        {"name": "HDFC ERGO", "url": "https://www.hdfcergo.com/car-insurance", "logo": "ins_hdfc_ergo",
+         "garages": "8,500+", "stated_on": "https://www.hdfcergo.com/car-insurance"},
+        {"name": "ICICI Lombard", "url": "https://www.icicilombard.com/motor-insurance/car-insurance", "logo": None, "garages": None, "stated_on": None},
+        {"name": "Tata AIG", "url": "https://www.tataaig.com/motor-insurance/car-insurance", "logo": "ins_tata_aig",
+         "garages": "5,700+", "stated_on": "https://www.tataaig.com/motor-insurance/car-insurance"},
     ],
     "bike": [
-        ("Acko", "https://www.acko.com/two-wheeler-insurance/"),
-        ("Digit", "https://www.godigit.com/motor-insurance/two-wheeler-insurance"),
-        ("Tata AIG", "https://www.tataaig.com/motor-insurance/two-wheeler-insurance"),
+        {"name": "Acko", "url": "https://www.acko.com/two-wheeler-insurance/", "logo": "ins_acko", "logo_dark": True, "garages": None, "stated_on": None},
+        {"name": "Digit", "url": "https://www.godigit.com/motor-insurance/two-wheeler-insurance", "logo": "ins_digit", "garages": None, "stated_on": None},
+        {"name": "Tata AIG", "url": "https://www.tataaig.com/motor-insurance/two-wheeler-insurance", "logo": "ins_tata_aig", "garages": None, "stated_on": None},
     ],
 }
 COMPARE = {
@@ -75,6 +82,13 @@ def _accessories(brand_slug: str) -> dict | None:
     return {"url": a.get("url"), "checked": a.get("checked")} if a.get("url") else None
 
 
+def _items(model_id: str) -> list[dict]:
+    from contextlib import closing
+    from . import accessories
+    with closing(db.connect()) as conn:
+        return accessories.for_model(conn, model_id)
+
+
 def _rta(state: str, breakdown: dict, vehicle_type: str) -> dict:
     r = onroad_calc.rules()
     sr = (r.get("states") or {}).get(state) or {}
@@ -114,13 +128,14 @@ def ownership(variant: dict, model: dict, city: str, breakdown: dict) -> dict:
         "insurance": {
             "lines": [{"label": l["label"], "amount_inr": l["amount_inr"], "basis": l["basis"], "verified": l["verified"]} for l in ins],
             "tips": INSURANCE_TIPS,
-            "insurers": [{"name": n, "url": u} for n, u in INSURERS[vt]],
+            "insurers": [{**i, "logo_url": f"/api/logos/{i['logo']}" if i.get("logo") else None} for i in INSURERS[vt]],
             "compare": [{"name": n, "url": u} for n, u in COMPARE[vt]],
             "regulator": {"name": "IRDAI", "url": "https://irdai.gov.in/"},
             "disclosure": "OnRoad has no tie-up with these insurers and earns nothing from them. Listed alphabetically.",
         },
         "rta": _rta(state, breakdown, vt),
         "accessories": {
+            "items": _items(model["id"]),
             "official": _accessories(model["brand_slug"]),
             "advice": [
                 "Genuine accessories fitted at the dealer keep the warranty intact; ask for the itemised price list "
