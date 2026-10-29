@@ -1,5 +1,6 @@
 "use client";
 
+import { Track } from "@/lib/track";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -24,6 +25,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       const body = mode === "login" ? { email: form.email, password: form.password } : { ...form, phone: form.phone || null, role };
       const acc = await api<Account>(`/auth/${mode}`, { method: "POST", body: JSON.stringify(body) });
+      if (mode === "signup") Track.signUp("email"); else Track.login("email");
       await mutate("/auth/me", acc, false);
       toast.success(mode === "login" ? `Welcome back, ${acc.name.split(" ")[0]}` : "Account created");
       router.push(sp.get("next") ?? (acc.role === "dealer" ? "/dealer" : acc.role === "admin" ? "/admin" : "/account"));

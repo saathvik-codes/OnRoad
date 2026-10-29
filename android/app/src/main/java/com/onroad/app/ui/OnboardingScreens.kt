@@ -183,7 +183,7 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
             runCatching {
                 if (signup) vm.api.signup(SignupIn(name.trim(), email.trim(), phone.trim().ifBlank { null }, pw))
                 else vm.api.login(LoginIn(email.trim(), pw))
-            }.onSuccess { vm.prefs.setAccount(it); onDone() }
+            }.onSuccess { if (signup) com.onroad.app.data.Track.signUp("email") else com.onroad.app.data.Track.login("email"); vm.prefs.setAccount(it); onDone() }
                 .onFailure { e ->
                     error = when ((e as? HttpException)?.code()) {
                         401 -> "Email or password is wrong"
@@ -209,7 +209,7 @@ fun AuthScreen(onBack: () -> Unit, onDone: () -> Unit, vm: BrowseVM = hiltViewMo
                 val cred = androidx.credentials.CredentialManager.create(ctx).getCredential(ctx, req).credential
                 val token = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(cred.data).idToken
                 vm.api.google(com.onroad.app.data.GoogleIn(token))
-            }.onSuccess { vm.prefs.setAccount(it); onDone() }
+            }.onSuccess { com.onroad.app.data.Track.login("google"); vm.prefs.setAccount(it); onDone() }
                 .onFailure { e ->
                     error = when (e) {
                         is androidx.credentials.exceptions.GetCredentialCancellationException -> null

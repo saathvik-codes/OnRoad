@@ -10,6 +10,7 @@ import useSWR from "swr";
 import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { fetcher } from "@/lib/api";
 import { cn } from "@/components/ui";
+import { Track } from "@/lib/track";
 
 export type News = { id: string; title: string; summary: string; url: string; image_url: string | null; source: string;
   published: string; model_id: string | null; model_name: string | null; model_image: string | null; topic: string };
@@ -59,7 +60,7 @@ export function NewsShowcase({ limit = 6, className }: { limit?: number; classNa
             {s.summary && <p className="line-clamp-3 text-sm text-mute">{s.summary}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <a href={s.url} target="_blank" rel="noopener noreferrer"
+            <a href={s.url} target="_blank" rel="noopener noreferrer" onClick={() => Track.news(s.source, s.topic)}
                className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
               Read on {s.source}<ExternalLink className="h-4 w-4" />
             </a>

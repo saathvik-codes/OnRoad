@@ -1,5 +1,6 @@
 "use client";
 
+import { Track } from "@/lib/track";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api, type Account } from "@/lib/api";
 import { Loader2 } from "lucide-react";
@@ -45,6 +46,7 @@ export function GoogleButton({
   const handleCredential = useCallback(async (credential: string) => {
     setLoading(true);
     try {
+      Track.login("google");
       const acc = await api<Account>("/auth/google", {
         method: "POST",
         body: JSON.stringify({ id_token: credential }),

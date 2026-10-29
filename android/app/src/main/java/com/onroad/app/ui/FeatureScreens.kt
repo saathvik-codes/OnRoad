@@ -396,7 +396,7 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
                 busy = true
                 scope.launch {
                     runCatching { vm.api.requestQuote(com.onroad.app.data.QuoteRequestIn(variantId, city, pin.ifBlank { null }, finance, exchange, when_)) }
-                        .onSuccess { done = "Request sent. Quotes will appear in My garage as showrooms reply." }
+                        .onSuccess { com.onroad.app.data.Track.quote(variantId, city, null); done = "Request sent. Quotes will appear in My garage as showrooms reply." }
                         .onFailure { done = null; android.util.Log.w("quote", it) }
                     busy = false
                 }

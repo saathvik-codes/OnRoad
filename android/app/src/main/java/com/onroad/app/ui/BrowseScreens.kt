@@ -90,6 +90,7 @@ fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = h
     var q by remember { mutableStateOf("") }
     var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
     LaunchedEffect(q) { delay(200); hits = if (q.trim().length >= 2) runCatching { vm.api.search(q.trim()) }.getOrDefault(emptyList()) else emptyList() }
+    LaunchedEffect(q) { if (q.trim().length >= 3) { delay(1500); com.onroad.app.data.Track.search(q.trim()) } }      // once the buyer stops typing
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Header("Search", null, onBack)

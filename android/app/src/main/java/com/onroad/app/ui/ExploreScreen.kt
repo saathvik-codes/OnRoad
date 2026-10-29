@@ -137,6 +137,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
         brands = runCatching { vm.api.brands(city, type) }.getOrElse { emptyList() }.filter { it.models > 0 }.sortedByDescending { it.models }
         if (bands.isEmpty()) bands = runCatching { vm.api.bands() }.getOrElse { emptyList() }
     }
+    LaunchedEffect(f, sort) { if (f.count > 0 || sort != "popular") { kotlinx.coroutines.delay(2000); com.onroad.app.data.Track.filters("explore", f.count, sort) } }
     var loadedFor by rememberKept("explore.loadedFor") { "" }
     LaunchedEffect(city, type, tick) {
         val key = "$city|$type|$tick"

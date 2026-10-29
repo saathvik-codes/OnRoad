@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { 
@@ -39,6 +39,7 @@ import { VariantSpecs } from "@/components/variant-specs";
 import { ShowroomMap } from "@/components/dealer-map";
 import { BankLoansComparison } from "@/components/bank-loans";
 import { OwnershipSupportHub } from "@/components/ownership-support";
+import { Track } from "@/lib/track";
 
 function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
   const { data: me } = useSWR<Account>("/auth/me", fetcher, { shouldRetryOnError: false });
@@ -59,6 +60,7 @@ function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
         method: "POST",
         body: JSON.stringify({ variant_id: variant.id, city, pincode, colour, finance, consent }) 
       });
+      Track.quote(variant.id, city);
       toast.success(`Request sent. ${r.dealers_on_onroad} of ${r.dealers_in_city} showrooms in ${city} answer on OnRoad; quotes appear in My garage.`);
     } catch (e) { 
       toast.error((e as Error).message); 
@@ -105,10 +107,12 @@ function ModelInner() {
   const variants = useMemo(() => (m?.variants ?? []).filter((v) => (!fuel || v.fuel === fuel) && (!trans || v.transmission === trans)), [m, fuel, trans]);
   const chosen = variants.find((v) => v.id === sel) ?? variants.find((v) => v.ex_showroom_inr) ?? variants[0] ?? null;
   const { data: bd } = useSWR<Breakdown>(chosen ? withCity(`/onroad?variant_id=${encodeURIComponent(chosen.id)}`, city) : null, fetcher);
+  useEffect(() => { if (m) Track.viewCar(m.id, m.brand_slug, city, Math.min(...m.variants.map((v) => v.ex_showroom_inr ?? Infinity))); }, [m?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (sel) Track.pickVariant(sel, bd ? bd.total_inr : null); }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function watch(v: Variant) {
     try { 
-      await api("/me/saved", { method: "POST", body: JSON.stringify({ variant_id: v.id, city }) }); 
+      await api("/me/saved", { method: "POST", body: JSON.stringify({ variant_id: v.id, city }) }); Track.saveCar(v.id);
       toast.success("Watching this price in My garage"); 
     } catch (e) { 
       toast.error(e instanceof ApiError && e.status === 401 ? "Log in to watch prices" : (e as Error).message); 

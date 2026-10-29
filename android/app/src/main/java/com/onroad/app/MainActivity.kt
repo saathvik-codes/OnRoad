@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
             if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT))
         com.onroad.app.data.PushService.channel(this)
         com.onroad.app.ui.Ads.start(this)
+        com.onroad.app.data.Track.init(this)
         // this phone's push token, sent again whenever someone signs in so alerts reach their account
         lifecycleScope.launch {
             prefs.account.collect { com.onroad.app.data.PushService.register(api, lifecycleScope) }
@@ -136,6 +137,7 @@ class MainActivity : ComponentActivity() {
                     intent?.getStringExtra("open_model")?.let { if (prefs.onboarded) nav.navigate("model/${enc(it)}") }
                 }
                 val route = nav.currentBackStackEntryAsState().value?.destination?.route
+                androidx.compose.runtime.LaunchedEffect(route) { route?.let { com.onroad.app.data.Track.screen(it) } }
                 androidx.compose.runtime.LaunchedEffect(route) {
                     if (route == "home" && android.os.Build.VERSION.SDK_INT >= 33 && !prefs.askedNotify) {
                         prefs.askedNotify = true

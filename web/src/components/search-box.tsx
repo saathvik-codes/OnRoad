@@ -2,6 +2,7 @@
 
 // Live search: brands and models appear as you type; arrow keys + Enter, or click, open the result.
 
+import { Track } from "@/lib/track";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
@@ -29,6 +30,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
   }, []);
 
   const { data: brands } = useSWR<Brand[]>("/brands", fetcher);
+  useEffect(() => { if (debounced.length >= 3) { const t = setTimeout(() => Track.search(debounced), 1500); return () => clearTimeout(t); } }, [debounced]);
   const { data: hits, isLoading } = useSWR<Hit[]>(debounced.length >= 2 ? `/search?q=${encodeURIComponent(debounced)}` : null, fetcher);
 
   const items: Item[] = useMemo(() => {

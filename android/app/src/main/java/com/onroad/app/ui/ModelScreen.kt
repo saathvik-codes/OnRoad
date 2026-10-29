@@ -91,6 +91,8 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     }
     val variant = model.variants.firstOrNull { it.id == sel } ?: model.variants.firstOrNull { it.exShowroomInr != null } ?: model.variants.firstOrNull()
     LaunchedEffect(variant?.id) { specs = null; specs = variant?.let { v -> runCatching { vm.api.specs(v.id) }.getOrNull() } }
+    LaunchedEffect(model.id) { com.onroad.app.data.Track.viewCar(model.id, model.brandSlug, city, model.variants.mapNotNull { it.exShowroomInr }.minOrNull()) }
+    LaunchedEffect(sel) { sel?.let { s -> com.onroad.app.data.Track.pickVariant(s, variant?.onroad?.let { it.totalInr - it.refundableInr }) } }
     // the costliest variant's equipment = everything the model offers; used to show what this variant lacks
     var topSpecs by remember { mutableStateOf<VariantSpecs?>(null) }
     val topId = model.variants.filter { it.exShowroomInr != null }.maxByOrNull { it.exShowroomInr!! }?.id
@@ -106,6 +108,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                 IconButton({
                     val v = variant ?: return@IconButton
                     if (acc == null) onSignIn() else scope.launch {
+                        com.onroad.app.data.Track.saveCar(v.id)
                         runCatching { vm.api.save(com.onroad.app.data.SaveIn(v.id, city)) }
                             .onSuccess { android.widget.Toast.makeText(ctx, "Saved to your garage. We'll alert you when the price drops.", android.widget.Toast.LENGTH_SHORT).show() }
                     }
