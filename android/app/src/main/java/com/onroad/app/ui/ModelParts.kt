@@ -132,76 +132,120 @@ fun OwnershipTab(o: Ownership?, brand: String, failed: Boolean) {
     val open = { u: String -> ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) }
     var part by remember { mutableStateOf("insurance") }
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("insurance" to "Insurance", "rta" to "Registration", "accessories" to "Accessories", "updates" to "Updates").forEach { (k, l) -> Chip2(l, part == k) { part = k } }
+        Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
+            listOf("insurance" to "Insurance", "rta" to "Registration", "accessories" to "Accessories").forEach { (k, l) ->
+                Text(l, textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (part == k) FontWeight.SemiBold else FontWeight.Normal, color = if (part == k) Ink else Mute,
+                    modifier = Modifier.weight(1f).clip(Corner).background(if (part == k) Panel else Color.Transparent)
+                        .clickable { part = k }.padding(vertical = 9.dp))
+            }
         }
         if (o == null) { Text(if (failed) "Couldn't load this right now." else "Loading…", color = Mute); return@Column }
         when (part) {
             "insurance" -> {
-                Amounts(o.insurance.lines)
-                o.insurance.tips.forEach { Text("• $it", color = Mute, style = MaterialTheme.typography.bodySmall) }
-                Text("Get your own quotes", style = MaterialTheme.typography.titleMedium)
-                o.insurance.insurers.chunked(2).forEach { pair ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        pair.forEach { ins -> InsurerCard(ins, Modifier.weight(1f)) { open(ins.url) } }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                val total = o.insurance.lines.mapNotNull { it.amountInr }.sum()
+                Headline("Insurance at purchase", if (total > 0) rupees(total) else "",
+                    "Third-party cover is fixed by law; own-damage is an estimate. Compare before you pay the dealer.")
+                Breakdown(o.insurance.lines)
+                Text("Get quotes", style = MaterialTheme.typography.titleSmall)
+                o.insurance.insurers.chunked(3).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { ins -> InsurerCard(ins, Modifier.weight(1f)) { open(ins.url) } }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
-                Text("Compare many insurers at once", style = MaterialTheme.typography.titleSmall)
-                LinkRow(o.insurance.compare.map { (it.name ?: it.title ?: "") to it.url }, open)
-                Text("* As stated on each insurer's website. " + o.insurance.disclosure, color = Mute, style = MaterialTheme.typography.bodySmall)
+                Expandable("Ways to pay less") { o.insurance.tips.forEach { Bullet(it) } }
+                Text("Garage counts as stated by each insurer. OnRoad has no tie-up with any insurer.", color = Mute,
+                    style = MaterialTheme.typography.labelSmall)
             }
             "rta" -> {
-                Text("Registration in ${o.rta.state}", style = MaterialTheme.typography.titleMedium)
-                Amounts(o.rta.charges)
+                val total = o.rta.charges.mapNotNull { it.amountInr }.sum()
+                Headline("Registration in ${o.rta.state}", if (total > 0) rupees(total) else "", "Road tax and fees, paid once to the state")
+                Breakdown(o.rta.charges)
                 o.rta.ev?.takeIf { it.lifeTaxExempt == true }?.let {
-                    Text("Electric vehicles pay no road tax in ${o.rta.state}${it.validTo?.let { d -> " until $d" } ?: ""}.", color = Good)
+                    Text("Electric vehicles pay no road tax in ${o.rta.state}${it.validTo?.let { d -> " until $d" } ?: ""}.", color = Good,
+                        style = MaterialTheme.typography.bodySmall)
                 }
-                Text("How it works", style = MaterialTheme.typography.titleMedium)
-                o.rta.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", color = Mute, style = MaterialTheme.typography.bodySmall) }
-                Text("Charges a dealer cannot add", style = MaterialTheme.typography.titleMedium)
-                o.rta.notAllowed.forEach { Text("• ${it.item}: ${it.status}", color = Mute, style = MaterialTheme.typography.bodySmall) }
-                LinkRow((o.rta.links + o.rta.sources).map { (it.title ?: it.name ?: "") to it.url }, open)
+                Expandable("How registration works") { o.rta.steps.forEachIndexed { i, s -> Bullet("${i + 1}. $s", numbered = true) } }
+                Expandable("Charges a dealer can't add (${o.rta.notAllowed.size})") { o.rta.notAllowed.forEach { Bullet(it.item) } }
+                Expandable("Official sources") { LinkRow((o.rta.links + o.rta.sources).map { (it.title ?: it.name ?: "") to it.url }, open) }
             }
-            "accessories" -> {
-                if (o.accessories.items.isNotEmpty()) {
-                    Text("${o.accessories.items.size} genuine accessories, ${brand}'s list prices", color = Mute, style = MaterialTheme.typography.bodySmall)
-                    o.accessories.items.chunked(2).forEach { pair ->
+            else -> {
+                val items = o.accessories.items
+                if (items.isNotEmpty()) {
+                    var all by remember { mutableStateOf(false) }
+                    Headline("Genuine accessories", "${items.size} items", "$brand's own list prices; fitting may cost extra")
+                    (if (all) items else items.take(6)).chunked(2).forEach { pair ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             pair.forEach { a -> AccessoryCard(a, Modifier.weight(1f)) }
                             if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
+                    if (items.size > 6) Text(if (all) "Show fewer" else "Show all ${items.size}", color = Ignition, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { all = !all }.padding(vertical = 6.dp))
+                } else {
+                    Headline("Genuine accessories", "", "$brand doesn't publish an accessory price list online. Ask the dealer for theirs.")
+                    o.accessories.official?.let { LinkRow(listOf("$brand accessories store" to it.url), open) }
                 }
-                o.accessories.official?.let { LinkRow(listOf("$brand accessories store" to it.url), open) }
-                    ?: Text("$brand doesn't publish an accessory catalogue online. Ask the dealer for the itemised price list.", color = Mute)
-                o.accessories.advice.forEach { Text("• $it", color = Mute, style = MaterialTheme.typography.bodySmall) }
-            }
-            else -> {
-                if (o.updates.isEmpty()) Text("No price changes or new offers in the last four months.", color = Mute)
-                o.updates.forEach { u ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(12.dp)) {
-                        Text(u.title, style = MaterialTheme.typography.titleSmall)
-                        Text("${u.date} · ${u.detail}", color = Mute, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+                Expandable("Before you buy accessories") { o.accessories.advice.forEach { Bullet(it) } }
             }
         }
     }
 }
 
 @Composable
+private fun Headline(title: String, value: String, sub: String) = Column {
+    Text(title, color = Mute, style = MaterialTheme.typography.labelMedium)
+    if (value.isNotBlank()) Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+    Text(sub, color = Mute, style = MaterialTheme.typography.bodySmall)
+}
+
+/** Amounts as compact rows; tap a row to see how it was worked out. */
+@Composable
+private fun Breakdown(lines: List<OwnLine>) = Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel)
+    .border(1.dp, Line, RoundedCornerShape(14.dp))) {
+    lines.forEachIndexed { i, l ->
+        var why by remember(l.label) { mutableStateOf(false) }
+        if (i > 0) HorizontalDivider(color = Line)
+        Column(Modifier.fillMaxWidth().clickable { why = !why }.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(l.label.removePrefix("Insurance: ").replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f))
+                Text(l.amountInr?.let { rupees(it) } ?: "—", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (why && l.basis.isNotBlank()) Text(l.basis, color = Mute, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
+private fun Expandable(title: String, content: @Composable () -> Unit) {
+    var open by remember(title) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.dp, Line, RoundedCornerShape(14.dp))) {
+        Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text(if (open) "Hide" else "Show", color = Ignition, style = MaterialTheme.typography.labelLarge)
+        }
+        if (open) Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
+    }
+}
+
+@Composable
+private fun Bullet(text: String, numbered: Boolean = false) =
+    Text(if (numbered) text else "•  $text", color = Mute, style = MaterialTheme.typography.bodySmall)
+
+@Composable
 private fun InsurerCard(i: com.onroad.app.data.Insurer, modifier: Modifier, onClick: () -> Unit) {
     val vm: BrowseVM = androidx.hilt.navigation.compose.hiltViewModel()
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(10.dp)) {
-        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp))
-            .background(if (i.logoDark) Color(0xFF1B1F2A) else Color.White).padding(6.dp), contentAlignment = Alignment.Center) {
+    Column(modifier.clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(8.dp))
+            .background(if (i.logoDark) Color(0xFF1B1F2A) else Color.White).padding(5.dp), contentAlignment = Alignment.Center) {
             if (i.logoUrl != null) coil3.compose.AsyncImage(vm.prefs.img(i.logoUrl, 300), i.name, modifier = Modifier.fillMaxWidth())
-            else Text(i.name, color = Color(0xFF1B1F2A), fontWeight = FontWeight.Bold)
+            else Text(i.name, color = Color(0xFF1B1F2A), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(i.name, style = MaterialTheme.typography.titleSmall)
-        Text(i.garages?.let { "$it cashless garages*" } ?: "Get a quote", color = Mute, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(4.dp))
+        Text(i.garages?.let { "$it garages" } ?: i.name, color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 
@@ -209,34 +253,17 @@ private fun InsurerCard(i: com.onroad.app.data.Insurer, modifier: Modifier, onCl
 private fun AccessoryCard(a: com.onroad.app.data.Accessory, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))) {
         coil3.compose.AsyncImage(a.imageUrl, a.name, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().height(110.dp).background(Color.White))
+            modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.White))
         Column(Modifier.padding(10.dp)) {
-            a.category?.let { Text(it.uppercase(), color = Mute, style = MaterialTheme.typography.labelSmall) }
-            Text(a.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            a.priceInr?.let { Text(rupees(it), fontWeight = FontWeight.SemiBold, color = Ink) }
+            Text(a.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            a.priceInr?.let { Text(rupees(it), style = MaterialTheme.typography.bodySmall, color = Ink) }
         }
     }
 }
 
 @Composable
-private fun Amounts(lines: List<OwnLine>) = Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel)
-    .border(1.dp, Line, RoundedCornerShape(16.dp))) {
-    lines.forEachIndexed { i, l ->
-        if (i > 0) HorizontalDivider(color = Line)
-        Row(Modifier.fillMaxWidth().padding(12.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(l.label, style = MaterialTheme.typography.titleSmall)
-                Text(l.basis, color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 3)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(l.amountInr?.let { rupees(it) } ?: "—", fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-@Composable
-private fun LinkRow(links: List<Pair<String, String>>, open: (String) -> Unit) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun LinkRow(links: List<Pair<String, String>>, open: (String) -> Unit) = Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
     links.filter { it.first.isNotBlank() }.forEach { (label, url) ->
-        Text("$label  ↗", color = Electric, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clickable { open(url) }.padding(vertical = 4.dp))
+        Text("$label  ↗", color = Electric, style = MaterialTheme.typography.bodySmall, modifier = Modifier.clickable { open(url) }.padding(vertical = 3.dp))
     }
 }

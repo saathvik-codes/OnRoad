@@ -65,12 +65,19 @@ def repair(conn) -> dict:
     # model photos known to show a different car (an older adapter reused a sibling's image)
     for mid, bad in WRONG_IMAGES.items():
         conn.execute("UPDATE models SET image_url = NULL WHERE id = ? AND image_url LIKE ?", (mid, bad + "%"))
+    for mid, (img, page) in OVERRIDES.items():          # checked by hand: the right photo and page for these models
+        conn.execute("UPDATE models SET image_url = ?, url = COALESCE(?, url) WHERE id = ?", (img, page, mid))
     from . import model_dedupe
     n["duplicate_models_retired"] = len(model_dedupe.dedupe(conn))          # one model, one listing
     from . import image_repair
     n.update({"images_" + k: v for k, v in image_repair.repair(conn).items()})   # every model keeps only its own photos
     return n
 
+
+OVERRIDES = {   # model -> (main photo, model page); the maker's own page reused the full-size Discovery's (L462) photo
+    "land_rover/discovery-sport": ("https://stimg.cardekho.com/images/carexteriorimages/930x620/Land-Rover/Discovery-Sport/7575/1705470002125/front-left-side-47.jpg",
+                                   "https://www.landrover.in/discovery-sport/index.html"),
+}
 
 WRONG_IMAGES = {
     "mg/hector-plus": "https://mgmotor.scene7.com/is/image/mgmotor/mgi-hector-thm-img-0001",
