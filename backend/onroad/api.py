@@ -1719,11 +1719,11 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 6,
-        "version_name": "1.0.4",
+        "version_code": 7,
+        "version_name": "1.1.0",
         "download_url": "https://onroad-frontend.onrender.com/download",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
-        "notes": "Instant home loading, zero blank screen, and performance optimizations.",
+        "notes": "Live auto news, insurance and registration help, genuine accessories, a new variant picker and a cleaner compare.",
         "force_update": False,
     }
 
