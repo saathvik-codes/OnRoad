@@ -164,15 +164,22 @@ def updates(vehicle_type: str | None = None, model_id: str | None = None, limit:
         biggest = max(ch, key=lambda x: abs(x[2] - x[1]))
         verb = "up" if ups and not downs else "down" if downs and not ups else "revised"
         out.append({"kind": "price", "date": day, "model_id": mid, "title": f"{r['brand']} {r['model']} prices {verb}",
+                    "brand": r["brand"], "model": r["model"], "variants_changed": len(ch), "direction": verb,
+                    "example_variant": biggest[0], "old_inr": biggest[1], "new_inr": biggest[2],
                     "detail": f"{len(ch)} variant{'s' if len(ch) > 1 else ''} revised; {biggest[0]}: "
                               f"₹{biggest[1]:,} → ₹{biggest[2]:,}", "source_url": r["source_url"], "image_url": r["image_url"]})
     # models that appeared after the first catalogue load
     first = (_q("SELECT MIN(first_seen) AS t FROM models")[0]["t"] or "")[:10]
-    for m in _q(f"""SELECT m.id, m.name, m.first_seen, m.url, m.image_url, b.name AS brand FROM models m JOIN brands b ON b.slug = m.brand_slug
-                    WHERE m.active = 1 AND substr(m.first_seen, 1, 10) > ? AND substr(m.first_seen, 1, 10) >= ? {cond}""",
-                (first, since, *params)):
+    for m in _q(f"""SELECT m.id, m.name, m.first_seen, m.url, m.image_url, b.name AS brand,
+                           EXISTS (SELECT 1 FROM variants v JOIN prices p ON p.variant_id = v.id WHERE v.model_id = m.id) AS priced
+                    FROM models m JOIN brands b ON b.slug = m.brand_slug
+                    WHERE m.active = 1 AND substr(m.first_seen, 1, 10) >= ? {cond}
+                    AND m.first_seen > datetime((SELECT MIN(m3.first_seen) FROM models m3 WHERE m3.brand_slug = m.brand_slug), '+3 day')
+                    AND m.url NOT LIKE '%cardekho.com%' AND m.url NOT LIKE '%bikedekho.com%'""",
+                (since, *params)):
         out.append({"kind": "new", "date": m["first_seen"][:10], "model_id": m["id"], "title": f"New: {m['brand']} {m['name']}",
-                    "detail": "Now listed with official prices.", "source_url": m["url"], "image_url": m["image_url"]})
+                    "brand": m["brand"], "model": m["name"],
+                    "detail": "Newly listed on the maker's website" + (", with prices." if m["priced"] else "; price on request."), "source_url": m["url"], "image_url": m["image_url"]})
     # offers that started recently
     ocond = cond.replace("m.id", "m2.id").replace("m.vehicle_type", "m2.vehicle_type") if cond else ""
     for o in _q(f"""SELECT o.title, o.amount_inr, o.valid_from, o.valid_until, o.source_url, b.name AS brand, o.model_name,

@@ -27,7 +27,8 @@ export function ago(iso: string) {
 
 export function NewsShowcase({ limit = 6, className }: { limit?: number; className?: string }) {
   const { data } = useSWR<News[]>(`/news?limit=30`, fetcher);
-  const slides = (data ?? []).filter((n) => n.image_url).slice(0, limit);
+  const [broken, setBroken] = useState<Set<string>>(new Set());     // publishers that block hotlinked images
+  const slides = (data ?? []).filter((n) => n.image_url && !broken.has(n.id)).slice(0, limit);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -46,6 +47,7 @@ export function NewsShowcase({ limit = 6, className }: { limit?: number; classNa
           {slides.map((n, k) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img key={n.id} src={n.image_url!} alt="" loading={k === 0 ? "eager" : "lazy"}
+                 onError={() => setBroken((b) => new Set(b).add(n.id))}
                  className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-700", k === i ? "opacity-100" : "opacity-0")} />
           ))}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-panel/30" />

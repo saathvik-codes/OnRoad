@@ -8,21 +8,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
-import { CirclePlus, ExternalLink, Tag, TrendingDown, TrendingUp } from "lucide-react";
+
 import { fetcher } from "@/lib/api";
+import { lakh } from "@/lib/format";
 import { Card, cn, Empty, SectionTitle, Skeleton } from "@/components/ui";
 import { ago, NewsShowcase, TOPIC, type News } from "@/components/news-showcase";
 
 type Update = { kind: "price" | "new" | "offer"; date: string; model_id: string | null; title: string; detail: string;
-  source_url?: string | null; image_url?: string | null };
+  source_url?: string | null; image_url?: string | null; brand?: string; model?: string; variants_changed?: number;
+  example_variant?: string; old_inr?: number; new_inr?: number };
 
 const TOPICS = ["all", "launch", "price", "ev", "safety", "policy", "spied", "sales"] as const;
-
-function UpdateIcon({ u }: { u: Update }) {
-  if (u.kind === "new") return <CirclePlus className="h-4 w-4 text-accent-2" />;
-  if (u.kind === "offer") return <Tag className="h-4 w-4 text-good" />;
-  return / down/.test(u.title) ? <TrendingDown className="h-4 w-4 text-good" /> : <TrendingUp className="h-4 w-4 text-accent" />;
-}
 
 function NewsList() {
   const [topic, setTopic] = useState<(typeof TOPICS)[number]>("all");
@@ -46,7 +42,8 @@ function NewsList() {
             <a href={n.url} target="_blank" rel="noopener noreferrer" className="group block">
               {n.image_url
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={n.image_url} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover transition group-hover:opacity-90" />
+                ? <img src={n.image_url} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover transition group-hover:opacity-90"
+                       onError={(e) => { e.currentTarget.style.display = "none"; }} />
                 : <div className="aspect-[16/9] w-full bg-panel-soft" />}
               <div className="space-y-2 p-4">
                 <p className="text-xs text-mute"><span className="font-semibold text-accent">{TOPIC[n.topic] ?? "News"}</span> · {n.source} · {ago(n.published)}</p>
@@ -67,52 +64,109 @@ function NewsList() {
   );
 }
 
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
 function PriceUpdates() {
   const [type, setType] = useState<"car" | "bike">("car");
-  const [kind, setKind] = useState<"all" | Update["kind"]>("all");
   const { data, error } = useSWR<Update[]>(`/updates?vehicle_type=${type}&limit=100`, fetcher);
-  const list = (data ?? []).filter((u) => kind === "all" || u.kind === kind);
+  const launches = (data ?? []).filter((u) => u.kind === "new");
+  const prices = (data ?? []).filter((u) => u.kind === "price");
+  const offers = (data ?? []).filter((u) => u.kind === "offer");
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-10">
+      <div className="inline-flex rounded-full border border-line p-0.5">
         {(["car", "bike"] as const).map((t) => (
           <button key={t} onClick={() => setType(t)}
-                  className={cn("rounded-xl border px-4 py-2 text-sm font-medium", type === t ? "border-accent bg-accent/10 text-accent" : "border-line text-mute")}>
-            {t === "car" ? "Cars" : "Bikes & scooters"}
+                  className={cn("rounded-full px-4 py-1.5 text-sm font-medium", type === t ? "bg-ink text-bg" : "text-mute hover:text-ink")}>
+            {t === "car" ? "Cars" : "Bikes and scooters"}
           </button>
-        ))}
-        <span className="mx-2 h-6 w-px bg-line" />
-        {([["all", "Everything"], ["price", "Price changes"], ["new", "New models"], ["offer", "New offers"]] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setKind(k)}
-                  className={cn("rounded-xl px-3 py-2 text-sm", kind === k ? "bg-panel-soft font-medium text-ink" : "text-mute hover:text-ink")}>{l}</button>
         ))}
       </div>
       {error && <Empty title="Couldn't load updates">Please try again in a moment.</Empty>}
-      {!data && !error && <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>}
-      {data && list.length === 0 && <Empty title="Nothing new here yet">Price changes and new launches appear here as makers publish them.</Empty>}
-      <div className="space-y-3">
-        {list.map((u) => {
-          const body = (
-            <Card className="flex items-start gap-4 p-4 transition hover:border-accent/40">
-              <div className="mt-1"><UpdateIcon u={u} /></div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink">{u.title}</p>
-                <p className="text-sm text-mute">{u.detail}</p>
+      {!data && !error && <div className="grid gap-4 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-56 w-full" />)}</div>}
+
+      {data && (
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-xl font-bold text-ink">New on the market</h2>
+            <p className="text-sm text-mute">Newly listed by the manufacturer</p>
+          </div>
+          {launches.length === 0 ? <p className="text-sm text-mute">No new models in the last four months.</p> : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {launches.map((u) => (
+                <Link key={u.model_id ?? u.title} href={u.model_id ? `/cars/${u.model_id}` : "#"}
+                      className="group overflow-hidden rounded-2xl border border-line bg-panel transition hover:border-mute">
+                  <div className="aspect-[4/3] bg-panel-soft">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={u.image_url || `/api/logos/${(u.model_id ?? "").split("/")[0]}`} alt="" loading="lazy"
+                         className={cn("h-full w-full object-contain transition group-hover:scale-[1.03]", u.image_url ? "p-3" : "p-12 opacity-80")} />
+                  </div>
+                  <div className="space-y-0.5 p-4">
+                    <p className="text-xs text-mute">{u.brand} · {fmtDate(u.date)}</p>
+                    <p className="font-semibold text-ink">{u.model}</p>
+                    <p className="text-xs text-mute">{u.detail.replace("Newly listed on the maker's website", "Listed by the maker").replace(/^, /, "")}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {data && (
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-xl font-bold text-ink">Price changes</h2>
+            <p className="text-sm text-mute">Ex-showroom, from the manufacturer&apos;s price list</p>
+          </div>
+          {prices.length === 0 ? <p className="text-sm text-mute">No lasting price changes in the last four months.</p> : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {prices.map((u) => {
+                const pct = u.old_inr && u.new_inr ? ((u.new_inr - u.old_inr) / u.old_inr) * 100 : 0;
+                const down = pct < 0;
+                return (
+                  <Link key={u.model_id + u.date} href={u.model_id ? `/cars/${u.model_id}` : "#"}
+                        className="flex items-center gap-4 rounded-2xl border border-line bg-panel p-4 transition hover:border-mute">
+                    <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-panel-soft">
+                      {u.image_url && /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={u.image_url} alt="" loading="lazy" className="h-full w-full object-contain" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-mute">{u.brand} · {fmtDate(u.date)} · {u.variants_changed} variant{u.variants_changed === 1 ? "" : "s"}</p>
+                      <p className="truncate font-semibold text-ink">{u.model}</p>
+                      <p className="truncate text-xs text-mute">{u.example_variant}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-xs text-mute line-through">{u.old_inr ? lakh(u.old_inr) : ""}</p>
+                      <p className="font-mono font-semibold text-ink">{u.new_inr ? lakh(u.new_inr) : ""}</p>
+                      <p className={cn("font-mono text-xs font-semibold", down ? "text-good" : "text-accent")}>{down ? "" : "+"}{pct.toFixed(1)}%</p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {data && offers.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="font-display text-xl font-bold text-ink">Offers that just started</h2>
+          <div className="divide-y divide-line rounded-2xl border border-line bg-panel">
+            {offers.map((u) => (
+              <div key={u.title + u.date} className="flex items-start justify-between gap-4 p-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-ink">{u.title}</p>
+                  <p className="text-sm text-mute">{u.detail}</p>
+                </div>
+                {u.source_url && <a href={u.source_url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs text-mute underline">source</a>}
               </div>
-              <div className="shrink-0 text-right text-xs text-mute">
-                <p>{new Date(u.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
-                {u.source_url && (
-                  <a href={u.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                     className="mt-1 inline-flex items-center gap-1 underline">source<ExternalLink className="h-3 w-3" /></a>
-                )}
-              </div>
-            </Card>
-          );
-          return u.model_id
-            ? <Link key={u.kind + u.date + u.title} href={`/cars/${u.model_id}`}>{body}</Link>
-            : <div key={u.kind + u.date + u.title}>{body}</div>;
-        })}
-      </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -120,7 +174,7 @@ function PriceUpdates() {
 export default function UpdatesPage() {
   const [tab, setTab] = useState<"news" | "prices">("news");
   return (
-    <main className="mx-auto max-w-6xl space-y-8 px-4 py-10">
+    <main className="mx-auto max-w-6xl space-y-8 px-4 pb-16 pt-28">
       <SectionTitle eyebrow="Updates" title="What's new in the auto world"
         sub="The latest launches, price changes and rules, from India's auto publishers and manufacturers' own price lists." />
       <NewsShowcase />
