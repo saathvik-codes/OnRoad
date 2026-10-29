@@ -24,6 +24,16 @@ export default function AppInstall() {
   const device = useSyncExternalStore(() => () => {}, detect, () => "detecting" as Device);
   useEffect(() => {
     if (device === "desktop") router.replace("/download");
+    // Android: start the download straight away (once per visit); the button stays as a fallback
+    if (device === "android") {
+      try {
+        if (sessionStorage.getItem("onroad-apk-started")) return;
+        sessionStorage.setItem("onroad-apk-started", "1");
+      } catch { /* private mode: still download */ }
+      const a = document.createElement("a");
+      a.href = "/onroad.apk"; a.download = "OnRoad.apk";
+      document.body.appendChild(a); a.click(); a.remove();
+    }
   }, [device, router]);
 
   return (
@@ -34,9 +44,9 @@ export default function AppInstall() {
         <Card className="space-y-5 p-6">
           <div>
             <h1 className="font-display text-2xl font-bold text-ink">OnRoad for Android</h1>
-            <p className="mt-1 text-sm text-mute">Android 8.0 or newer · about 6 MB</p>
+            <p className="mt-1 text-sm text-mute">Your download has started. Android 8.0 or newer · about 6 MB</p>
           </div>
-          <a href="/onroad.apk" download="OnRoad.apk"><Button className="w-full"><Download className="mr-2 h-4 w-4" />Download the app</Button></a>
+          <a href="/onroad.apk" download="OnRoad.apk"><Button className="w-full"><Download className="mr-2 h-4 w-4" />Download again</Button></a>
           <ol className="list-decimal space-y-2 pl-5 text-sm text-mute">
             <li>Open <b className="text-ink">OnRoad.apk</b> from the download notification or your Downloads folder.</li>
             <li>If Android asks, allow installs from your browser for this one download, then tap <b className="text-ink">Install</b>.</li>
