@@ -80,7 +80,9 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
     var quotes by remember { mutableStateOf<List<MyRequest>>(emptyList()) }
     var alerts by remember { mutableStateOf(vm.prefs.alerts) }
     LaunchedEffect(Unit) {
-        if (vm.prefs.session != null) runCatching { vm.api.me() }.onSuccess { vm.prefs.setAccount(it) }.onFailure { vm.prefs.setAccount(null) }
+        if (vm.prefs.session != null) runCatching { vm.api.me() }.onSuccess { vm.prefs.setAccount(it) }.onFailure { e ->
+            // only a 401 means signed out; a sleeping or unreachable server keeps the saved account
+            if ((e as? retrofit2.HttpException)?.code() == 401) { vm.prefs.session = null; vm.prefs.setAccount(null) } }
     }
     LaunchedEffect(acc) {
         if (acc != null) {

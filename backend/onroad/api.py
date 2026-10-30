@@ -133,6 +133,7 @@ async def cache_public_reads(request: Request, call_next):
 db.init()
 LOGOS = db.ROOT / "data" / "logos"
 COOKIE = "or_session"
+SESSION_DAYS = 60     # renewed every time the app or site checks the account, so active users stay signed in
 SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
 
 
@@ -167,7 +168,7 @@ def _check(pw: str, stored: str) -> bool:
 
 
 def _sign(uid: int) -> str:
-    payload = f"{uid}.{int(time.time()) + 14 * 86400}"
+    payload = f"{uid}.{int(time.time()) + SESSION_DAYS * 86400}"
     sig = base64.urlsafe_b64encode(hmac.new(_secret(), payload.encode(), hashlib.sha256).digest()).decode().rstrip("=")
     return f"{payload}.{sig}"
 
@@ -225,7 +226,7 @@ def signup(body: SignupIn, response: Response):
     with closing(db.connect()) as conn, conn:
         uid = conn.execute("INSERT INTO accounts (email, name, phone, pw_hash, role) VALUES (?, ?, ?, ?, ?)",
                            (email, body.name.strip(), body.phone, _hash(body.password), body.role)).lastrowid
-    response.set_cookie(COOKIE, _sign(uid), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    response.set_cookie(COOKIE, _sign(uid), max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
     return {"id": uid, "email": email, "name": body.name, "role": body.role}
 
 
@@ -239,7 +240,7 @@ def login(body: LoginIn, request: Request, response: Response):
     acc = one("SELECT * FROM accounts WHERE email = ?", (body.email.strip().lower(),))
     if not acc or not _check(body.password, acc["pw_hash"]):
         raise HTTPException(401, "Email or password is wrong.")
-    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
     return {k: acc[k] for k in ("id", "email", "name", "role")}
 
 
@@ -282,7 +283,7 @@ def google_login(body: GoogleIn, response: Response):
                                (email, (t.get("name") or email.split("@")[0]).strip(), None,
                                 _hash(secrets.token_urlsafe(24)), "buyer")).lastrowid      # no password: Google signs them in
         acc = one("SELECT * FROM accounts WHERE id = ?", (uid,))
-    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=14 * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
+    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
     return {k: acc[k] for k in ("id", "email", "name", "role")}
 
 
@@ -293,7 +294,9 @@ def logout(response: Response):
 
 
 @app.get("/api/auth/me")
-def me(acc: dict = Depends(account)):
+def me(response: Response, acc: dict = Depends(account)):
+    # sliding session: each check pushes the expiry 60 days out, so only people inactive for 60 days sign in again
+    response.set_cookie(COOKIE, _sign(acc["id"]), max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=SECURE, path="/")
     return acc
 
 

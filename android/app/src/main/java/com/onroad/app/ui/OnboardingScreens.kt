@@ -276,7 +276,9 @@ fun AccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, vm: BrowseVM = hiltV
     val acc by vm.prefs.account.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var server by remember { mutableStateOf(vm.prefs.server()) }
-    LaunchedEffect(Unit) { if (vm.prefs.session != null) runCatching { vm.api.me() }.onSuccess { vm.prefs.setAccount(it) }.onFailure { vm.prefs.setAccount(null) } }
+    LaunchedEffect(Unit) { if (vm.prefs.session != null) runCatching { vm.api.me() }.onSuccess { vm.prefs.setAccount(it) }.onFailure { e ->
+            // only a 401 means signed out; a sleeping or unreachable server keeps the saved account
+            if ((e as? retrofit2.HttpException)?.code() == 401) { vm.prefs.session = null; vm.prefs.setAccount(null) } } }
     Column(Modifier.fillMaxSize().background(Night).verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
