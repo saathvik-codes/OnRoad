@@ -1695,8 +1695,12 @@ def approve_outreach(oid: int, acc: dict = Depends(role("admin"))):
 def meta():
     r = onroad_calc.rules()
     last = one("SELECT finished FROM refresh_runs ORDER BY id DESC LIMIT 1")
+    # data arrives in snapshots built by the scheduled job, which carry each brand's refresh time but not this
+    # server's own run log: report whichever is newer
+    newest_brand = one("SELECT MAX(last_refresh) AS t FROM brands")
+    stamps = [x for x in ((last or {}).get("finished"), (newest_brand or {}).get("t")) if x]
     return {"rules_as_of": r.get("as_of"), "states_with_rules": sorted((r.get("states") or {}).keys()),
-            "last_refresh": last["finished"] if last else None,
+            "last_refresh": max(stamps) if stamps else None,
             "counts": one("""SELECT (SELECT COUNT(*) FROM brands) AS brands, (SELECT COUNT(*) FROM models WHERE active = 1) AS models,
                                     (SELECT COUNT(*) FROM variants WHERE active = 1) AS variants,
                                     (SELECT COUNT(*) FROM dealers WHERE active = 1) AS dealers,
