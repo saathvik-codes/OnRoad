@@ -134,7 +134,7 @@ struct DealerCard: View {
                        let u = URL(string: "tel:" + ph.filter { $0.isNumber || $0 == "+" }) {
                         Button { openURL(u) } label: { Label("Call", systemImage: "phone.fill").frame(maxWidth: .infinity) }.buttonStyle(.bordered).tint(Palette.good)
                     }
-                    if let la = d.lat, let lo = d.lng, let u = URL(string: "https://maps.apple.com/?daddr=\(la),\(lo)") {
+                    if let u = showroomDirections(name: d.name, address: d.address, city: d.city, lat: d.lat, lng: d.lng) {
                         Button { openURL(u) } label: { Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill").frame(maxWidth: .infinity) }
                             .buttonStyle(.bordered).tint(Palette.electric)
                     }
@@ -279,4 +279,20 @@ struct ProfileView: View {
             state.askForNotifications()              // re-sends the push token, now tied to this account
         } catch { msg = error.localizedDescription }
     }
+}
+
+
+/// Directions to a showroom by its own name and full address, so Maps opens the business listing (the exact entrance)
+/// instead of a raw pin, which makers' locators often place a few streets off. The pin is only a fallback.
+func showroomDirections(name: String, address: String?, city: String?, lat: Double?, lng: Double?) -> URL? {
+    var parts: [String] = []
+    for p in [name, address ?? "", city ?? ""].map({ $0.trimmingCharacters(in: .whitespaces) }) where !p.isEmpty {
+        if !parts.contains(where: { $0.localizedCaseInsensitiveContains(p) }) { parts.append(p) }
+    }
+    let hasAddress = !(address ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+    if !hasAddress, let la = lat, let lo = lng { return URL(string: "https://maps.apple.com/?daddr=\(la),\(lo)") }
+    guard !parts.isEmpty else { return nil }
+    var c = URLComponents(string: "https://maps.apple.com/")!
+    c.queryItems = [URLQueryItem(name: "daddr", value: parts.joined(separator: ", "))]
+    return c.url
 }

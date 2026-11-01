@@ -210,8 +210,8 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                                     modifier = Modifier.clickable { rateDealer = d })
                             }
                         }
-                        if (d.lat != null && d.lng != null) IconButton({ ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}"))) }) { Icon(Icons.Outlined.Directions, "Directions", tint = Electric) }
+                        showroomDirections(d.name, d.address, d.city, d.lat, d.lng)?.let { u -> IconButton({ ctx.startActivity(Intent(Intent.ACTION_VIEW, u)) }) {
+                            Icon(Icons.Outlined.Directions, "Directions", tint = Electric) } }
                         d.phone?.let { ph -> IconButton({ ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + ph.split(',', '/')[0].trim()))) }) {
                             Icon(Icons.Outlined.Call, "Call", tint = Ignition) } }
                     }

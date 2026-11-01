@@ -145,6 +145,11 @@ def main():
             log.info("spec repair: %s", spec_repair.repair(conn))
     step("spec repair", tidy)            # wrong labels / formats from older parsers never reach the app
 
+    try:                                   # never ship pins that point to the wrong place
+        from onroad import dealer_coords
+        log.info("showroom pins: %s", dealer_coords.clean())
+    except Exception as e:
+        log.warning("pin check failed: %s", e)
     m = snapshot.build(Path(args.out))
     log.info("snapshot: %s", m)
 

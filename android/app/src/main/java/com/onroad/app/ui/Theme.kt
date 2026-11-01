@@ -152,3 +152,20 @@ object ThemeMode {
     }
     fun set(m: String) { mode.value = m; prefs?.edit()?.putString("mode", m)?.apply() }
 }
+
+
+/**
+ * Google Maps directions to a showroom. Searches by the showroom's own name and full address, so Maps opens the business
+ * listing (the exact entrance) instead of a raw pin; makers' locators often publish pins that are a few streets off.
+ * Falls back to the pin only when there's no address.
+ */
+fun showroomDirections(name: String, address: String?, city: String?, lat: Double?, lng: Double?): android.net.Uri? {
+    val place = listOf(name, address.orEmpty(), city.orEmpty()).map { it.trim() }.filter { it.isNotEmpty() }
+        .fold(listOf<String>()) { acc, part -> if (acc.any { it.contains(part, ignoreCase = true) }) acc else acc + part }.joinToString(", ")
+    return when {
+        !address.isNullOrBlank() -> android.net.Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + android.net.Uri.encode(place))
+        lat != null && lng != null -> android.net.Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng")
+        name.isNotBlank() -> android.net.Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + android.net.Uri.encode(place))
+        else -> null
+    }
+}

@@ -22,6 +22,20 @@ interface ShowroomMapProps {
   city: string;
 }
 
+
+/**
+ * Google Maps directions to a showroom: search by its own name and full address so Maps opens the business listing
+ * (the exact entrance) rather than a raw pin, which makers' locators often place a few streets off. Pin only as fallback.
+ */
+function directionsUrl(d: { name: string; address?: string | null; city?: string | null; lat?: number | null; lng?: number | null }) {
+  const parts: string[] = [];
+  for (const p of [d.name, d.address ?? "", d.city ?? ""].map((x) => x.trim()).filter(Boolean)) {
+    if (!parts.some((q) => q.toLowerCase().includes(p.toLowerCase()))) parts.push(p);
+  }
+  const dest = d.address?.trim() || !(d.lat && d.lng) ? encodeURIComponent(parts.join(", ")) : `${d.lat},${d.lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+}
+
 export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
   const [selectedDealerId, setSelectedDealerId] = useState<string | null>(
     dealers.length > 0 ? dealers[0].id : null
@@ -209,10 +223,7 @@ export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
                           </a>
                         )}
                         <a
-                          href={d.lat && d.lng
-                            ? `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`
-                            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${d.name}, ${d.address}, ${d.city}`)}`
-                          }
+                          href={directionsUrl(d)}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -267,10 +278,7 @@ export function ShowroomMap({ dealers, brandName, city }: ShowroomMapProps) {
 
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <a
-                        href={selectedDealer.lat && selectedDealer.lng
-                          ? `https://www.google.com/maps/dir/?api=1&destination=${selectedDealer.lat},${selectedDealer.lng}`
-                          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${selectedDealer.name}, ${selectedDealer.address}`)}`
-                        }
+                        href={directionsUrl(selectedDealer)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-accent/20 hover:brightness-110"

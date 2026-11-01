@@ -1848,6 +1848,7 @@ def _refresh_loop(hours: float) -> None:
                     ingest.run(arg, city="Hyderabad")           # prices, offers, dealers, specs for these brands
                 elif kind == "city":
                     ingest.run(None, city=arg)                  # city prices and dealers, every brand
+                    _clean_pins()
                 elif kind == "loans":
                     loan_rates.refresh()
                 elif kind == "images":
@@ -1906,6 +1907,7 @@ if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "githu
     from . import snapshot as _snap
 
     def _after_snapshot():
+        _clean_pins()
         _cache_reset()
         _PRICE_ORDER.clear()
     _snap.start(on_applied=_after_snapshot)
@@ -1930,6 +1932,17 @@ def _warm_picks() -> None:
 
 if os.getenv("PICK_WARM", "1") == "1":
     _warm_picks()
+
+
+def _clean_pins() -> None:
+    try:
+        from . import dealer_coords
+        dealer_coords.clean()
+    except Exception as e:  # a bad check must never stop the server
+        logging.getLogger("onroad").warning("pin check failed: %s", e)
+
+
+__import__("threading").Thread(target=_clean_pins, daemon=True, name="pin-check").start()   # on start too
 
 # compress JSON (explore is ~300 KB raw, ~40 KB gzipped): much faster on mobile data
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402

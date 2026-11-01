@@ -116,8 +116,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             .thenByDescending { it.googleCount ?: it.ratingCount })
     }
     fun call(d: NearDealer) = d.phone?.let { ph -> ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + ph.split(',', '/', ';')[0].trim()))) }
-    fun go(d: NearDealer) { if (d.lat != null && d.lng != null)
-        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}"))) }
+    fun go(d: NearDealer) { showroomDirections(d.name, d.address, d.city, d.lat, d.lng)?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, it)) } }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
@@ -250,7 +249,7 @@ private fun FeaturedShowroom(d: NearDealer, vm: BrowseVM, call: (NearDealer) -> 
             Box(Modifier.padding(vertical = 10.dp)) { Ratings(d) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (d.phone != null) Action(Icons.Outlined.Call, "Call", Good, Modifier.weight(1f)) { call(d) }
-                if (d.lat != null) Action(Icons.Outlined.Directions, "Directions", Electric, Modifier.weight(1f)) { go(d) }
+                if (d.lat != null || d.address.isNotBlank()) Action(Icons.Outlined.Directions, "Directions", Electric, Modifier.weight(1f)) { go(d) }
                 Action(Icons.Outlined.StarOutline, "Rate", Amber, Modifier.weight(1f), rate)
             }
         }
@@ -277,7 +276,7 @@ private fun ShowroomCard(d: NearDealer, vm: BrowseVM, call: () -> Unit, go: () -
             }
             Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (d.phone != null) Action(Icons.Outlined.Call, "Call", Good, Modifier.weight(1f), call)
-                if (d.lat != null) Action(Icons.Outlined.Directions, "Directions", Electric, Modifier.weight(1f), go)
+                if (d.lat != null || d.address.isNotBlank()) Action(Icons.Outlined.Directions, "Directions", Electric, Modifier.weight(1f), go)
                 Action(Icons.Outlined.StarOutline, "Rate", Amber, Modifier.weight(1f), rate)
             }
         }
