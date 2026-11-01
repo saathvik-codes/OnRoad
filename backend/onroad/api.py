@@ -68,7 +68,8 @@ def _cache_reset() -> None:
     _RESP_CACHE.clear(); _RESP_BYTES = 0
 _CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/api/models/", "/api/bands", "/api/cities",
               "/api/meta", "/api/variant-specs", "/api/updates", "/api/ownership", "/api/news", "/api/loan-rates", "/api/states", "/api/model-features")
-_CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "300"))
+# catalogue data only changes on a refresh / snapshot, and both clear this cache (_cache_reset), so an hour is safe
+_CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "3600"))
 
 
 def _log_activity(request: Request) -> None:
@@ -402,18 +403,57 @@ def _price_order(city: str) -> list[str]:
 _PRICE_ORDER: dict[str, list[str]] = {}
 
 
+_PICK_BUILT: dict[str, tuple] = {}            # city key -> prices version the stored pick was built from
+_PICK_VER: dict = {"at": 0.0, "v": None}
+_PICK_LOCK = __import__("threading").Lock()
+
+
+def _prices_version(conn) -> tuple:
+    """Changes whenever prices are added or removed; checked at most once a minute."""
+    if time.time() - _PICK_VER["at"] > 60 or _PICK_VER["v"] is None:
+        _PICK_VER["v"] = tuple(conn.execute("SELECT MAX(rowid), COUNT(*) FROM prices").fetchone())
+        _PICK_VER["at"] = time.time()
+    return _PICK_VER["v"]
+
+
 def _pick(city: str) -> tuple[str, tuple]:
     """CTE `pick`: one current ex-showroom price per variant for `city`: that city's own price, else the brand's national
     list, else the nearest city in the same state that the brand lists, else the nearest listed city anywhere.
-    Newest first within each."""
-    order = [c for c in _price_order(city) if c.lower() != city.strip().lower()][:60]
-    case = "CASE " + " ".join("WHEN p.city = ? THEN %d" % (i + 2) for i in range(len(order))) + " ELSE 999 END" if order else "999"
-    sql = f"""pick AS (SELECT variant_id, ex_showroom_inr, city, fetched_at, source_url FROM (
-                 SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.variant_id ORDER BY
-                        CASE WHEN lower(p.city) = lower(?) THEN 0 WHEN p.city = 'India (national)' THEN 1 ELSE {case} END,
-                        p.fetched_at DESC) AS rn
-                 FROM prices p) WHERE rn = 1)"""
-    return sql, (city, *order)
+    Newest first within each.
+
+    Ranking all ~55k price rows per request made the first uncached call of every page take ~10 s on the server, so the
+    result is stored per city in pick_cache and rebuilt only when the prices change (refresh / snapshot)."""
+    key = city.strip().lower()
+    with closing(db.connect()) as conn:
+        ver = _prices_version(conn)
+        if key not in _PICK_BUILT:                 # after a restart: what was built before, if the table exists
+            try:
+                row = conn.execute("SELECT ver FROM pick_meta WHERE city_key = ?", (key,)).fetchone()
+                if row:
+                    _PICK_BUILT[key] = tuple(__import__("json").loads(row[0]))
+            except Exception:
+                pass
+        if _PICK_BUILT.get(key) != ver:
+            with _PICK_LOCK:
+                if _PICK_BUILT.get(key) != ver:
+                    order = [c for c in _price_order(city) if c.lower() != key][:60]
+                    case = ("CASE " + " ".join("WHEN p.city = ? THEN %d" % (i + 2) for i in range(len(order))) + " ELSE 999 END"
+                            if order else "999")
+                    conn.execute("""CREATE TABLE IF NOT EXISTS pick_cache (city_key TEXT NOT NULL, variant_id TEXT NOT NULL,
+                                    ex_showroom_inr INTEGER, city TEXT, fetched_at TEXT, source_url TEXT,
+                                    PRIMARY KEY (city_key, variant_id)) WITHOUT ROWID""")
+                    conn.execute("DELETE FROM pick_cache WHERE city_key = ?", (key,))
+                    conn.execute(f"""INSERT INTO pick_cache SELECT ?, variant_id, ex_showroom_inr, city, fetched_at, source_url FROM (
+                                     SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.variant_id ORDER BY
+                                            CASE WHEN lower(p.city) = ? THEN 0 WHEN p.city = 'India (national)' THEN 1 ELSE {case} END,
+                                            p.fetched_at DESC) AS rn
+                                     FROM prices p) WHERE rn = 1""", (key, key, *order))
+                    conn.execute("CREATE TABLE IF NOT EXISTS pick_meta (city_key TEXT PRIMARY KEY, ver TEXT)")
+                    conn.execute("INSERT OR REPLACE INTO pick_meta VALUES (?, ?)", (key, __import__("json").dumps(list(ver))))
+                    conn.commit()
+                    _PICK_BUILT[key] = ver
+    sql = """pick AS MATERIALIZED (SELECT variant_id, ex_showroom_inr, city, fetched_at, source_url FROM pick_cache WHERE city_key = ?)"""
+    return sql, (key,)
 
 
 def _price_city(city: str) -> str:
@@ -1870,6 +1910,30 @@ if os.getenv("SNAPSHOT_PULL", "1") == "1" and os.getenv("REFRESH_SOURCE", "githu
         _PRICE_ORDER.clear()
     _snap.start(on_applied=_after_snapshot)
 
+
+def _warm_picks() -> None:
+    """Keeps every city's stored prices current in the background (after start and after each refresh), so no buyer's
+    request ever pays for rebuilding them. Cities in CITIES order, so the main ones come first."""
+    import threading as _th
+    def loop():
+        time.sleep(20)
+        while True:
+            for name in list(CITIES):
+                try:
+                    _pick(name)
+                except Exception:
+                    pass
+                time.sleep(0.2)                        # leave CPU for real requests
+            time.sleep(120)
+    _th.Thread(target=loop, daemon=True, name="pick-warm").start()
+
+
+if os.getenv("PICK_WARM", "1") == "1":
+    _warm_picks()
+
+# compress JSON (explore is ~300 KB raw, ~40 KB gzipped): much faster on mobile data
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # outermost: decides cross-site access per request, so cached responses never carry another site's CORS headers
 app.add_middleware(
