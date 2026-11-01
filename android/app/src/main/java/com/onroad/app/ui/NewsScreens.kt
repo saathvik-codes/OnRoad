@@ -98,77 +98,161 @@ fun NewsCarousel(news: List<NewsItem>, onModel: (String) -> Unit, onAll: () -> U
     }
 }
 
-/** Updates: news from publishers, and price changes / new models / new offers from makers' own data. */
+/** Updates: news from publishers, and launches / price changes / offers from makers' own data. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun UpdatesScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = hiltViewModel()) {
     val ctx = LocalContext.current
     var tab by rememberKept("updates.tab") { "news" }
     var topic by rememberKept<String?>("updates.topic") { null }
+    var kind by rememberKept<String?>("updates.kind") { null }
     var news by remember { mutableStateOf<List<NewsItem>?>(null) }
     var ups by remember { mutableStateOf<List<UpdateItem>?>(null) }
-    LaunchedEffect(topic) { news = runCatching { vm.api.news(60, topic) }.getOrElse { emptyList() } }
+    LaunchedEffect(topic) { news = null; news = runCatching { vm.api.news(60, topic) }.getOrElse { emptyList() } }
     LaunchedEffect(Unit) { ups = runCatching { vm.api.updates("car", 80) }.getOrElse { emptyList() } }
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { ScreenHeader("Updates", "News, launches and price changes", onBack) }
         item {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("news" to "News", "prices" to "Prices & launches").forEach { (k, l) ->
-                    Text(l, color = if (tab == k) Color.White else Ink, style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.clip(Corner).background(if (tab == k) Ignition else Panel2).clickable { tab = k }.padding(horizontal = 14.dp, vertical = 8.dp))
+            Segmented(listOf("news" to "News", "prices" to "Prices & launches"), tab, { tab = it },
+                Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp))
+        }
+        // filters stay pinned under the header while the list scrolls
+        stickyHeader(key = "filters-$tab") {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+                if (tab == "news") {
+                    ChipRow((listOf<String?>(null) + TOPIC.keys.filter { it != "industry" }).map { t -> t to (t?.let { TOPIC[it] } ?: "All") }, topic) { topic = it }
+                } else {
+                    val l = ups.orEmpty()
+                    val counts = mapOf<String?, Int>(null to l.size, "new" to l.count { it.kind == "new" },
+                        "price" to l.count { it.kind == "price" }, "offer" to l.count { it.kind == "offer" })
+                    ChipRow(listOf(null to "All", "new" to "Launches", "price" to "Price changes", "offer" to "Offers"), kind,
+                        counts = if (ups == null) null else counts) { kind = it }
                 }
             }
         }
         if (tab == "news") {
-            item {
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    (listOf<String?>(null) + TOPIC.keys.filter { it != "industry" }).forEach { t ->
-                        Text(t?.let { TOPIC[it] } ?: "All", color = if (topic == t) Ink else Mute, style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (topic == t) FontWeight.SemiBold else FontWeight.Normal,
-                            modifier = Modifier.clickable { topic = t }.padding(vertical = 4.dp))
-                    }
-                }
-            }
             val list = news
-            if (list == null) item { Text("Loading…", color = Mute, modifier = Modifier.padding(16.dp)) }
-            else if (list.isEmpty()) item { Text("No stories here yet.", color = Mute, modifier = Modifier.padding(16.dp)) }
-            else items(list, key = { it.id }) { n ->
-                Row(Modifier.fillMaxWidth().clickable { Track.news(n.source, n.topic); open(ctx, n.url) }.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${TOPIC[n.topic] ?: "News"} · ${n.source} · ${ago(n.published)}", color = Mute, style = MaterialTheme.typography.labelSmall)
-                        Text(n.title, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        if (n.modelId != null) Text("${n.modelName}: on-road price", color = Ignition, style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(top = 4.dp).clickable { onModel(n.modelId) })
+            when {
+                list == null -> items(5) { SkeletonRow() }
+                list.isEmpty() -> item { EmptyNote("No stories in this topic yet.", "Try All, or check back later today.") }
+                else -> items(list, key = { it.id }) { n ->
+                    Row(Modifier.fillMaxWidth().clickable { Track.news(n.source, n.topic); open(ctx, n.url) }.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                KindTag(TOPIC[n.topic] ?: "News", Ignition)
+                                Spacer(Modifier.width(8.dp))
+                                Text("${n.source} · ${ago(n.published)}", color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(n.title, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            if (n.modelId != null) Text("${n.modelName}: on-road price", color = Ignition, style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(top = 6.dp).clickable { onModel(n.modelId) })
+                        }
+                        if (n.imageUrl != null) { Spacer(Modifier.width(12.dp))
+                            AsyncImage(n.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.size(96.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Panel2)) }
                     }
-                    if (n.imageUrl != null) { Spacer(Modifier.width(12.dp))
-                        AsyncImage(n.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.size(96.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Panel2)) }
                 }
             }
         } else {
-            val list = ups
-            if (list == null) item { Text("Loading…", color = Mute, modifier = Modifier.padding(16.dp)) }
-            else {
-                val launches = list.filter { it.kind == "new" }
-                val prices = list.filter { it.kind == "price" }
-                item { Text("New on the market", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp)) }
-                if (launches.isEmpty()) item { Text("No new models in the last four months.", color = Mute, modifier = Modifier.padding(horizontal = 16.dp)) }
-                items(launches, key = { "n" + it.title }) { u -> UpdateRow(u, vm) { u.modelId?.let(onModel) } }
-                item { Text("Price changes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp)) }
-                if (prices.isEmpty()) item { Text("No lasting price changes in the last four months.", color = Mute, modifier = Modifier.padding(horizontal = 16.dp)) }
-                items(prices, key = { "p" + it.title + it.date }) { u -> UpdateRow(u, vm) { u.modelId?.let(onModel) } }
+            val list = ups?.filter { kind == null || it.kind == kind }
+            when {
+                list == null -> items(5) { SkeletonRow() }
+                list.isEmpty() -> item {
+                    EmptyNote(when (kind) { "new" -> "No new models in the last four months."; "price" -> "No lasting price changes in the last four months."
+                        "offer" -> "No current manufacturer offers."; else -> "Nothing new in the last four months." }, "Makers' own websites are checked every few hours.")
+                }
+                else -> items(list, key = { it.kind + it.title + it.date }) { u -> UpdateRow(u, vm) { u.modelId?.let(onModel) } }
+            }
+        }
+    }
+}
+
+/** Two equal options in one rounded track; the chosen one is raised. */
+@Composable
+private fun Segmented(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(4.dp)) {
+        options.forEach { (k, label) ->
+            val on = k == selected
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) Panel else Color.Transparent)
+                .then(if (on) Modifier.border(1.dp, Line, RoundedCornerShape(10.dp)) else Modifier)
+                .clickable { onPick(k) }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Text(label, color = if (on) Ink else Mute, style = MaterialTheme.typography.labelLarge, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
+            }
+        }
+    }
+}
+
+/** Scrollable filter chips; the chosen one is tinted with the brand colour. Optional counts; empty filters are hidden. */
+@Composable
+private fun ChipRow(options: List<Pair<String?, String>>, selected: String?, counts: Map<String?, Int>? = null, onPick: (String?) -> Unit) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (k, label) ->
+            val on = k == selected
+            val n = counts?.get(k)
+            if (counts != null && k != null && n == 0 && !on) return@forEach
+            Row(Modifier.height(36.dp).clip(RoundedCornerShape(18.dp))
+                .background(if (on) Ignition.copy(alpha = 0.12f) else Panel)
+                .border(1.dp, if (on) Ignition else Line, RoundedCornerShape(18.dp))
+                .clickable { onPick(k) }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = if (on) Ignition else Ink, style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
+                if (n != null) { Spacer(Modifier.width(6.dp))
+                    Text("$n", color = if (on) Ignition else Mute, style = MaterialTheme.typography.labelMedium) }
             }
         }
     }
 }
 
 @Composable
+private fun KindTag(text: String, color: Color) = Text(text, color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
+    modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(color.copy(alpha = 0.12f)).padding(horizontal = 7.dp, vertical = 2.dp))
+
+@Composable
+private fun SkeletonRow() = Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Column(Modifier.weight(1f)) {
+        Box(Modifier.width(110.dp).height(12.dp).clip(RoundedCornerShape(6.dp)).background(Panel2))
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(6.dp)).background(Panel2))
+        Spacer(Modifier.height(6.dp))
+        Box(Modifier.fillMaxWidth(0.7f).height(14.dp).clip(RoundedCornerShape(6.dp)).background(Panel2))
+    }
+    Spacer(Modifier.width(12.dp))
+    Box(Modifier.size(96.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Panel2))
+}
+
+@Composable
+private fun EmptyNote(title: String, sub: String) = Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 36.dp),
+    horizontalAlignment = Alignment.CenterHorizontally) {
+    Text(title, style = MaterialTheme.typography.titleSmall, color = Ink)
+    Spacer(Modifier.height(4.dp))
+    Text(sub, style = MaterialTheme.typography.bodySmall, color = Mute)
+}
+
+@Composable
 private fun UpdateRow(u: UpdateItem, vm: BrowseVM, onClick: () -> Unit) {
+    val down = u.kind == "price" && Regex("cut|lower|drop|reduc", RegexOption.IGNORE_CASE).containsMatchIn(u.title + " " + u.detail)
+    val (tag, color) = when (u.kind) {
+        "new" -> "New launch" to Ignition
+        "offer" -> "Offer" to Good
+        "price" -> if (down) "Price cut" to Good else "Price rise" to Amber
+        else -> "Update" to Mute
+    }
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clip(RoundedCornerShape(16.dp)).background(Panel)
         .border(1.dp, Line, RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        AsyncImage(vm.prefs.img(u.imageUrl, 320), null, contentScale = ContentScale.Fit, modifier = Modifier.size(84.dp, 56.dp))
+        Box(Modifier.size(88.dp, 60.dp).clip(RoundedCornerShape(10.dp)).background(Panel2), contentAlignment = Alignment.Center) {
+            AsyncImage(vm.prefs.img(u.imageUrl, 320), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(4.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(u.title.removePrefix("New: "), style = MaterialTheme.typography.titleSmall, maxLines = 2)
-            Text("${u.date} · ${u.detail}", color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                KindTag(tag, color); Spacer(Modifier.width(8.dp))
+                Text(u.date, color = Mute, style = MaterialTheme.typography.labelSmall)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(u.title.removePrefix("New: "), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(u.detail, color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

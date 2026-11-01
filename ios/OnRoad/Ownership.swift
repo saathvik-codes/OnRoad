@@ -232,43 +232,160 @@ struct NewsCarousel: View {
 }
 
 struct UpdatesView: View {
-    @State private var tab = "news"
-    @State private var news: [NewsItem] = []
-    @State private var ups: [UpdateItem] = []
+    @AppStorage("updates.tab") private var tab = "news"
+    @AppStorage("updates.topic") private var topic = ""          // "" = all topics
+    @AppStorage("updates.kind") private var kind = ""            // "" = everything
+    @State private var news: [NewsItem]? = nil
+    @State private var ups: [UpdateItem]? = nil
+
+    private var topics: [(String, String)] { [("", "All")] + ["launch", "price", "safety", "ev", "policy", "sales", "spied"].map { ($0, topicName[$0] ?? $0) } }
+    private var kinds: [(String, String, Int?)] {
+        let l = ups ?? []
+        let all: [(String, String, Int?)] = [("", "All", l.count), ("new", "Launches", l.filter { $0.kind == "new" }.count),
+                                            ("price", "Price changes", l.filter { $0.kind == "price" }.count), ("offer", "Offers", l.filter { $0.kind == "offer" }.count)]
+        return ups == nil ? all.map { ($0.0, $0.1, nil) } : all.filter { $0.0.isEmpty || ($0.2 ?? 0) > 0 || $0.0 == kind }
+    }
+
     var body: some View {
-        List {
-            Picker("", selection: $tab) { Text("News").tag("news"); Text("Prices & launches").tag("prices") }.pickerStyle(.segmented)
-            if tab == "news" {
-                ForEach(news) { n in
-                    Link(destination: URL(string: n.url)!) {
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("\(topicName[n.topic] ?? "News") · \(n.source) · \(ago(n.published))").font(.caption2).foregroundStyle(Palette.mute)
-                                Text(n.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(3)
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Picker("", selection: $tab) { Text("News").tag("news"); Text("Prices & launches").tag("prices") }
+                    .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 4)
+                Section {
+                    if tab == "news" { newsList } else { updatesList }
+                } header: {
+                    // filters stay pinned while the list scrolls
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            if tab == "news" {
+                                ForEach(topics, id: \.0) { t in UpdChip(label: t.1, count: nil, on: topic == t.0) { topic = t.0 } }
+                            } else {
+                                ForEach(kinds, id: \.0) { k in UpdChip(label: k.1, count: k.2, on: kind == k.0) { kind = k.0 } }
                             }
-                            Spacer()
-                            if let u = n.imageUrl { AsyncImage(url: URL(string: u)) { $0.resizable().scaledToFill() } placeholder: { Palette.panel2 }
-                                .frame(width: 90, height: 66).clipShape(RoundedRectangle(cornerRadius: 10)) }
-                        }
-                    }
+                        }.padding(.horizontal, 16).padding(.vertical, 10)
+                    }.background(Palette.night)
                 }
-            } else {
-                Section("New on the market") {
-                    let l = ups.filter { $0.kind == "new" }
-                    if l.isEmpty { Text("No new models in the last four months.").foregroundStyle(Palette.mute) }
-                    ForEach(l, id: \.self) { u in Text(u.title.replacingOccurrences(of: "New: ", with: "")).font(.subheadline.weight(.semibold)) }
-                }
-                Section("Price changes") {
-                    let l = ups.filter { $0.kind == "price" }
-                    if l.isEmpty { Text("No lasting price changes in the last four months.").foregroundStyle(Palette.mute) }
-                    ForEach(l, id: \.self) { u in VStack(alignment: .leading) { Text(u.title).font(.subheadline.weight(.semibold)); Text(u.detail ?? "").font(.caption).foregroundStyle(Palette.mute) } }
-                }
-            }
+            }.padding(.bottom, 24)
         }
+        .background(Palette.night)
         .navigationTitle("Updates")
-        .task {
-            news = (try? await API.shared.get("api/news", ["limit": "60"])) ?? []
-            ups = (try? await API.shared.get("api/updates", ["vehicle_type": "car", "limit": "80"])) ?? []
+        .task(id: topic) { news = nil; news = (try? await API.shared.get("api/news", ["limit": "60", "topic": topic.isEmpty ? nil : topic])) ?? [] }
+        .task { ups = (try? await API.shared.get("api/updates", ["vehicle_type": "car", "limit": "80"])) ?? [] }
+    }
+
+    @ViewBuilder private var newsList: some View {
+        if let list = news {
+            if list.isEmpty { UpdEmpty(title: "No stories in this topic yet.", sub: "Try All, or check back later today.") }
+            ForEach(list) { n in
+                Link(destination: URL(string: n.url)!) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                UpdTag(text: topicName[n.topic] ?? "News", color: Palette.ignition)
+                                Text("\(n.source) · \(ago(n.published))").font(.caption2).foregroundStyle(Palette.mute).lineLimit(1)
+                            }
+                            Text(n.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(3).multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 0)
+                        if let u = n.imageUrl { AsyncImage(url: URL(string: u)) { $0.resizable().scaledToFill() } placeholder: { Palette.panel2 }
+                            .frame(width: 96, height: 72).clipShape(RoundedRectangle(cornerRadius: 12)) }
+                    }.padding(.horizontal, 16).padding(.vertical, 12)
+                }.simultaneousGesture(TapGesture().onEnded { Track.news(n.source, n.topic) })
+                Divider().overlay(Palette.line).padding(.leading, 16)
+            }
+        } else { ForEach(0..<5, id: \.self) { _ in UpdSkeleton() } }
+    }
+
+    @ViewBuilder private var updatesList: some View {
+        if let all = ups {
+            let list = all.filter { kind.isEmpty || $0.kind == kind }
+            if list.isEmpty {
+                UpdEmpty(title: kind == "new" ? "No new models in the last four months." : kind == "price" ? "No lasting price changes in the last four months."
+                         : kind == "offer" ? "No current manufacturer offers." : "Nothing new in the last four months.",
+                         sub: "Makers' own websites are checked every few hours.")
+            }
+            ForEach(list, id: \.self) { u in
+                if let id = u.modelId { NavigationLink { ModelView(id: id) } label: { UpdCard(u: u) }.buttonStyle(.plain) } else { UpdCard(u: u) }
+            }
+        } else { ForEach(0..<5, id: \.self) { _ in UpdSkeleton() } }
+    }
+}
+
+/// Filter chip: the chosen one is tinted with the brand colour; optional count.
+private struct UpdChip: View {
+    let label: String; let count: Int?; let on: Bool; let tap: () -> Void
+    var body: some View {
+        Button(action: tap) {
+            HStack(spacing: 6) {
+                Text(label).font(.subheadline.weight(on ? .semibold : .medium)).foregroundStyle(on ? Palette.ignition : Palette.ink)
+                if let c = count { Text("\(c)").font(.caption.weight(.medium)).foregroundStyle(on ? Palette.ignition : Palette.mute) }
+            }
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(on ? Palette.ignition.opacity(0.12) : Palette.panel, in: Capsule())
+            .overlay(Capsule().stroke(on ? Palette.ignition : Palette.line, lineWidth: 1))
+        }.buttonStyle(.plain)
+    }
+}
+
+private struct UpdTag: View {
+    let text: String; let color: Color
+    var body: some View {
+        Text(text).font(.caption2.weight(.semibold)).foregroundStyle(color)
+            .padding(.horizontal, 7).padding(.vertical, 2).background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private struct UpdCard: View {
+    let u: UpdateItem
+    private var tag: (String, Color) {
+        switch u.kind {
+        case "new": return ("New launch", Palette.ignition)
+        case "offer": return ("Offer", Palette.good)
+        case "price":
+            let t = (u.title + " " + (u.detail ?? "")).lowercased()
+            return ["cut", "lower", "drop", "reduc"].contains(where: { t.contains($0) }) ? ("Price cut", Palette.good) : ("Price rise", Palette.amber)
+        default: return ("Update", Palette.mute)
         }
+    }
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Palette.panel2
+                if let s = u.imageUrl, let url = URL(string: s) { AsyncImage(url: url) { $0.resizable().scaledToFit() } placeholder: { Color.clear }.padding(4) }
+            }.frame(width: 88, height: 60).clipShape(RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) { UpdTag(text: tag.0, color: tag.1); Text(u.date).font(.caption2).foregroundStyle(Palette.mute) }
+                Text(u.title.replacingOccurrences(of: "New: ", with: "")).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(2)
+                if let d = u.detail, !d.isEmpty { Text(d).font(.caption).foregroundStyle(Palette.mute).lineLimit(2) }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12).background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.line, lineWidth: 1))
+        .padding(.horizontal, 16).padding(.vertical, 5)
+    }
+}
+
+private struct UpdSkeleton: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                RoundedRectangle(cornerRadius: 6).fill(Palette.panel2).frame(width: 110, height: 12)
+                RoundedRectangle(cornerRadius: 6).fill(Palette.panel2).frame(height: 14)
+                RoundedRectangle(cornerRadius: 6).fill(Palette.panel2).frame(width: 180, height: 14)
+            }
+            Spacer(minLength: 0)
+            RoundedRectangle(cornerRadius: 12).fill(Palette.panel2).frame(width: 96, height: 72)
+        }.padding(.horizontal, 16).padding(.vertical, 12)
+    }
+}
+
+private struct UpdEmpty: View {
+    let title: String; let sub: String
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+            Text(sub).font(.caption).foregroundStyle(Palette.mute)
+        }.frame(maxWidth: .infinity).padding(.horizontal, 24).padding(.vertical, 36).multilineTextAlignment(.center)
     }
 }

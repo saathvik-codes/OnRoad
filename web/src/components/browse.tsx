@@ -18,8 +18,8 @@ export function BrandGrid({ limit, vehicleType = "car" }: { limit?: number; vehi
   // the server orders brands by starting price, cheapest first (price on request last)
   const live = (data ?? []).filter((b) => b.models > 0);
   // Brands we track but can't price right now (site down / blocked) stay visible, greyed, with the reason on their page.
-  const waiting = limit ? [] : (data ?? []).filter((b) => b.models === 0).sort((a, b) => a.name.localeCompare(b.name));
-  const brands = [...live, ...waiting].slice(0, limit);
+  // brands whose official site can't be read (no models yet) aren't shown: an empty tile only looks broken
+  const brands = live.slice(0, limit);
   const isBike = vehicleType === "bike";
   const basePath = isBike ? "/bikes" : "/cars";
 
@@ -27,11 +27,11 @@ export function BrandGrid({ limit, vehicleType = "car" }: { limit?: number; vehi
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       {!data ? Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-32" />) : brands.map((b, i) => (
         <motion.div key={b.slug} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
-          <Link href={`${basePath}?brand=${b.slug}`} title={b.models ? undefined : "Prices not available right now: open for the reason"}
-            className={`group flex h-28 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-white p-3 sm:h-32 sm:p-4 shadow-[0_10px_40px_-20px_rgba(255,255,255,0.25)] border border-line transition hover:-translate-y-1 hover:shadow-[0_18px_50px_-18px_rgba(255,77,46,0.6)] ${b.models ? "" : "opacity-60 grayscale"}`}>
+          <Link href={`${basePath}?brand=${b.slug}`} 
+            className={`group flex h-28 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-white p-3 sm:h-32 sm:p-4 shadow-[0_10px_40px_-20px_rgba(255,255,255,0.25)] border border-line transition hover:-translate-y-1 hover:shadow-[0_18px_50px_-18px_rgba(255,77,46,0.6)]`}>
             {b.logo ? <img src={b.logo} alt={b.name} className="h-9 w-full max-w-full object-contain transition group-hover:scale-105 sm:h-12" />
               : <span className="text-center font-bold text-slate-900 text-sm">{b.name}</span>}
-            <span className="text-center text-[11px] font-medium leading-tight text-neutral-600">{b.name}<br />{b.from_inr ? `from ${lakh(b.from_inr)}` : b.models ? `${b.models} models` : "Prices unavailable"}</span>
+            <span className="text-center text-[11px] font-medium leading-tight text-neutral-600">{b.name}<br />{b.from_inr ? `from ${lakh(b.from_inr)}` : "Price on request"}</span>
           </Link>
         </motion.div>
       ))}

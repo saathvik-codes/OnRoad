@@ -234,7 +234,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 SkeletonBrandTile()
             }
         } else {
-            items(s.brands, key = { it.slug }) { b -> BrandTile(b, vm.prefs.img(b.logo, 240)) { onBrand(b) } }
+            items(s.brands.filter { it.models > 0 }, key = { it.slug }) { b -> BrandTile(b, vm.prefs.img(b.logo, 240)) { onBrand(b) } }
         }
     }
 }
@@ -285,7 +285,7 @@ private fun BrandTile(b: Brand, logo: String?, onClick: () -> Unit) = Box(
         if (logo != null) AsyncImage(logo, b.name, contentScale = ContentScale.Fit, modifier = Modifier.height(38.dp).fillMaxWidth())
         else Text(b.name, color = Color.Black, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
-        Text(b.fromInr?.let { "from ${lakh(it)}" } ?: "${b.models} models", color = Color(0xFF555B6E), style = MaterialTheme.typography.labelSmall)
+        Text(b.fromInr?.let { "from ${lakh(it)}" } ?: "Price on request", color = Color(0xFF555B6E), style = MaterialTheme.typography.labelSmall)
     }
 }
 
