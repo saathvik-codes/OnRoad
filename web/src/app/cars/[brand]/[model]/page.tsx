@@ -40,8 +40,46 @@ import { BankLoansComparison } from "@/components/bank-loans";
 import { OwnershipSupportHub } from "@/components/ownership-support";
 import { Track } from "@/lib/track";
 
+/** Confirm the buyer's mobile with a 6-digit SMS code (showrooms only get requests from verified buyers). */
+function VerifyMobile({ onDone }: { onDone: () => void }) {
+  const [number, setNumber] = useState("");
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    setBusy(true);
+    try { await api("/phone/send", { method: "POST", body: JSON.stringify({ phone: number }) }); setSentTo(number); setCode(""); }
+    catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  }
+  async function check(c: string) {
+    if (!sentTo) return;
+    setBusy(true);
+    try { await api("/phone/verify", { method: "POST", body: JSON.stringify({ phone: sentTo, code: c }) }); toast.success("Mobile verified."); onDone(); }
+    catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  }
+  return (
+    <div className="space-y-2 rounded-xl border border-line bg-surface p-4">
+      <p className="text-sm font-medium text-ink">Confirm your mobile number</p>
+      <p className="text-xs text-mute">Showrooms only see requests from verified buyers. Your number is never shown to them.</p>
+      {!sentTo ? (
+        <div className="flex gap-2">
+          <Input value={number} onChange={(e) => setNumber(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 16))} placeholder="98765 43210" inputMode="tel" />
+          <Button onClick={send} loading={busy} disabled={number.replace(/\D/g, "").length < 10}>Send code</Button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Input value={code} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code"
+            onChange={(e) => { const c = e.target.value.replace(/\D/g, "").slice(0, 6); setCode(c); if (c.length === 6) check(c); }} />
+          <Button onClick={() => check(code)} loading={busy} disabled={code.length !== 6}>Confirm</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
-  const { data: me } = useSWR<Account>("/auth/me", fetcher, { shouldRetryOnError: false });
+  const { data: me, mutate: reloadMe } = useSWR<Account>("/auth/me", fetcher, { shouldRetryOnError: false });
+  const { data: phoneCfg } = useSWR<{ enabled: boolean; required: boolean }>("/auth/phone-config", fetcher);
   const [pincode, setPin] = useState("");
   const [colour, setColour] = useState("");
   const [finance, setFinance] = useState(false);
@@ -87,7 +125,8 @@ function QuoteForm({ variant, city }: { variant: Variant; city: string }) {
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 accent-[#ff4d2e] rounded" /> 
         Share this request (without disclosing my phone number) with authorized dealers in {city}.
       </label>
-      <Button onClick={send} loading={busy} disabled={!consent} className="w-full sm:w-auto">
+      {phoneCfg?.enabled && !me.phone_verified && <VerifyMobile onDone={() => reloadMe()} />}
+      <Button onClick={send} loading={busy} disabled={!consent || (!!phoneCfg?.required && !me.phone_verified)} className="w-full sm:w-auto">
         Request Dealer Quotes
       </Button>
     </div>

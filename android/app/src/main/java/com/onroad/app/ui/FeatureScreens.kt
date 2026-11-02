@@ -376,7 +376,15 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
     var when_ by remember { mutableStateOf("1 month") }
     var busy by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf<String?>(null) }
+    var consent by remember { mutableStateOf(false) }
+    var verifying by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    val acc by vm.prefs.account.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    if (verifying) androidx.compose.ui.window.Dialog(onDismissRequest = { verifying = false },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        com.onroad.app.ui.AccountSetupScreen(onDone = { verifying = false }, phoneOnly = true, vm = vm)
+    }
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = Panel) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Art("hero-quote", Modifier.fillMaxWidth().height(130.dp))
@@ -391,16 +399,30 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
                 Pills(listOf("y" to "Need a loan"), if (finance) "y" else "") { finance = !finance }
                 Pills(listOf("y" to "Exchange my vehicle"), if (exchange) "y" else "") { exchange = !exchange }
             }
-            Text("By sending, you agree that this brand's showrooms near you can see this request and contact you.", color = Mute, style = MaterialTheme.typography.bodySmall)
+            if (acc != null && acc!!.phoneVerified == 0) Row(Modifier.fillMaxWidth().clip(Corner).background(Ignition.copy(alpha = 0.08f)).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("Showrooms only see requests from verified buyers.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton({ verifying = true }) { Text("Verify mobile", color = Ignition, fontWeight = FontWeight.SemiBold) }
+            }
+            Row(Modifier.fillMaxWidth().clickable { consent = !consent }, verticalAlignment = Alignment.Top) {
+                androidx.compose.material3.Checkbox(consent, { consent = it })
+                Text("Share this request with $city showrooms of this brand. They see the car, PIN and your preferences, not your phone number, and reply with quotes here.",
+                    color = Mute, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+            }
+            problem?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Button(onClick = {
-                busy = true
+                busy = true; problem = null
                 scope.launch {
-                    runCatching { vm.api.requestQuote(com.onroad.app.data.QuoteRequestIn(variantId, city, pin.ifBlank { null }, finance, exchange, when_)) }
+                    runCatching { vm.api.requestQuote(com.onroad.app.data.QuoteRequestIn(variantId, city, pin.ifBlank { null }, finance, exchange, when_, consent = true)) }
                         .onSuccess { com.onroad.app.data.Track.quote(variantId, city, null); done = "Request sent. Quotes will appear in My garage as showrooms reply." }
-                        .onFailure { done = null; android.util.Log.w("quote", it) }
+                        .onFailure { e ->
+                            done = null
+                            if ((e as? retrofit2.HttpException)?.code() == 428) { verifying = true; problem = "Verify your mobile first, then send." }
+                            else problem = "Couldn't send the request. Try again."
+                        }
                     busy = false
                 }
-            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
+            }, Modifier.fillMaxWidth().height(52.dp), enabled = !busy && consent, colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
                 Text(if (busy) "Sending…" else "Send to nearby showrooms", fontWeight = FontWeight.SemiBold)
             }
         }

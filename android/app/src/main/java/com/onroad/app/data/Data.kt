@@ -109,7 +109,11 @@ import javax.inject.Singleton
 @Serializable data class GoogleIn(val idToken: String)
 @Serializable data class GoogleConfig(val clientId: String? = null)
 @Serializable data class SignupIn(val name: String, val email: String, val phone: String? = null, val password: String, val role: String = "buyer")
-@Serializable data class Account(val id: Long = 0, val email: String = "", val name: String = "", val phone: String? = null, val role: String = "buyer")
+@Serializable data class Account(val id: Long = 0, val email: String = "", val name: String = "", val phone: String? = null, val role: String = "buyer",
+    val phoneVerified: Int = 0)
+@Serializable data class PhoneConfig(val enabled: Boolean = false, val required: Boolean = false, val length: Int = 6)
+@Serializable data class PhoneIn(val phone: String)
+@Serializable data class PhoneCodeIn(val phone: String, val code: String)
 @Serializable data class AppVersion(val versionCode: Int = 0, val versionName: String = "", val downloadUrl: String = "",
     val apkUrl: String = "", val notes: String = "", val forceUpdate: Boolean = false)
 
@@ -148,6 +152,9 @@ interface Api {
     @POST("api/auth/signup") suspend fun signup(@Body body: SignupIn): Account
     @POST("api/auth/logout") suspend fun logout()
     @GET("api/auth/me") suspend fun me(): Account
+    @GET("api/auth/phone-config") suspend fun phoneConfig(): PhoneConfig
+    @POST("api/phone/send") suspend fun phoneSend(@Body body: PhoneIn): kotlinx.serialization.json.JsonObject
+    @POST("api/phone/verify") suspend fun phoneVerify(@Body body: PhoneCodeIn): kotlinx.serialization.json.JsonObject
     @GET("api/offers") suspend fun offers(@Query("city") city: String, @Query("limit") limit: Int = 60): List<OfferItem>
     @GET("api/loan-rates") suspend fun loanRates(@Query("vehicle_type") type: String = "car"): List<LoanRate>
     @GET("api/recommendations") suspend fun recommendations(@Query("city") city: String, @Query("vehicle_type") type: String,
@@ -186,6 +193,13 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     private val _city = MutableStateFlow(sp.getString("city", "Hyderabad")!!)
     val city = _city.asStateFlow()
     fun setCity(c: String) { sp.edit().putString("city", c).apply(); _city.value = c }
+    /** Budget band and body types the buyer picked at sign-up; Explore opens with them selected. */
+    var prefBudget: String?
+        get() = sp.getString("pref_budget", null)
+        set(v) { sp.edit().putString("pref_budget", v).apply() }
+    var prefBodies: Set<String>
+        get() = sp.getStringSet("pref_bodies", emptySet())!!
+        set(v) { sp.edit().putStringSet("pref_bodies", v).apply() }
     var onboarded: Boolean
         get() = sp.getBoolean("onboarded", false)
         set(v) { sp.edit().putBoolean("onboarded", v).apply() }

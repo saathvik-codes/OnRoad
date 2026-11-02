@@ -182,7 +182,18 @@ class MainActivity : ComponentActivity() {
                             if (signIn) nav.navigate("auth")
                         })
                     }
-                    composable("auth") { AuthScreen(onBack = { nav.popBackStack() }, onDone = { nav.popBackStack() }) }
+                    composable("auth") {
+                        val authScope = androidx.compose.runtime.rememberCoroutineScope()
+                        val bvm: com.onroad.app.ui.BrowseVM = androidx.hilt.navigation.compose.hiltViewModel()
+                        AuthScreen(onBack = { nav.popBackStack() }, onDone = {
+                            // new or unverified accounts finish setting up: confirm the mobile, then budget and car type
+                            authScope.launch {
+                                val needs = runCatching { bvm.api.phoneConfig().enabled && bvm.api.me().phoneVerified == 0 }.getOrDefault(false)
+                                if (needs) nav.navigate("setup") { popUpTo("auth") { inclusive = true } } else nav.popBackStack()
+                            }
+                        })
+                    }
+                    composable("setup") { com.onroad.app.ui.AccountSetupScreen(onDone = { nav.popBackStack() }) }
                     composable("account") { ProfileScreen(onSignIn = { nav.navigate("auth") }, onModel = { nav.navigate("model/${enc(it)}") },
                         onCity = { nav.navigate("city") }, onGuide = { nav.navigate("guide") }, onShowrooms = { nav.navigate("showrooms") },
                         onOffers = { nav.navigate("offers") }, onFinder = { nav.navigate("finder") }, onCalc = { nav.navigate("calc") }) }

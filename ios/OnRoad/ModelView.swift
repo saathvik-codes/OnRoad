@@ -283,23 +283,29 @@ struct QuoteSheet: View {
     @State private var note = ""
     @State private var msg: String?
     @State private var busy = false
+    @State private var consent = false
     var body: some View {
         NavigationStack {
             Form {
                 Section { Art(name: msg == nil ? "hero-quote" : "success-quote-sent", height: 130).frame(maxWidth: .infinity) }.listRowBackground(Color.clear)
                 Section { Text(variant.name).font(.headline); Text("Dealers in \(state.city) send you their best on-road price.").foregroundStyle(Palette.mute) }
                 Section("Anything dealers should know?") { TextField("Colour, exchange, finance…", text: $note, axis: .vertical) }
-                Section { Text("Your name and contact go only to the official showrooms near you that answer this request.").font(.caption).foregroundStyle(Palette.mute) }
+                Section {
+                    Toggle(isOn: $consent) {
+                        Text("Share this request with \(state.city) showrooms of this brand. They see the car and your note, not your phone number, and reply with quotes here.")
+                            .font(.caption).foregroundStyle(Palette.mute)
+                    }.tint(Palette.ignition)
+                }
                 if let msg { Text(msg).foregroundStyle(Palette.ignition) }
                 Button(busy ? "Sending…" : "Ask for quotes") {
                     guard state.account != nil else { msg = "Sign in from the Profile tab first."; return }
                     busy = true
                     Task {
                         do { let _: OK = try await API.shared.post("api/quotes/request", QuoteIn(variantId: variant.id, city: state.city, note: note)); Track.quote(variant.id, city: state.city); dismiss() }
-                        catch { msg = error.localizedDescription }
+                        catch { msg = "\(error)".contains("428") ? "Verify your mobile number on the OnRoad website or Android app first, then send." : error.localizedDescription }
                         busy = false
                     }
-                }.disabled(busy)
+                }.disabled(busy || !consent)
             }.navigationTitle("Dealer quotes")
         }
     }

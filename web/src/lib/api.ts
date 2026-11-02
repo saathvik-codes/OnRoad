@@ -140,7 +140,7 @@ export type CrashTest = { brand: string; model: string; variant_tested?: string 
   test_date?: string | null; adult_stars?: number | null; child_stars?: number | null; adult_score?: number | null; adult_max?: number | null;
   child_score?: number | null; child_max?: number | null; airbags_tested?: string | null; notes?: string | null; source_url: string; video_url?: string | null; rating_published?: string | null };
 
-export type Account = { id: number; email: string; name: string; phone: string | null; role: "buyer" | "dealer" | "admin" };
+export type Account = { id: number; email: string; name: string; phone: string | null; role: "buyer" | "dealer" | "admin"; phone_verified?: number };
 
 export type Meta = { rules_as_of: string | null; states_with_rules: string[]; last_refresh: string | null;
   counts: { brands: number; models: number; variants: number; dealers: number; offers: number } };

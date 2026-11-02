@@ -116,7 +116,9 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                   brand: Pair<String, String>? = null, onBack: (() -> Unit)? = null, vm: BrowseVM = hiltViewModel()) {
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     var type by rememberKept("explore.type") { initType }
-    var f by rememberKept("explore.filters") { Filters(budget = initBudget) }
+    var f by rememberKept("explore.filters") {
+        Filters(budget = initBudget ?: vm.prefs.prefBudget, bodies = if (initType == "car") vm.prefs.prefBodies else emptySet())
+    }
     var sort by rememberKept("explore.sort") { "popular" }
     var bands by remember { mutableStateOf<List<Band>>(emptyList()) }
     var brands by remember { mutableStateOf<List<Brand>>(emptyList()) }

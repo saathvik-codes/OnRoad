@@ -183,9 +183,23 @@ def _uid(token: str | None) -> int | None:
         return None
 
 
+def _ensure_phone_columns() -> None:
+    with closing(db.connect()) as conn, conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)")}
+        if "phone_verified_at" not in cols:      # set when the buyer confirms the number with an SMS code
+            conn.execute("ALTER TABLE accounts ADD COLUMN phone_verified_at TEXT")
+
+
+try:
+    _ensure_phone_columns()
+except Exception:
+    pass
+
+
 def account(request: Request) -> dict:
     uid = _uid(request.cookies.get(COOKIE))
-    acc = one("SELECT id, email, name, phone, role FROM accounts WHERE id = ?", (uid,)) if uid else None
+    acc = one("""SELECT id, email, name, phone, role, phone_verified_at IS NOT NULL AS phone_verified
+                 FROM accounts WHERE id = ?""", (uid,)) if uid else None
     if not acc:
         raise HTTPException(401, "Please log in")
     return acc
@@ -292,6 +306,45 @@ def google_login(body: GoogleIn, response: Response):
 def logout(response: Response):
     response.delete_cookie(COOKIE, path="/")
     return {"ok": True}
+
+
+class PhoneSendIn(BaseModel):
+    phone: str = Field(min_length=10, max_length=20)
+
+
+class PhoneCheckIn(BaseModel):
+    phone: str = Field(min_length=10, max_length=20)
+    code: str = Field(min_length=4, max_length=8)
+
+
+@app.get("/api/auth/phone-config")
+def phone_config():
+    """Whether OnRoad verifies mobile numbers by SMS code, and whether it's needed (to ask showrooms for quotes)."""
+    from . import phone_otp
+    m = phone_otp.mode()
+    return {"enabled": m != "off", "required": m == "required", "length": 6, "country": "+91"}
+
+
+@app.post("/api/phone/send")
+def phone_send(body: PhoneSendIn, request: Request, acc: dict = Depends(account)):
+    """Texts a 6-digit code (Message Central). Limits: 1 per 30 s and 5 per hour per buyer, 5 per day per number."""
+    from . import phone_otp
+    try:
+        return phone_otp.send(acc["id"], body.phone)
+    except phone_otp.OtpError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.post("/api/phone/verify")
+def phone_verify(body: PhoneCheckIn, acc: dict = Depends(account)):
+    from . import phone_otp
+    try:
+        phone = phone_otp.verify(acc["id"], body.phone, body.code)
+    except phone_otp.OtpError as e:
+        raise HTTPException(e.status, str(e))
+    with closing(db.connect()) as conn, conn:
+        conn.execute("UPDATE accounts SET phone = ?, phone_verified_at = datetime('now') WHERE id = ?", (phone, acc["id"]))
+    return {"phone": phone, "phone_verified": True}
 
 
 @app.get("/api/auth/me")
@@ -1351,6 +1404,9 @@ class QuoteRequestIn(BaseModel):
 
 @app.post("/api/quotes/request")
 def request_quotes(body: QuoteRequestIn, acc: dict = Depends(role("buyer", "admin"))):
+    from . import phone_otp
+    if phone_otp.mode() == "required" and not acc.get("phone_verified"):
+        raise HTTPException(428, "Verify your mobile number first, so showrooms know the request is real.")
     if not body.consent:
         raise HTTPException(400, "Please agree to share your request with nearby dealers.")
     if not one("SELECT 1 AS x FROM variants WHERE id = ?", (body.variant_id,)):
@@ -1833,11 +1889,11 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 11,
-        "version_name": "1.2.2",
+        "version_code": 12,
+        "version_name": "1.3.0",
         "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
-        "notes": "Share any on-road price on WhatsApp, price alerts with your own target, and a cleaner spec sheet.",
+        "notes": "Verified accounts, a quick setup for your budget and car type, sharing any on-road price, and price alerts with your own target.",
         "force_update": False,
     }
 
