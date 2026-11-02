@@ -101,17 +101,51 @@ struct KeySpecs: View {
             rows.first { $0.label.range(of: rx, options: [.regularExpression, .caseInsensitive]) != nil }.map { (label, $0.value) }
         }
         if !glance.isEmpty {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            // one spec sheet: each spec a row (icon · name · value), read top to bottom
+            VStack(spacing: 0) {
                 ForEach(glance.indices, id: \.self) { i in
                     let item = glance[i]
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(item.0).font(.caption2.weight(.semibold)).foregroundStyle(Palette.mute)
-                        Text(item.1).font(.subheadline.weight(.semibold)).lineLimit(2)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10).background(Palette.panel)
-                        .clipShape(RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(Palette.line))
+                    if i > 0 { Divider().overlay(Palette.line).padding(.leading, 56) }
+                    HStack(spacing: 12) {
+                        Image(systemName: Self.icon(item.0)).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.ignition)
+                            .frame(width: 30, height: 30).background(Palette.ignition.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+                        Text(item.0).font(.subheadline).foregroundStyle(Palette.mute)
+                        Spacer(minLength: 12)
+                        Text(Self.tidy(item.0, item.1)).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                            .multilineTextAlignment(.trailing).lineLimit(2)
+                    }.padding(.horizontal, 14).padding(.vertical, 12)
                 }
-            }.padding(.horizontal, 16)
+            }
+            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Palette.line))
+            .padding(.horizontal, 16)
         }
+    }
+
+    static func icon(_ label: String) -> String {
+        switch label {
+        case "Engine": return "gearshape"
+        case "Power": return "bolt"
+        case "Torque": return "speedometer"
+        case "Mileage": return "fuelpump"
+        case "Range": return "road.lanes"
+        case "Seats": return "carseat.left"
+        default: return "car"
+        }
+    }
+
+    /// Adds the unit where the sheet gives a bare number and the unit is unambiguous; tidies "@" figures.
+    static func tidy(_ label: String, _ raw: String) -> String {
+        var v = raw.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: #"\*+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\s*@\s*"#, with: " @ ", options: .regularExpression)
+        let bare = v.range(of: #"^[\d.,]+$"#, options: .regularExpression) != nil
+        if label == "Engine" && bare { v += " cc" }
+        if label == "Seats" && bare { v += " seats" }
+        if label == "Torque" && v.range(of: "nm|kgm", options: [.regularExpression, .caseInsensitive]) == nil {
+            v = v.replacingOccurrences(of: #"^([\d.,]+)"#, with: "$1 Nm", options: .regularExpression)
+        }
+        if (label == "Power" || label == "Torque") && v.contains(" @ ") && v.range(of: "rpm", options: .caseInsensitive) == nil { v += " rpm" }
+        return v
     }
 }
 

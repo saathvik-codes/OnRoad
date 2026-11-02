@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +26,16 @@ import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.Scale
+import androidx.compose.material.icons.outlined.Height
+import androidx.compose.material.icons.outlined.Luggage
+import androidx.compose.material.icons.outlined.EventSeat
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -176,21 +187,53 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
 /** Key figures in a three-column grid (wraps to as many rows as needed). */
 @Composable
 fun KeySpecGrid(items: List<Pair<String, String>>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { (l, v) ->
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp)) {
-                        Text(l, style = MaterialTheme.typography.labelSmall, color = Mute, maxLines = 1)
-                        Spacer(Modifier.height(2.dp))
-                        Text(v, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
+    // one spec sheet: each spec a row (icon · name · value), read top to bottom like a maker's brochure
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))) {
+        items.forEachIndexed { i, (label, value) ->
+            if (i > 0) HorizontalDivider(color = Line, modifier = Modifier.padding(start = 56.dp))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(Ignition.copy(alpha = 0.10f)), contentAlignment = Alignment.Center) {
+                    Icon(specIcon(label), null, tint = Ignition, modifier = Modifier.size(17.dp))
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                Spacer(Modifier.width(12.dp))
+                Text(label, color = Mute, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(specValue(label, value), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.padding(start = 12.dp).widthIn(max = 200.dp))
             }
         }
     }
+}
+
+private fun specIcon(label: String) = when (label) {
+    "Engine" -> Icons.Outlined.Settings
+    "Power" -> Icons.Outlined.Bolt
+    "Torque" -> Icons.Outlined.Speed
+    "Mileage", "Fuel tank" -> Icons.Outlined.LocalGasStation
+    "Range" -> Icons.Outlined.Route
+    "Battery" -> Icons.Outlined.BatteryChargingFull
+    "Seats" -> Icons.Outlined.EventSeat
+    "Boot space" -> Icons.Outlined.Luggage
+    "Ground clearance" -> Icons.Outlined.Height
+    "Kerb weight" -> Icons.Outlined.Scale
+    else -> Icons.Outlined.DirectionsCar
+}
+
+/** Adds the unit where the maker's sheet gives a bare number and the unit is unambiguous; tidies "@" figures. */
+private fun specValue(label: String, raw: String): String {
+    var v = raw.trim().replace(Regex("""\*+$"""), "").replace(Regex("""\s*@\s*"""), " @ ")
+    val bare = Regex("""^[\d.,]+$""").matches(v)
+    v = when {
+        label == "Engine" && bare -> "$v cc"
+        label == "Torque" && !Regex("nm|kgm", RegexOption.IGNORE_CASE).containsMatchIn(v) -> v.replaceFirst(Regex("""^([\d.,]+)"""), "$1 Nm")
+        label == "Seats" && bare -> "$v seats"
+        label == "Boot space" && bare -> "$v L"
+        label == "Ground clearance" && bare -> "$v mm"
+        label == "Kerb weight" && bare -> "$v kg"
+        label == "Fuel tank" && bare -> "$v L"
+        else -> v
+    }
+    if (" @ " in v && !Regex("rpm", RegexOption.IGNORE_CASE).containsMatchIn(v) && label in setOf("Power", "Torque")) v += " rpm"
+    return v
 }
 
 @Composable
