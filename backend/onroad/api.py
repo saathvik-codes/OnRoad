@@ -1796,11 +1796,11 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 9,
-        "version_name": "1.2.0",
+        "version_code": 10,
+        "version_name": "1.2.1",
         "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
-        "notes": "Directions open the showroom's exact place in Maps, a redesigned Updates page with offers, and a faster app.",
+        "notes": "A cleaner spec sheet for every variant, directions to the showroom's exact place, and a redesigned Updates page.",
         "force_update": False,
     }
 

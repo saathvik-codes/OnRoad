@@ -20,8 +20,8 @@ android {
         applicationId = "com.onroad.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.2.0"
+        versionCode = 10
+        versionName = "1.2.1"
         // Same API as the OnRoad website. Change it in Settings (tunnel / server URL).
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8101\"")      // local API, reachable only from the emulator
         buildConfigField("String", "LIVE_SERVER", "\"https://onroad-uu9c.onrender.com\"")
