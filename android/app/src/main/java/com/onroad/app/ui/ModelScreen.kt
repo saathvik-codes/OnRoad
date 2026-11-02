@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.BookmarkAdd
@@ -74,6 +75,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     val acc by vm.prefs.account.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askQuote by remember { mutableStateOf(false) }
+    var trackAsk by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var ownership by remember { mutableStateOf<com.onroad.app.data.Ownership?>(null) }
     var ownFailed by remember { mutableStateOf(false) }
@@ -118,12 +120,8 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                 IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
                 Text(model.brandName, color = Mute, modifier = Modifier.weight(1f))
                 IconButton({
-                    val v = variant ?: return@IconButton
-                    if (acc == null) onSignIn() else scope.launch {
-                        com.onroad.app.data.Track.saveCar(v.id)
-                        runCatching { vm.api.save(com.onroad.app.data.SaveIn(v.id, city)) }
-                            .onSuccess { android.widget.Toast.makeText(ctx, "Saved to your garage. We'll alert you when the price drops.", android.widget.Toast.LENGTH_SHORT).show() }
-                    }
+                    if (variant == null) return@IconButton
+                    if (acc == null) onSignIn() else trackAsk = true
                 }) { Icon(Icons.Outlined.BookmarkAdd, "Save and track price", tint = Ink) }
             }
             Gallery(model.gallery.ifEmpty { listOfNotNull(model.imageUrl?.let { com.onroad.app.data.GalleryItem(it, model.name) }) },
@@ -240,11 +238,69 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text(onRoad?.let { lakh(it) } ?: lakh(variant?.exShowroomInr), style = MaterialTheme.typography.titleLarge)
         }
+        // share this on-road quote (WhatsApp or anywhere): variant, city, total and how it adds up, with a link back
+        val shareCtx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.OutlinedIconButton(onClick = {
+            val v = variant ?: return@OutlinedIconButton
+            val lines = v.onroad?.lines.orEmpty().filter { (it.amountInr ?: 0) > 0 }.take(5)
+                .joinToString("\n") { "• ${it.label}: ${rupees(it.amountInr)}" }
+            val text = buildString {
+                append("${model.brandName} ${model.name} · ${v.name}")
+                listOfNotNull(v.fuel, v.transmission).takeIf { it.isNotEmpty() }?.let { append(" (${it.joinToString(", ")})") }
+                append("\nOn-road in $city: ${lakh(onRoad ?: v.exShowroomInr)}")
+                if (lines.isNotEmpty()) append("\n$lines")
+                append("\n\nChecked on OnRoad: https://onroad-frontend.onrender.com/cars/${model.id}")
+            }
+            shareCtx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
+                .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text), "Share this price"))
+        }, modifier = Modifier.padding(end = 8.dp).size(50.dp), shape = Corner,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Line)) {
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Share, "Share this price", tint = Ink)
+        }
         androidx.compose.material3.Button(onClick = { if (acc == null) onSignIn() else askQuote = true }, Modifier.height(50.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
             Text("Get best price", fontWeight = FontWeight.SemiBold)
         }
     }
+    }
+    // save + price alert: any drop, or only once it's under a target the buyer picks
+    if (trackAsk) variant?.let { v ->
+        val now = v.exShowroomInr
+        var pick by remember { mutableStateOf<Long?>(null) }
+        val options = listOfNotNull(null to "Any price drop") + (if (now != null) listOf(2, 5, 10).map { pct ->
+            val t = now * (100 - pct) / 100
+            t to "Under ${lakh(t)} (${pct}% less)"
+        } else emptyList())
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { trackAsk = false },
+            title = { Text("Track ${v.name}") },
+            text = {
+                Column {
+                    Text(if (now != null) "Ex-showroom in $city today: ${lakh(now)}. Alert me:" else "Alert me:", color = Mute,
+                        style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    options.forEach { (t, label) ->
+                        Row(Modifier.fillMaxWidth().clip(Corner).clickable { pick = t }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(pick == t, { pick = t })
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton({
+                    trackAsk = false
+                    scope.launch {
+                        com.onroad.app.data.Track.saveCar(v.id)
+                        runCatching { vm.api.save(com.onroad.app.data.SaveIn(v.id, city, pick)) }.onSuccess {
+                            android.widget.Toast.makeText(ctx, if (pick == null) "Saved. We'll alert you when the price drops."
+                                else "Saved. We'll alert you when it's under ${lakh(pick)}.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) { Text("Save and track", color = Ignition) }
+            },
+            dismissButton = { androidx.compose.material3.TextButton({ trackAsk = false }) { Text("Cancel", color = Mute) } },
+        )
     }
     rateDealer?.let { d ->
         RateSheet(com.onroad.app.data.NearDealer(d.id, model.brandSlug, model.brandName, d.name, d.address, d.city, d.phone, d.lat, d.lng), vm) { posted ->

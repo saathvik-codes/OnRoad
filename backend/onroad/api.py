@@ -830,6 +830,42 @@ FEATURE_SHOTS = {
 }
 
 
+# Specs makers often publish once per model or per engine instead of per variant. A variant missing one takes it from a
+# sibling: model-level ones from any variant of the same model, engine-level ones only from a variant with the same
+# fuel, gearbox and engine size. The maker's own source page travels with it, and "shared" marks it as such.
+_MODEL_LEVEL = {"Boot space": r"boot|luggage|cargo", "Ground clearance": r"ground clearance", "Length": r"^length|overall length",
+                "Width": r"^width|overall width", "Height": r"^height|overall height", "Wheelbase": r"wheelbase",
+                "Fuel tank": r"fuel tank|tank capacity", "Seating capacity": r"seating"}
+_ENGINE_LEVEL = {"Mileage": r"mileage|fuel efficiency|arai", "Max power": r"max(imum)?[ _]?power|^power|peak power",
+                 "Max torque": r"torque", "Displacement": r"displacement|engine capacity|cubic capacity", "Range": r"range"}
+
+
+def _shared_specs(v: dict, specs: list[dict]) -> list[dict]:
+    try:
+        text = lambda r: f"{r.get('key') or ''} {r.get('label') or ''}"
+        have = lambda rx, rows: any(re.search(rx, text(r), re.I) for r in rows)
+        sib = q("""SELECT s.variant_id, s.grp, s.key, s.label, s.value, s.source_url, s.fetched_at, v.fuel, v.transmission, v.engine_cc
+                   FROM specs s JOIN variants v ON v.id = s.variant_id
+                   WHERE v.model_id = ? AND v.id != ? AND v.active = 1""", (v["model_id"], v["id"]))
+        out = []
+        for groups, same_engine in ((_MODEL_LEVEL, False), (_ENGINE_LEVEL, True)):
+            for name, rx in groups.items():
+                if have(rx, specs):
+                    continue
+                pool = [r for r in sib if re.search(rx, text(r), re.I) and (not same_engine or (
+                    r["fuel"] == v["fuel"] and r["transmission"] == v["transmission"] and r["engine_cc"] == v["engine_cc"]))]
+                if not pool:
+                    continue
+                vals = [r["value"] for r in pool]
+                best = max(set(vals), key=vals.count)                 # the value most sibling variants publish
+                r = next(r for r in pool if r["value"] == best)
+                out.append({"grp": r["grp"], "key": r["key"], "label": r["label"], "value": best, "source_url": r["source_url"],
+                            "fetched_at": r["fetched_at"], "shared": True})
+        return out
+    except Exception:
+        return []
+
+
 @app.get("/api/variant-specs")
 def variant_specs(variant_id: str):
     """Published specs + standard equipment for one variant (empty lists when the brand's spec sheet isn't read yet)."""
@@ -854,6 +890,7 @@ def variant_specs(variant_id: str):
                     photos[key] = {"key": key, "image_url": hit["url"], "source_url": hit["source_url"]}
     except Exception:
         pass
+    specs = specs + _shared_specs(v, specs)
     return {"variant_id": variant_id, "specs": specs, "features": feats, "model_url": v["model_url"], "photos": photos,
             "basics": {k: v[k] for k in ("fuel", "transmission", "engine_cc", "battery_kwh", "seats")}}
 
@@ -1796,11 +1833,11 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 10,
-        "version_name": "1.2.1",
+        "version_code": 11,
+        "version_name": "1.2.2",
         "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
-        "notes": "A cleaner spec sheet for every variant, directions to the showroom's exact place, and a redesigned Updates page.",
+        "notes": "Share any on-road price on WhatsApp, price alerts with your own target, and a cleaner spec sheet.",
         "force_update": False,
     }
 

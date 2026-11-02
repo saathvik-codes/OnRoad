@@ -119,9 +119,7 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
     val missing = top?.features.orEmpty().filter { it.label.lowercase() !in have }
     val all = sp.features.map { it to true } + missing.map { it to false }
     Column(Modifier.padding(horizontal = 16.dp)) {
-        // headline specs
-        val keyVals = HEADLINE_SPECS.mapNotNull { (label, rx) -> findSpec(sp.specs, rx)?.let { label to it } }.take(6)
-        if (keyVals.isNotEmpty()) { KeySpecGrid(keyVals); Spacer(Modifier.height(14.dp)) }
+        // the headline specs are already shown under the variant picker, so this tab starts with features / full specs
         // view switch
         Row(Modifier.fillMaxWidth().clip(Corner).background(Panel2).padding(4.dp)) {
             listOf("features" to "Features (${sp.features.size})", "specs" to "Specifications").forEach { (k, l) ->

@@ -60,14 +60,25 @@ def send_to_accounts(account_ids: list[int], title: str, body: str, data: dict |
 
 
 def price_dropped(conn, variant_id: str, city: str, old: int, new: int) -> None:
-    rows = conn.execute("""SELECT s.account_id, m.name AS model, v.name AS variant, m.id AS mid FROM saved_cars s
-                           JOIN variants v ON v.id = s.variant_id JOIN models m ON m.id = v.model_id
-                           WHERE s.variant_id = ?""", (variant_id,)).fetchall()
-    if rows:
-        r = rows[0]
-        send_to_accounts([x[0] for x in rows], f"Price drop: {r[1]}",
-                         f"{r[2]} is now Rs {new:,} ex-showroom ({city}), Rs {old - new:,} less than before.",
-                         {"model": r[3]})
+    """Buyers who saved this variant for this city. With a target price, they hear only once it's at or under the
+    target (the moment it crosses it); without one, any drop."""
+    rows = conn.execute("""SELECT s.account_id, s.target_inr, m.name AS model, v.name AS variant, m.id AS mid, b.name AS brand
+                           FROM saved_cars s JOIN variants v ON v.id = s.variant_id JOIN models m ON m.id = v.model_id
+                           JOIN brands b ON b.slug = m.brand_slug
+                           WHERE s.variant_id = ? AND lower(s.city) = lower(?)""", (variant_id, city)).fetchall()
+    for r in rows:
+        target = r[1]
+        if target and new > target:
+            continue                                   # still above what the buyer is waiting for
+        if target and old <= target:
+            continue                                   # already told when it first crossed the target
+        if target:
+            title = f"{r[5]} {r[2]} is now under your target"
+            body = f"{r[3]}: Rs {new:,} ex-showroom in {city} (your target Rs {target:,})."
+        else:
+            title = f"Price drop: {r[5]} {r[2]}"
+            body = f"{r[3]} is now Rs {new:,} ex-showroom in {city}, Rs {old - new:,} less than before."
+        send_to_accounts([r[0]], title, body, {"model": r[4]})
 
 
 def quote_received(request_id: int, dealer_name: str, on_road: int) -> None:
