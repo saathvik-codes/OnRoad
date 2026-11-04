@@ -217,7 +217,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                 }
                 else -> items(shown, key = { it.id }) { m ->
                     ModelCard(m, vm.prefs.img(m.imageUrl, 480)) { onModel(m.id) }
-                    if (m === shown.getOrNull(5)) AdBanner()     // one ad, after the sixth result
+                    if (m === shown.getOrNull(5)) AdNative()     // one ad, after the sixth result
                 }
             }
         }

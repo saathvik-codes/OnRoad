@@ -107,6 +107,13 @@ class MainActivity : ComponentActivity() {
         return cities.minByOrNull { (it.lat - loc.latitude) * (it.lat - loc.latitude) + (it.lng - loc.longitude) * (it.lng - loc.longitude) }
     }
 
+    private var stoppedAt = 0L
+    override fun onStart() {
+        super.onStart()
+        if (stoppedAt > 0 && prefs.onboarded) com.onroad.app.ui.Ads.onReturn(this, System.currentTimeMillis() - stoppedAt)
+    }
+    override fun onStop() { super.onStop(); if (!isChangingConfigurations) stoppedAt = System.currentTimeMillis() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // the brand intro starts on exactly the launch icon's frame, so swap without the system's fade (no dip)
         installSplashScreen().setOnExitAnimationListener { it.remove() }

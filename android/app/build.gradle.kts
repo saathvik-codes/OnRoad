@@ -20,8 +20,8 @@ android {
         applicationId = "com.onroad.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.4.0"
+        versionCode = 15
+        versionName = "1.4.1"
         // Same API as the OnRoad website. Change it in Settings (tunnel / server URL).
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8101\"")      // local API, reachable only from the emulator
         buildConfigField("String", "LIVE_SERVER", "\"https://onroad-uu9c.onrender.com\"")
@@ -30,6 +30,9 @@ android {
         manifestPlaceholders["admobAppId"] = ads.getProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"
         buildConfigField("String", "BANNER_AD", "\"${ads.getProperty("ADMOB_BANNER") ?: "ca-app-pub-3940256099942544/9214589741"}\"")
         buildConfigField("boolean", "ADS_ON", "true")
+        buildConfigField("String", "NATIVE_AD", "\"${ads.getProperty("ADMOB_NATIVE") ?: "ca-app-pub-3940256099942544/2247696110"}\"")
+        buildConfigField("String", "INTERSTITIAL_AD", "\"${ads.getProperty("ADMOB_INTERSTITIAL") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
+        buildConfigField("String", "APP_OPEN_AD", "\"${ads.getProperty("ADMOB_APP_OPEN") ?: "ca-app-pub-3940256099942544/9257395921"}\"")
     }
     // Release signing: the upload key lives outside the repo (D:/dev/keys); its passwords are in the git-ignored
     // android/keystore.properties. Without that file (e.g. CI), release falls back to the debug key.
@@ -49,6 +52,9 @@ android {
         debug {
             // Google's test banner: a developer's own phone must never request (or click) real ads
             buildConfigField("String", "BANNER_AD", "\"ca-app-pub-3940256099942544/9214589741\"")
+            buildConfigField("String", "NATIVE_AD", "\"ca-app-pub-3940256099942544/2247696110\"")
+            buildConfigField("String", "INTERSTITIAL_AD", "\"ca-app-pub-3940256099942544/1033173712\"")
+            buildConfigField("String", "APP_OPEN_AD", "\"ca-app-pub-3940256099942544/9257395921\"")
         }
         release {
             // ./gradlew assembleRelease appDistributionUploadRelease  (key file stays outside git; needs the
@@ -72,6 +78,11 @@ android {
         }
         // ./gradlew assembleAmazon: the release build for the Amazon Appstore, without self-install (src/amazon manifest)
         create("amazon") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+        }
+        // ./gradlew bundlePlay: the Google Play build (.aab); like Amazon, updates come through the store (src/play manifest)
+        create("play") {
             initWith(getByName("release"))
             matchingFallbacks += "release"
         }

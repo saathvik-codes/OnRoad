@@ -18,8 +18,8 @@ import java.io.File
 /**
  * Updates the app from inside it. Copies from our website download the new APK in the background (progress in the
  * notification shade) and then open Android's own "Install update?" screen; the first time, Android asks to allow
- * installs from OnRoad. The Amazon build (build type "amazon") never installs anything itself: store rules say updates
- * come through the store, so it opens OnRoad's Appstore page.
+ * installs from OnRoad. Store builds (build types "amazon" and "play") never install anything themselves: store rules say
+ * updates come through the store, so they open OnRoad's store page.
  */
 object AppUpdater {
     private const val FILE = "onroad-update.apk"
@@ -31,6 +31,12 @@ object AppUpdater {
         }.getOrNull() == "com.amazon.venezia"
 
     fun start(ctx: Context, apkUrl: String) {
+        if (BuildConfig.BUILD_TYPE == "play") {
+            val p = ctx.packageName
+            runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$p")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                .onFailure { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$p")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            return
+        }
         if (storeBuild(ctx)) {
             val p = ctx.packageName
             runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("amzn://apps/android?p=$p")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

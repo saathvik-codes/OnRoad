@@ -80,6 +80,8 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     var ownFailed by remember { mutableStateOf(false) }
     LaunchedEffect(m?.id) { m?.let { md -> rates = runCatching { vm.api.loanRates(md.brandVehicleType ?: md.vehicleType ?: "car") }.getOrElse { emptyList() } } }
     val ctx = LocalContext.current
+    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+    LaunchedEffect(id) { activity?.let { Ads.onCarOpened(it) } }
     LaunchedEffect(id, city) {
         val (b, s) = id.split("/", limit = 2)
         runCatching { vm.api.model(b, s, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { m = it } .onFailure { e -> android.util.Log.e("model", "load failed", e); err = "Couldn't load this car." }

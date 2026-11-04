@@ -224,7 +224,7 @@ fun OffersScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     OfferCard(o, { vm.prefs.img(it, 480) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
                         o.sourceUrl?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
-                    if (o === l.getOrNull(3)) AdBanner()
+                    if (o === l.getOrNull(3)) AdNative()
                 }
             }
         }

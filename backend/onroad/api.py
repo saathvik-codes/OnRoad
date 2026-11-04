@@ -1889,8 +1889,8 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 14,
-        "version_name": "1.4.0",
+        "version_code": 15,
+        "version_name": "1.4.1",
         "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
         "notes": "The whole app in 14 languages (pick yours on first launch or in Profile), and updates now install from inside the app.",
