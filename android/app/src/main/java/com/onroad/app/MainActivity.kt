@@ -1,6 +1,7 @@
 package com.onroad.app
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -115,6 +116,7 @@ class MainActivity : ComponentActivity() {
         processStarted = true
         super.onCreate(if (fresh) null else savedInstanceState)
         com.onroad.app.ui.ThemeMode.init(this)
+        com.onroad.app.ui.AppLanguage.init(this)
         val dark = when (com.onroad.app.ui.ThemeMode.mode.value) { "dark" -> true; "light" -> false
             else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES }
         // status / navigation bar icons readable on the chosen theme
@@ -149,9 +151,12 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     intent?.getStringExtra("route")?.let { r -> if (prefs.onboarded) nav.navigate(if (r.startsWith("model/")) "model/${enc(r.removePrefix("model/"))}" else r) }
                 }
-                val tabs = listOf(Triple("home", "Home", Icons.Outlined.Home), Triple("explore", "Explore", Icons.Outlined.Explore),
-                    Triple("offers", "Offers", Icons.Outlined.LocalOffer), Triple("calc", "Calculator", Icons.Outlined.Calculate),
-                    Triple("account", "Profile", Icons.Outlined.Person))
+                val lang by com.onroad.app.ui.AppLanguage.currentLanguage.collectAsState()
+                val tabs = listOf(Triple("home", com.onroad.app.ui.AppLanguage.translate("Home", lang), Icons.Outlined.Home),
+                    Triple("explore", com.onroad.app.ui.AppLanguage.translate("Explore", lang), Icons.Outlined.Explore),
+                    Triple("offers", com.onroad.app.ui.AppLanguage.translate("Offers", lang), Icons.Outlined.LocalOffer),
+                    Triple("calc", com.onroad.app.ui.AppLanguage.translate("Calculator", lang), Icons.Outlined.Calculate),
+                    Triple("account", com.onroad.app.ui.AppLanguage.translate("Profile", lang), Icons.Outlined.Person))
                 var updateInfo by remember { androidx.compose.runtime.mutableStateOf<com.onroad.app.data.AppVersion?>(null) }
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     val info = runCatching { api.appVersion() }.getOrNull()

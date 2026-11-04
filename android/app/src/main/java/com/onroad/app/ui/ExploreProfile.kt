@@ -34,6 +34,8 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -115,13 +117,13 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                     Spacer(Modifier.height(18.dp))
                     if (acc == null) {
                         Button(onSignIn, Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Ignition), shape = Corner) {
-                            Text("Sign in or create account", fontWeight = FontWeight.SemiBold)
+                            Text(t("Sign in or create account"), fontWeight = FontWeight.SemiBold)
                         }
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Stat("${saved.size}", "Saved", Modifier.weight(1f))
-                            Stat("${quotes.size}", "Requests", Modifier.weight(1f))
-                            Stat("${quotes.sumOf { it.quotes.size }}", "Replies", Modifier.weight(1f))
+                            Stat("${saved.size}", t("Saved"), Modifier.weight(1f))
+                            Stat("${quotes.size}", t("Requests"), Modifier.weight(1f))
+                            Stat("${quotes.sumOf { it.quotes.size }}", t("Replies"), Modifier.weight(1f))
                         }
                     }
                 }
@@ -143,7 +145,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
             }
         }
         if (saved.isNotEmpty()) {
-            item { Section("Saved cars", Icons.Outlined.Bookmark, "${saved.size}") }
+            item { Section(t("Saved cars"), Icons.Outlined.Bookmark, "${saved.size}") }
             items(saved, key = { it.variantId + it.city }) { c ->
                 Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clickable { onModel(c.modelId) }, pad = 12) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -162,7 +164,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
             }
         }
         if (quotes.isNotEmpty()) {
-            item { Section("My dealer quotes", Icons.Outlined.RequestQuote, "${quotes.size}") }
+            item { Section(t("My dealer quotes"), Icons.Outlined.RequestQuote, "${quotes.size}") }
             items(quotes, key = { it.id }) { r ->
                 Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp), pad = 14) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -188,18 +190,36 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 }
             }
         }
-        item { Section("Preferences", null, null) }
+        item { Section(t("Preferences"), null, null) }
         item {
             Group {
-                SettingRow(Icons.Outlined.LocationOn, Ignition, "City for prices", city, onClick = onCity)
-                SettingRow(Icons.Outlined.Notifications, Amber, "Offers & launch alerts", "Manufacturer offers and newly listed models") {
+                SettingRow(Icons.Outlined.LocationOn, Ignition, t("City for prices"), city, onClick = onCity)
+                
+                // Language customization
+                val lang by AppLanguage.currentLanguage.collectAsStateWithLifecycle()
+                var showLangDialog by remember { mutableStateOf(false) }
+                SettingRow(Icons.Outlined.Translate, Electric, t("Language"), AppLanguage.name(lang), onClick = { showLangDialog = true }) {
+                    Row(
+                        Modifier.clip(Corner).background(Panel2).clickable { showLangDialog = true }.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(AppLanguage.shortName(lang), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = Ignition)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Outlined.KeyboardArrowDown, null, tint = Ignition, modifier = Modifier.size(16.dp))
+                    }
+                }
+                if (showLangDialog) {
+                    LanguagePickerDialog(onDismiss = { showLangDialog = false })
+                }
+
+                SettingRow(Icons.Outlined.Notifications, Amber, t("Offers & launch alerts"), t("Manufacturer offers and newly listed models")) {
                     Switch(alerts, { alerts = it; vm.prefs.alerts = it }, colors = SwitchDefaults.colors(checkedTrackColor = Ignition))
                 }
                 // Appearance: follow the phone, or always light / always dark
                 val mode by ThemeMode.mode.collectAsStateWithLifecycle()
-                SettingRow(Icons.Outlined.Palette, Electric, "Appearance", when (mode) { "light" -> "Light"; "dark" -> "Dark"; else -> "Same as phone" }) {
+                SettingRow(Icons.Outlined.Palette, Good, t("Appearance"), when (mode) { "light" -> t("Light"); "dark" -> t("Dark"); else -> t("Same as phone") }) {
                     Row(Modifier.clip(Corner).background(Panel2).padding(3.dp)) {
-                        listOf("system" to "Auto", "light" to "Light", "dark" to "Dark").forEach { (k, l) ->
+                        listOf("system" to t("Auto"), "light" to t("Light"), "dark" to t("Dark")).forEach { (k, l) ->
                             Text(l, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
                                 color = if (mode == k) Color.White else Mute,
                                 modifier = Modifier.clip(Corner).background(if (mode == k) Ignition else Color.Transparent)
@@ -209,14 +229,14 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                 }
             }
         }
-        item { Section("Help", null, null) }
+        item { Section(t("Help"), null, null) }
         item {
             Group {
-                SettingRow(Icons.AutoMirrored.Outlined.MenuBook, Electric, "Buying guide", "From quote to number plate, step by step", onClick = onGuide)
-                SettingRow(Icons.Outlined.Verified, Good, "Where prices come from", "Manufacturers' own sites; taxes from your state's transport rules")
+                SettingRow(Icons.AutoMirrored.Outlined.MenuBook, Electric, t("Buying guide"), t("From quote to number plate, step by step"), onClick = onGuide)
+                SettingRow(Icons.Outlined.Verified, Good, t("Where prices come from"), "Manufacturers' own sites; taxes from your state's transport rules")
             }
         }
-        item { Section("App & Updates", null, null) }
+        item { Section(t("App & Updates"), null, null) }
         item {
             Group {
                 val ctx = androidx.compose.ui.platform.LocalContext.current

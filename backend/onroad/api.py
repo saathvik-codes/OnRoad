@@ -1889,11 +1889,11 @@ def admin_status(acc: dict = Depends(role("admin"))):
 def app_version():
     """Returns the latest mobile app version, release notes, and download links."""
     return {
-        "version_code": 12,
-        "version_name": "1.3.0",
+        "version_code": 13,
+        "version_name": "1.3.1",
         "download_url": "https://onroad-frontend.onrender.com/app",
         "apk_url": "https://onroad-frontend.onrender.com/onroad.apk",
-        "notes": "Verified accounts, a quick setup for your budget and car type, sharing any on-road price, and price alerts with your own target.",
+        "notes": "Language customization with 14 languages, official support hub, and performance optimizations.",
         "force_update": False,
     }
 
@@ -1987,6 +1987,33 @@ def _refresh_loop(hours: float) -> None:
             gc.collect()
             _t.sleep(gap)
     threading.Thread(target=run, name="onroad-refresh", daemon=True).start()
+
+
+def _keep_awake() -> None:
+    """Render's free plan sleeps after 15 idle minutes and the next visitor waits 20-50 s. Pinging our own public URL
+    every 10 minutes during Indian waking hours (KEEP_AWAKE_IST, default 7-24) keeps it up then, about 530 of the
+    free 750 hours a month, leaving the rest for other services. Overnight it may sleep; the first visit wakes it."""
+    url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+    window = os.getenv("KEEP_AWAKE_IST", "7-24")
+    if not url or window == "off":
+        return
+    start, end = (int(x) for x in window.split("-"))
+
+    def run():
+        import time as _t
+        import urllib.request
+        while True:
+            hour = _t.gmtime(_t.time() + 5.5 * 3600).tm_hour
+            if start <= hour < end:
+                try:
+                    urllib.request.urlopen(f"{url}/api/health", timeout=30).close()
+                except Exception:
+                    pass
+            _t.sleep(600)
+    _threading.Thread(target=run, name="onroad-awake", daemon=True).start()
+
+
+_keep_awake()
 
 
 if os.getenv("FIRESTORE_SYNC", "1") == "1":       # user data mirrored to Firestore (onroad/firestore_sync.py)

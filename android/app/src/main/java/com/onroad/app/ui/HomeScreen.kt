@@ -157,7 +157,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    listOf("car" to "Cars", "bike" to "Bikes").forEach { (k, l) ->
+                    listOf("car" to t("Cars"), "bike" to t("Bikes")).forEach { (k, l) ->
                         Text(l, style = MaterialTheme.typography.labelLarge, color = if (s.type == k) Color.White else Mute,
                             modifier = Modifier.clip(Corner).background(if (s.type == k) Ignition else Panel2)
                                 .clickable { vm.setType(k) }.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -165,10 +165,10 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
-                    QuickAction(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
-                    QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, "Compare", Electric, Modifier.weight(1f), onCompare)
-                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying\nguide", Good, Modifier.weight(1f), onGuide)
+                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") t("Find my bike") else t("Find my car"), Ignition, Modifier.weight(1f), onFinder)
+                    QuickAction(Icons.Outlined.Storefront, t("Showrooms near me"), Amber, Modifier.weight(1f), onShowrooms)
+                    QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, t("Compare"), Electric, Modifier.weight(1f), onCompare)
+                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, t("Buying guide"), Good, Modifier.weight(1f), onGuide)
                 }
                 s.error?.let { ErrorState(it) { vm.retry() } }
                 Spacer(Modifier.height(22.dp))
@@ -176,7 +176,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 if (s.offers.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Live offers in $city", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                        Text("See all", color = Ignition, modifier = Modifier.clickable(onClick = onOffers).padding(6.dp))
+                        Text(t("See all"), color = Ignition, modifier = Modifier.clickable(onClick = onOffers).padding(6.dp))
                     }
                     Spacer(Modifier.height(10.dp))
                     OffersCarousel(s.offers.take(8), { vm.prefs.img(it, 480) }) { onOffers() }
@@ -184,14 +184,14 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 val chips = if (s.type == "bike") BIKE_BUDGET_CHIPS else s.bands.map { BudgetChip(it.id, it.label, it.hint) }
                 if (chips.isNotEmpty()) {
-                    Text("Shop by budget", style = MaterialTheme.typography.titleLarge)
+                    Text(t("Shop by budget"), style = MaterialTheme.typography.titleLarge)
                     Text("On-road prices for $city inside", color = Mute, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     BudgetRow(chips) { onBudget(s.type, it) }
                     Spacer(Modifier.height(22.dp))
                 }
                 if (s.rivals.isNotEmpty()) {
-                    Text("Top picks to compare", style = MaterialTheme.typography.titleLarge)
+                    Text(t("Top picks to compare"), style = MaterialTheme.typography.titleLarge)
                     Text("Best-selling rivals, same body type and budget", color = Mute, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -200,7 +200,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     }
                     Spacer(Modifier.height(22.dp))
                 }
-                Text("Top buys in India", style = MaterialTheme.typography.titleLarge)
+                Text(t("Top buys in India"), style = MaterialTheme.typography.titleLarge)
                 Text("Ranked by official monthly sales", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
         }

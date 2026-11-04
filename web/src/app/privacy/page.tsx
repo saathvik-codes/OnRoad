@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Privacy policy · OnRoad", description: "What OnRoad collects, why, and how to delete it." };
 
-const CONTACT = "saathvikk202@gmail.com";
+const CONTACT = "privacy@onroad.in";
 
 export default function Privacy() {
   return (
