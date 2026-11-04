@@ -49,7 +49,7 @@ export function SiteFooter() {
             <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
             It is not a model of any manufacturer.
           </p>
-          <p>© {new Date().getFullYear()} OnRoad</p>
+          <p>© {new Date().getFullYear()} OnRoad · <Link href="/privacy" className="underline">Privacy</Link> · <Link href="/support" className="underline">Help</Link></p>
         </div>
       </div>
     </footer>
