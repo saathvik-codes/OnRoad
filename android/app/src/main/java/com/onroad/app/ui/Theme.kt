@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import com.onroad.app.R
-import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -106,7 +105,9 @@ fun OnRoadTheme(content: @Composable () -> Unit) {
         onBackground = c.ink, surface = c.panel, onSurface = c.ink, surfaceVariant = c.panel2, onSurfaceVariant = c.mute, outline = c.line,
         surfaceContainer = c.panel, surfaceContainerLow = c.night, surfaceContainerHigh = c.panel2, surfaceContainerHighest = c.panel2,
         error = Color(0xFFD92D4B))
-    run {
+    val lang by AppLanguage.currentLanguage.collectAsState()
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides
+        if (lang == "ar") androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr) {
         MaterialTheme(colorScheme = scheme, typography = Type) {
             // screens draw on plain Boxes/Columns, not Surfaces, so set the default text/icon colour here
             CompositionLocalProvider(LocalContentColor provides c.ink, LocalTextStyle provides Type.bodyLarge, content = content)

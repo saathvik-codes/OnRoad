@@ -1,7 +1,7 @@
 # OnRoad on the Amazon Appstore: what to fill in
 
 Images are in `design/store/out/`. To rebuild them, run `python design/store/make_store_assets.py`.
-The APK is `web/public/onroad.apk`: package com.onroad.app, version 1.3.0 (code 12), minSdk 26, release-signed.
+The Amazon APK is built with `./gradlew assembleAmazon`: package com.onroad.app, version 1.4.0 (code 14), minSdk 26, release-signed.
 
 ## 1. General information
 | Field | Value |
@@ -77,7 +77,7 @@ Answer **None** for every theme: violence, sexual content, profanity, drugs, alc
 - Kids (COPPA / for children under 13): **No**
 
 ## 6. App files (APK)
-- Upload `web/public/onroad.apk`.
+- Upload `onroad-amazon-1.4.0.apk` (built with `./gradlew assembleAmazon`; no self-update permission).
 - Device support: **untick every Amazon Fire device**; keep only non-Amazon Android devices. Sign-in, notifications and ads use Google Play services, which Fire tablets don't have.
 - Language: English.
 - Export compliance: Yes. The app uses only standard HTTPS encryption.

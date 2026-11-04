@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,11 +65,32 @@ object AppLanguage {
         SupportedLanguage("pa", "Punjabi", "ਪੰਜਾਬੀ", "🇮🇳"),
         SupportedLanguage("es", "Spanish", "Español", "🇪🇸"),
         SupportedLanguage("fr", "French", "Français", "🇫🇷"),
-        SupportedLanguage("de", "German", "Deutsch", "🇩🇪"),
-        SupportedLanguage("ar", "Arabic", "العربية", "🇸🇦")
+        SupportedLanguage("de", "German", "Deutsch", "🇩🇪")
     )
 
+    private var appCtx: Context? = null
+    private var table: Map<String, String> = emptyMap()                 // assets/i18n/<lang>.json (android/tools/i18n.py)
+    private var templates: List<Pair<Regex, String>> = emptyList()     // "Live offers in {0}" -> regex + translation
+    private val memo = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** True once the person has picked a language (asked on first launch). */
+    val chosen: Boolean get() = prefs?.contains("lang") == true
+
+    private fun load(code: String) {
+        memo.clear()
+        val ctx = appCtx ?: return
+        table = if (code == "en") emptyMap() else runCatching {
+            val o = org.json.JSONObject(ctx.assets.open("i18n/$code.json").bufferedReader().use { it.readText() })
+            o.keys().asSequence().associateWith { o.getString(it) }
+        }.getOrDefault(emptyMap())
+        templates = table.filterKeys { "{0}" in it }.map { (en, tr) ->
+            // English placeholders run {0}, {1}… in order, so capture group n+1 fills {n} in the translation
+            Regex("^" + en.split(Regex("\\{\\d+\\}")).joinToString("(.+?)") { Regex.escape(it) } + "$", RegexOption.DOT_MATCHES_ALL) to tr
+        }.sortedByDescending { it.first.pattern.length }
+    }
+
     fun init(ctx: Context) {
+        appCtx = ctx.applicationContext
         prefs = ctx.getSharedPreferences("onroad_lang", Context.MODE_PRIVATE)
         val saved = prefs?.getString("lang", null)
         if (saved != null) {
@@ -79,9 +103,11 @@ object AppLanguage {
                 currentLanguage.value = "en"
             }
         }
+        load(currentLanguage.value)
     }
 
     fun set(code: String) {
+        load(code)
         currentLanguage.value = code
         prefs?.edit()?.putString("lang", code)?.apply()
     }
@@ -95,8 +121,18 @@ object AppLanguage {
     }
 
     fun translate(key: String, lang: String = currentLanguage.value): String {
-        if (lang == "en") return key
-        return DICTIONARY[lang]?.get(key) ?: key
+        if (lang == "en" || key.isBlank()) return key
+        DICTIONARY[lang]?.get(key)?.let { return it }
+        table[key]?.let { return it }
+        return memo.getOrPut(key) {
+            for ((rx, tr) in templates) {
+                val m = rx.matchEntire(key) ?: continue
+                var out = tr
+                m.groupValues.drop(1).forEachIndexed { i, v -> out = out.replace("{$i}", table[v] ?: v) }
+                return@getOrPut out
+            }
+            key
+        }
     }
 
     private val DICTIONARY: Map<String, Map<String, String>> = mapOf(
@@ -475,7 +511,7 @@ fun LanguagePickerDialog(onDismiss: () -> Unit) {
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = lang.flag, style = MaterialTheme.typography.titleMedium)
+                            Text(text = lang.code.uppercase(), style = MaterialTheme.typography.labelLarge, color = Mute, modifier = Modifier.width(28.dp))
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
@@ -508,6 +544,32 @@ fun LanguagePickerDialog(onDismiss: () -> Unit) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** First launch: pick the app's language before the welcome slides. Tapping a language picks it and moves on. */
+@Composable
+fun LanguageStartScreen(onDone: () -> Unit) {
+    val current by AppLanguage.currentLanguage.collectAsState()
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()
+        .padding(horizontal = 24.dp)) {
+        Spacer(Modifier.height(40.dp))
+        Text("Choose your language", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("You can change it any time in Profile.", color = Mute, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(AppLanguage.languages, key = { it.code }) { lang ->
+                val on = lang.code == current
+                Row(Modifier.fillMaxWidth().clip(Corner).background(if (on) Ignition.copy(alpha = 0.10f) else Panel)
+                    .clickable { AppLanguage.set(lang.code); onDone() }.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(lang.nativeName, style = MaterialTheme.typography.titleMedium, color = if (on) Ignition else Ink)
+                        if (lang.nativeName != lang.name) Text(lang.name, style = MaterialTheme.typography.bodySmall, color = Mute)
+                    }
+                    if (on) Icon(Icons.Outlined.Check, contentDescription = null, tint = Ignition)
                 }
             }
         }

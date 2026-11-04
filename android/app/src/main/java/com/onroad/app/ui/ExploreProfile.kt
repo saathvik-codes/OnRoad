@@ -44,7 +44,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -254,8 +253,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
                     else "You are on the latest version",
                     onClick = {
                         if (hasUpdate) {
-                            val url = updateInfo?.downloadUrl?.takeIf { it.isNotBlank() } ?: "https://onroad-frontend.onrender.com/download"
-                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                            com.onroad.app.data.AppUpdater.start(ctx, updateInfo?.apkUrl?.ifBlank { null } ?: "https://onroad-frontend.onrender.com/onroad.apk")
                         } else {
                             scope.launch {
                                 checking = true

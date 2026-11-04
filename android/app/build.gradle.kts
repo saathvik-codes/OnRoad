@@ -20,8 +20,8 @@ android {
         applicationId = "com.onroad.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.3.1"
+        versionCode = 14
+        versionName = "1.4.0"
         // Same API as the OnRoad website. Change it in Settings (tunnel / server URL).
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8101\"")      // local API, reachable only from the emulator
         buildConfigField("String", "LIVE_SERVER", "\"https://onroad-uu9c.onrender.com\"")
@@ -69,6 +69,11 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
+        }
+        // ./gradlew assembleAmazon: the release build for the Amazon Appstore, without self-install (src/amazon manifest)
+        create("amazon") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
         }
     }
     compileOptions {

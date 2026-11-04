@@ -34,7 +34,6 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -165,10 +164,10 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") t("Find my bike") else t("Find my car"), Ignition, Modifier.weight(1f), onFinder)
-                    QuickAction(Icons.Outlined.Storefront, t("Showrooms near me"), Amber, Modifier.weight(1f), onShowrooms)
+                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
+                    QuickAction(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
                     QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, t("Compare"), Electric, Modifier.weight(1f), onCompare)
-                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, t("Buying guide"), Good, Modifier.weight(1f), onGuide)
+                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying\nguide", Good, Modifier.weight(1f), onGuide)
                 }
                 s.error?.let { ErrorState(it) { vm.retry() } }
                 Spacer(Modifier.height(22.dp))

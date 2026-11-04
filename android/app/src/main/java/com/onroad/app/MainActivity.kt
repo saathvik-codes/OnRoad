@@ -1,6 +1,7 @@
 package com.onroad.app
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
@@ -54,7 +55,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import com.onroad.app.ui.Text
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.onroad.app.ui.Ignition
@@ -169,8 +170,7 @@ class MainActivity : ComponentActivity() {
                         val ctx = androidx.compose.ui.platform.LocalContext.current
                         Row(
                             Modifier.fillMaxWidth().background(Ignition).clickable {
-                                val url = u.downloadUrl.takeIf { it.isNotBlank() } ?: "https://onroad-frontend.onrender.com/download"
-                                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                com.onroad.app.data.AppUpdater.start(ctx, u.apkUrl.ifBlank { "https://onroad-frontend.onrender.com/onroad.apk" })
                             }.padding(horizontal = 16.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -182,7 +182,9 @@ class MainActivity : ComponentActivity() {
                     }
                 NavHost(nav, start, Modifier.weight(1f)) {
                     composable("welcome") {
-                        WelcomeScreen(onCity = { nav.navigate("city") }, onDone = { signIn ->
+                        var askLanguage by remember { mutableStateOf(!com.onroad.app.ui.AppLanguage.chosen) }
+                        if (askLanguage) com.onroad.app.ui.LanguageStartScreen { askLanguage = false }
+                        else WelcomeScreen(onCity = { nav.navigate("city") }, onDone = { signIn ->
                             nav.navigate("home") { popUpTo("welcome") { inclusive = true } }
                             if (signIn) nav.navigate("auth")
                         })
