@@ -23,15 +23,15 @@ import {
 } from "lucide-react";
 import { Card, SectionTitle, Button, Input, Textarea, Select, Label, Pill } from "@/components/ui";
 
-const SUPPORT_EMAIL = "support@onroad.in";
-const DEALER_EMAIL = "dealers@onroad.in";
-const PRIVACY_EMAIL = "privacy@onroad.in";
+const SUPPORT_EMAIL = "saathvikk202@gmail.com";
+const DEALER_EMAIL = "saathvikk202@gmail.com";
+const PRIVACY_EMAIL = "saathvikk202@gmail.com";
 
 const FAQ_ITEMS = [
   {
     category: "Pricing & Taxes",
     q: "Where do OnRoad prices come from?",
-    a: "Ex-showroom prices are sourced directly from each manufacturer's official published price lists and audited daily. We then compute the exact on-road price by applying your state's Motor Vehicle Taxation Act (lifetime road tax, state registration levies, green cess), IRDAI-mandated third-party insurance, TCS (for vehicles above ₹10 Lakh), and mandatory FASTag. We link every ex-showroom price to its source."
+    a: "Ex-showroom prices are sourced directly from each manufacturer's official published price lists and refreshed regularly. We then compute the exact on-road price by applying your state's Motor Vehicle Taxation Act (lifetime road tax, state registration levies, green cess), IRDAI-mandated third-party insurance, TCS (for vehicles above ₹10 Lakh), and mandatory FASTag. We link every ex-showroom price to its source."
   },
   {
     category: "Pricing & Taxes",
@@ -41,7 +41,7 @@ const FAQ_ITEMS = [
   {
     category: "Pricing & Taxes",
     q: "What should I do if a showroom quotes a different price?",
-    a: "Showrooms frequently add optional dealer charges (handling/logistics fees, extended warranties, basic accessory kits). Handling fees have been declared illegal by multiple High Courts and state transport authorities. Always ask for a written, itemised quotation and report discrepancies to our pricing desk so we can review it."
+    a: "Showrooms frequently add optional dealer charges (handling/logistics fees, extended warranties, basic accessory kits). Always ask for a written, itemised quotation and report discrepancies to our pricing desk so we can review it."
   },
   {
     category: "Dealer Quotes",
@@ -51,7 +51,7 @@ const FAQ_ITEMS = [
   {
     category: "Dealer Quotes",
     q: "How fast do showrooms reply with quotes?",
-    a: "Most authorized dealerships reply within 2 to 4 business hours with an official breakdown including available dealer discounts, waiting periods, and delivery estimates."
+    a: "Reply times vary by showroom. Quotes appear in your account as they arrive, with any discounts, waiting period and delivery estimate the showroom shares."
   },
   {
     category: "Alerts & Account",
@@ -61,19 +61,19 @@ const FAQ_ITEMS = [
   {
     category: "Alerts & Account",
     q: "How do I request account deletion or data removal?",
-    a: "We believe in complete data sovereignty. You can delete your account anytime by emailing privacy@onroad.in with the subject 'Delete my OnRoad account' from your registered email. Your account, saved vehicles, and quote requests are purged within 7 business days."
+    a: "We believe in complete data sovereignty. You can delete your account anytime by emailing saathvikk202@gmail.com with the subject 'Delete my OnRoad account' from your registered email. Your account, saved vehicles, and quote requests are purged within 7 business days."
   },
   {
     category: "Showrooms",
     q: "How can our authorized dealership join the quoting network?",
-    a: "Authorized franchised dealers can sign up through our Dealer Portal at /dealer or write to dealers@onroad.in with your dealership name, manufacturer brand, and dealer code. Our partner relations team activates dealer dashboards within 24 hours."
+    a: "Authorized franchised dealers can sign up through our Dealer Portal at /dealer or write to saathvikk202@gmail.com with your dealership name, manufacturer brand, and dealer code. We reply within two working days."
   }
 ];
 
 const CONTACT_REASONS = [
   {
     title: "Price Discrepancy & State RTO Updates",
-    description: "State transport departments frequently revise road tax slabs and registration fees. If a local RTO charge or new manufacturer discount needs an update, our pricing desk validates and amends it within 24 hours.",
+    description: "State transport departments frequently revise road tax slabs and registration fees. If a local RTO charge or new manufacturer discount needs an update, our pricing desk checks it and updates it.",
     image: "/illustrations/onb-receipt.webp",
     badge: "Accurate Pricing",
     action: "Report a price update"
@@ -139,7 +139,7 @@ export default function SupportPage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
               </span>
-              Support Desk Online · Typical reply under 4 hours
+              Write to us any time · we reply within two working days
             </div>
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-ink sm:text-5xl">
               We&apos;re here to help you get the <span className="text-accent">right price</span>

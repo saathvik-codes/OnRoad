@@ -9,7 +9,7 @@ The APK is `web/public/onroad.apk`: package com.onroad.app, version 1.3.0 (code 
 | App title | OnRoad: On-Road Car Prices |
 | App SKU | onroad-android |
 | App category | Shopping. Pick an "Automotive" subcategory if the form offers one; otherwise use Lifestyle. |
-| Customer support email | support@onroad.in |
+| Customer support email | saathvikk202@gmail.com |
 | Customer support phone | leave blank (optional) |
 | Customer support website | https://onroad-frontend.onrender.com/support |
 
