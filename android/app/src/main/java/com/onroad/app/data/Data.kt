@@ -89,7 +89,8 @@ import javax.inject.Singleton
     val address: String = "", val city: String? = null, val phone: String? = null, val lat: Double? = null, val lng: Double? = null,
     val kind: String = "", val distanceKm: Double? = null, val rating: Double? = null, val ratingCount: Int = 0,
     val googleRating: Double? = null, val googleCount: Int? = null, val googleMapsUri: String? = null, val photoUrl: String? = null,
-    val photoCredit: String? = null, val website: String? = null)
+    val photoCredit: String? = null, val website: String? = null, val altPhone: String? = null, val phoneVerified: Boolean = false,
+    val locationVerified: Boolean = false, val openNow: Boolean? = null)
 @Serializable data class OwnReview(val rating: Int = 0, val priceHonesty: Int? = null, val noForcedAddons: Int? = null,
     val deliveryOnTime: Int? = null, val visit: String? = null, val text: String? = null, val created: String? = null, val name: String? = null)
 @Serializable data class GReview(val author: String? = null, val rating: Int? = null,
@@ -121,6 +122,11 @@ import javax.inject.Singleton
     val source: String = "", val published: String = "", val modelId: String? = null, val modelName: String? = null, val topic: String = "industry")
 @Serializable data class UpdateItem(val kind: String, val date: String, val modelId: String? = null, val title: String, val detail: String = "",
     val sourceUrl: String? = null, val imageUrl: String? = null)
+@Serializable data class ResaleYear(val years: Int, val valueInr: Long)
+@Serializable data class ResaleBand(val year: Int, val medianInr: Long, val count: Int)
+@Serializable data class Resale(val available: Boolean = false, val listings: Int = 0, val sourceUrl: String? = null, val fetchedAt: String? = null,
+    val perYearLossPct: Double? = null, val exShowroomInr: Long? = null, val estimates: List<ResaleYear> = emptyList(),
+    val byYear: List<ResaleBand> = emptyList(), val reason: String? = null)
 @Serializable data class OwnLine(val label: String, val amountInr: Long? = null, val basis: String = "", val verified: Boolean = true)
 @Serializable data class OwnLink(val name: String? = null, val title: String? = null, val url: String)
 @Serializable data class OwnRule(val item: String, val status: String = "")
@@ -144,6 +150,9 @@ interface Api {
                                       @Query("model_id") modelId: String? = null): List<NewsItem>
     @GET("api/updates") suspend fun updates(@Query("vehicle_type") type: String = "car", @Query("limit") limit: Int = 60): List<UpdateItem>
     @GET("api/ownership") suspend fun ownership(@Query("variant_id") variantId: String, @Query("city") city: String): Ownership
+    @GET("api/accessory-shops") suspend fun accessoryShops(@Query("lat") lat: Double, @Query("lng") lng: Double,
+        @Query("vehicle_type") type: String = "car"): List<NearDealer>
+    @GET("api/resale") suspend fun resale(@Query("variant_id") variantId: String, @Query("city") city: String, @Query("years") years: Int = 3): Resale
     @GET("api/app/version") suspend fun appVersion(): AppVersion
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
     @POST("api/auth/google") suspend fun google(@Body body: GoogleIn): Account
@@ -193,13 +202,18 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     private val _city = MutableStateFlow(sp.getString("city", "Hyderabad")!!)
     val city = _city.asStateFlow()
     fun setCity(c: String) { sp.edit().putString("city", c).apply(); _city.value = c }
-    /** Budget band and body types the buyer picked at sign-up; Explore opens with them selected. */
+    /** Budget band and body types the buyer picked at sign-up; Explore offers them as a one-tap "Your picks" chip. */
     var prefBudget: String?
         get() = sp.getString("pref_budget", null)
         set(v) { sp.edit().putString("pref_budget", v).apply() }
     var prefBodies: Set<String>
         get() = sp.getStringSet("pref_bodies", emptySet())!!
         set(v) { sp.edit().putStringSet("pref_bodies", v).apply() }
+    /** Last models the buyer opened from search, newest first, one "id<TAB>label" per line (max 8, device only). */
+    var recentSearches: List<Pair<String, String>>
+        get() = (sp.getString("recent_searches", "") ?: "").lines().mapNotNull { l -> l.split('\t').takeIf { it.size == 2 }?.let { it[0] to it[1] } }
+        set(v) { sp.edit().putString("recent_searches", v.take(8).joinToString("\n") { "${it.first}\t${it.second}" }).apply() }
+    fun addRecentSearch(id: String, label: String) { recentSearches = listOf(id to label) + recentSearches.filter { it.first != id } }
     var onboarded: Boolean
         get() = sp.getBoolean("onboarded", false)
         set(v) { sp.edit().putBoolean("onboarded", v).apply() }
@@ -212,9 +226,11 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun setAccount(a: Account?) { _account.value = a }
 
     /** Ids already seen by the offers/new-model alert job (so each one notifies once). */
+    /** Offers already announced, by content (brand|model|title|amount): the server re-inserts offers on every refresh
+     *  with new row ids, so ids would announce the same offer again and again. Kept to the last 500. */
     var seenOffers: Set<String>
-        get() = sp.getStringSet("seen_offers", emptySet())!!
-        set(v) { sp.edit().putStringSet("seen_offers", v).apply() }
+        get() = sp.getStringSet("seen_offer_keys", emptySet())!!
+        set(v) { sp.edit().putStringSet("seen_offer_keys", v.toList().takeLast(500).toSet()).apply() }
     var seenModels: Set<String>
         get() = sp.getStringSet("seen_models", emptySet())!!
         set(v) { sp.edit().putStringSet("seen_models", v).apply() }

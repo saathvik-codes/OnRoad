@@ -31,8 +31,20 @@ def _sess():
     return _session
 
 
-def send_to_accounts(account_ids: list[int], title: str, body: str, data: dict | None = None) -> int:
-    """Send in the background; returns how many phones were addressed."""
+def already_told(conn, account_id: int, key: str, value: str) -> bool:
+    """True if this buyer was already sent this exact news (same key and value); otherwise records it and returns False."""
+    row = conn.execute("SELECT value FROM push_log WHERE account_id = ? AND key = ?", (account_id, key)).fetchone()
+    if row and row[0] == value:
+        return True
+    conn.execute("INSERT OR REPLACE INTO push_log (account_id, key, value, sent) VALUES (?, ?, ?, datetime('now'))", (account_id, key, value))
+    conn.commit()
+    return False
+
+
+def send_to_accounts(account_ids: list[int], title: str, body: str, data: dict | None = None, image: str | None = None,
+                     tag: str | None = None) -> int:
+    """Send in the background; returns how many phones were addressed. image: an https picture shown when the
+    notification is expanded; tag: notifications with the same tag replace each other on the phone instead of stacking."""
     if not account_ids:
         return 0
     conn = db.connect()
@@ -46,9 +58,11 @@ def send_to_accounts(account_ids: list[int], title: str, body: str, data: dict |
         if not s:
             return
         for t in tokens:
-            msg = {"message": {"token": t, "notification": {"title": title, "body": body},
-                               "data": {k: str(v) for k, v in (data or {}).items()},
-                               "android": {"priority": "high", "notification": {"channel_id": "deals"}}}}
+            note = {"title": title, "body": body, **({"image": image} if image else {})}
+            extra = {**(data or {}), **({"image": image} if image else {}), **({"tag": tag} if tag else {})}
+            android = {"channel_id": "deals", **({"tag": tag} if tag else {})}
+            msg = {"message": {"token": t, "notification": note, "data": {k: str(v) for k, v in extra.items()},
+                               "android": {"priority": "high", "notification": android}}}
             try:
                 r = s.post(f"https://fcm.googleapis.com/v1/projects/{project}/messages:send", json=msg, timeout=15)
                 if r.status_code in (404, 400) and ("UNREGISTERED" in r.text or "INVALID_ARGUMENT" in r.text and "token" in r.text):
@@ -62,7 +76,7 @@ def send_to_accounts(account_ids: list[int], title: str, body: str, data: dict |
 def price_dropped(conn, variant_id: str, city: str, old: int, new: int) -> None:
     """Buyers who saved this variant for this city. With a target price, they hear only once it's at or under the
     target (the moment it crosses it); without one, any drop."""
-    rows = conn.execute("""SELECT s.account_id, s.target_inr, m.name AS model, v.name AS variant, m.id AS mid, b.name AS brand
+    rows = conn.execute("""SELECT s.account_id, s.target_inr, m.name AS model, v.name AS variant, m.id AS mid, b.name AS brand, m.image_url
                            FROM saved_cars s JOIN variants v ON v.id = s.variant_id JOIN models m ON m.id = v.model_id
                            JOIN brands b ON b.slug = m.brand_slug
                            WHERE s.variant_id = ? AND lower(s.city) = lower(?)""", (variant_id, city)).fetchall()
@@ -73,18 +87,22 @@ def price_dropped(conn, variant_id: str, city: str, old: int, new: int) -> None:
         if target and old <= target:
             continue                                   # already told when it first crossed the target
         if target:
-            title = f"{r[5]} {r[2]} is now under your target"
-            body = f"{r[3]}: Rs {new:,} ex-showroom in {city} (your target Rs {target:,})."
+            title = f"🎯 The {r[2]} hit your price"
+            body = f"{r[5]} {r[3]} is now ₹{new:,} ex-showroom in {city}, under your ₹{target:,} target. Your move."
         else:
-            title = f"Price drop: {r[5]} {r[2]}"
-            body = f"{r[3]} is now Rs {new:,} ex-showroom in {city}, Rs {old - new:,} less than before."
-        send_to_accounts([r[0]], title, body, {"model": r[4]})
+            title = f"📉 Your {r[2]} just got cheaper"
+            body = f"{r[5]} {r[3]} is down ₹{old - new:,}, now ₹{new:,} ex-showroom in {city}. Prices move, so grab a quote."
+        if already_told(conn, r[0], f"price:{variant_id}:{city.lower()}", str(new)):
+            continue                                   # ingest and snapshot both report the same drop: say it once
+        img = r[6] if r[6] and str(r[6]).startswith("https://") else None
+        send_to_accounts([r[0]], title, body, {"model": r[4]}, image=img, tag=f"price-{variant_id}-{city.lower()}")
 
 
 def quote_received(request_id: int, dealer_name: str, on_road: int) -> None:
     conn = db.connect()
     row = conn.execute("""SELECT r.account_id, m.name, v.name FROM quote_requests r JOIN variants v ON v.id = r.variant_id
                           JOIN models m ON m.id = v.model_id WHERE r.id = ?""", (request_id,)).fetchone()
-    if row:
-        send_to_accounts([row[0]], f"New quote for your {row[1]}",
-                         f"{dealer_name} quoted Rs {on_road:,} on-road for the {row[2]}.", {"screen": "account"})
+    if row and not already_told(conn, row[0], f"quote:{request_id}:{dealer_name}", str(on_road)):
+        send_to_accounts([row[0]], f"💬 {dealer_name} sent you a quote",
+                         f"₹{on_road:,} on-road for the {row[1]} {row[2]}. Stack it against your other quotes.", {"screen": "account"},
+                         tag=f"quote-{request_id}")

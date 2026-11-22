@@ -36,7 +36,7 @@ def _km(a1, o1, a2, o2):
 def _init(conn):
     conn.execute("""CREATE TABLE IF NOT EXISTS dealer_places (dealer_id TEXT PRIMARY KEY, place_id TEXT, rating REAL,
                     rating_count INTEGER, maps_uri TEXT, fetched_at TEXT)""")
-    for col in ("photo TEXT", "photo_by TEXT"):                # Places photo resource name + its author (credit shown)
+    for col in ("photo TEXT", "photo_by TEXT", "g_lat REAL", "g_lng REAL", "g_phone TEXT", "g_address TEXT", "status TEXT"):                # Places photo resource name + its author (credit shown)
         try:
             conn.execute(f"ALTER TABLE dealer_places ADD COLUMN {col}")
         except Exception:
@@ -62,7 +62,7 @@ def match_and_rate(limit: int = 200) -> dict:
         for did, name, addr, lat, lng, place_id in todo:
             try:
                 if place_id:
-                    r = c.get(f"{BASE}/places/{place_id}", headers={**hdr, "X-Goog-FieldMask": "id,rating,userRatingCount,googleMapsUri"}).json()
+                    r = c.get(f"{BASE}/places/{place_id}", headers={**hdr, "X-Goog-FieldMask": "id,rating,userRatingCount,googleMapsUri,location,nationalPhoneNumber,formattedAddress,businessStatus"}).json()
                     if "error" in r:                      # quota / key problem: not an answer, try again next run
                         if r["error"].get("code") == 429:
                             break
@@ -72,7 +72,7 @@ def match_and_rate(limit: int = 200) -> dict:
                     body = {"textQuery": f"{name} {addr}"[:200], "maxResultCount": 3,
                             "locationBias": {"circle": {"center": {"latitude": lat, "longitude": lng}, "radius": 1000.0}}}
                     res = c.post(f"{BASE}/places:searchText", json=body, headers={**hdr,
-                                 "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.googleMapsUri"}).json()
+                                 "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.nationalPhoneNumber,places.formattedAddress,places.businessStatus"}).json()
                     if "error" in res:                    # daily quota used up: stop; nothing is recorded as "no match"
                         if res["error"].get("code") == 429:
                             break
@@ -87,10 +87,15 @@ def match_and_rate(limit: int = 200) -> dict:
             with closing(db.connect()) as conn, conn:
                 ph = ((place or {}).get("photos") or [{}])[0]
                 by = ((ph.get("authorAttributions") or [{}])[0]).get("displayName")
-                conn.execute("""INSERT OR REPLACE INTO dealer_places (dealer_id, place_id, rating, rating_count, maps_uri, fetched_at, photo, photo_by)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                loc = (place or {}).get("location") or {}
+                # Google's pin, phone, address and open/closed status, refreshed weekly (kept under 30 days per its terms)
+                conn.execute("""INSERT OR REPLACE INTO dealer_places (dealer_id, place_id, rating, rating_count, maps_uri, fetched_at, photo, photo_by,
+                                                                      g_lat, g_lng, g_phone, g_address, status)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                              (did, (place or {}).get("id"), (place or {}).get("rating"), (place or {}).get("userRatingCount"),
-                              (place or {}).get("googleMapsUri"), now.isoformat(), ph.get("name"), by))
+                              (place or {}).get("googleMapsUri"), now.isoformat(), ph.get("name"), by,
+                              loc.get("latitude"), loc.get("longitude"), (place or {}).get("nationalPhoneNumber"),
+                              (place or {}).get("formattedAddress"), (place or {}).get("businessStatus")))
             matched += bool(place)
     return {"calls": done, "matched": matched}
 
@@ -166,3 +171,42 @@ def street_photo(lat: float, lng: float, width: int = 800) -> tuple[bytes, str, 
 
 def street_enabled() -> bool:
     return bool(key() or os.getenv("MAPILLARY_TOKEN"))
+
+
+def accessory_shops(lat: float, lng: float, vehicle_type: str = "car") -> list[dict]:
+    """Car / bike accessory shops near a point, live from Google Places (Text Search, 8 km bias). Cached a week per
+    ~1 km grid cell so a busy area costs one call. Fields Google allows us to show: name, address, pin, phone,
+    rating, open now, Maps link."""
+    import json
+    if not key():
+        return []
+    cell = f"{vehicle_type}:{round(lat, 2)}:{round(lng, 2)}"
+    now = dt.datetime.now(dt.timezone.utc)
+    with closing(db.connect()) as conn, conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS accessory_cache (cell TEXT PRIMARY KEY, fetched_at TEXT, payload TEXT)")
+        row = conn.execute("SELECT fetched_at, payload FROM accessory_cache WHERE cell = ?", (cell,)).fetchone()
+    if row and dt.datetime.fromisoformat(row[0]) > now - dt.timedelta(days=7):
+        shops = json.loads(row[1])
+    else:
+        body = {"textQuery": "bike accessories shop" if vehicle_type == "bike" else "car accessories shop", "maxResultCount": 20,
+                "locationBias": {"circle": {"center": {"latitude": lat, "longitude": lng}, "radius": 8000.0}}}
+        fields = ",".join("places." + f for f in ("id", "displayName", "formattedAddress", "location", "nationalPhoneNumber",
+                                                   "rating", "userRatingCount", "googleMapsUri", "businessStatus", "currentOpeningHours.openNow"))
+        try:
+            res = httpx.post(f"{BASE}/places:searchText", json=body, timeout=20,
+                             headers={"X-Goog-Api-Key": key(), "Content-Type": "application/json", "X-Goog-FieldMask": fields}).json()
+        except Exception:
+            return []
+        if "error" in res:
+            return []
+        shops = [{"id": "g:" + p["id"], "name": p.get("displayName", {}).get("text", ""), "address": p.get("formattedAddress", ""),
+                  "lat": p["location"]["latitude"], "lng": p["location"]["longitude"], "phone": p.get("nationalPhoneNumber"),
+                  "google_rating": p.get("rating"), "google_count": p.get("userRatingCount"), "google_maps_uri": p.get("googleMapsUri"),
+                  "open_now": (p.get("currentOpeningHours") or {}).get("openNow"), "kind": "accessories", "phone_verified": True,
+                  "location_verified": True}
+                 for p in res.get("places", []) if p.get("location") and p.get("businessStatus", "OPERATIONAL") == "OPERATIONAL"]
+        with closing(db.connect()) as conn, conn:
+            conn.execute("INSERT OR REPLACE INTO accessory_cache (cell, fetched_at, payload) VALUES (?, ?, ?)", (cell, now.isoformat(), json.dumps(shops)))
+    for s in shops:
+        s["distance_km"] = round(_km(lat, lng, s["lat"], s["lng"]), 1)
+    return sorted(shops, key=lambda s: s["distance_km"])

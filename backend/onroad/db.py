@@ -88,6 +88,12 @@ CREATE TABLE IF NOT EXISTS features (
 CREATE TABLE IF NOT EXISTS push_tokens (     -- phones that asked for notifications (FCM)
     token TEXT PRIMARY KEY, account_id INTEGER, platform TEXT, created TEXT DEFAULT (datetime('now')), last_seen TEXT
 );
+CREATE TABLE IF NOT EXISTS push_log (         -- what each buyer was last told, so a refresh never repeats a notification
+    account_id INTEGER, key TEXT, value TEXT, sent TEXT DEFAULT (datetime('now')), PRIMARY KEY (account_id, key)
+);
+CREATE TABLE IF NOT EXISTS resale_cache (     -- live used-car listings per model and city, refetched after a day
+    model_id TEXT, city TEXT, fetched_at TEXT, payload TEXT, PRIMARY KEY (model_id, city)
+);
 CREATE TABLE IF NOT EXISTS dealer_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT, dealer_id TEXT, account_id INTEGER, rating INTEGER,
     price_honesty INTEGER, no_forced_addons INTEGER, delivery_on_time INTEGER, visit TEXT, text TEXT,

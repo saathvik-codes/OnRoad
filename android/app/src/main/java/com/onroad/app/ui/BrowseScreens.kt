@@ -22,6 +22,12 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
@@ -88,22 +94,67 @@ fun ModelCard(m: ModelSummary, img: String?, onClick: () -> Unit) = Tile(Modifie
 fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     var q by remember { mutableStateOf("") }
     var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
-    LaunchedEffect(q) { delay(200); hits = if (q.trim().length >= 2) runCatching { vm.api.search(q.trim()) }.getOrDefault(emptyList()) else emptyList() }
+    var searched by remember { mutableStateOf("") }
+    var recent by remember { mutableStateOf(vm.prefs.recentSearches) }
+    var trending by remember { mutableStateOf<List<ModelSummary>>(emptyList()) }
+    val city by vm.prefs.city.collectAsStateWithLifecycle()
+    LaunchedEffect(city) { trending = runCatching { vm.api.explore(city, type = "car") }.getOrDefault(emptyList()).take(8) }   // API order = most bought
+    LaunchedEffect(q) {
+        delay(200)
+        val t = q.trim()
+        hits = if (t.length >= 2) runCatching { vm.api.search(t) }.getOrDefault(emptyList()) else emptyList()
+        searched = t
+    }
     LaunchedEffect(q) { if (q.trim().length >= 3) { delay(1500); com.onroad.app.data.Track.search(q.trim()) } }      // once the buyer stops typing
+    fun open(id: String, label: String) { vm.prefs.addRecentSearch(id, label); recent = vm.prefs.recentSearches; onModel(id) }
+    val typing = q.trim().length >= 2
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Header("Search", null, onBack)
             OutlinedTextField(q, { q = it }, placeholder = { Text("Creta, Nexon, Thar…") }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(Icons.Outlined.Close, "Clear") } },
                 modifier = Modifier.fillMaxWidth().padding(16.dp))
         }
+        if (!typing) {
+            if (recent.isNotEmpty()) {
+                item {
+                    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        TextButton({ vm.prefs.recentSearches = emptyList(); recent = emptyList() }) { Text("Clear", color = Ignition) }
+                    }
+                }
+                items(recent, key = { "r" + it.first }) { (id, label) ->
+                    Row(Modifier.fillMaxWidth().clickable { open(id, label) }.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.History, null, tint = Mute, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(12.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+            if (trending.isNotEmpty()) {
+                item { Text("Top searches in $city", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 4.dp)) }
+                items(trending.size, key = { "t" + trending[it].id }) { i ->
+                    val m = trending[i]
+                    val label = listOfNotNull(m.brand, m.name).joinToString(" ")
+                    Row(Modifier.fillMaxWidth().clickable { open(m.id, label) }.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}", color = Ignition, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(28.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text(lakh(m.fromInr), color = Mute)
+                    }
+                }
+            }
+        }
         items(hits, key = { it.id }) { h ->
-            Row(Modifier.fillMaxWidth().clickable { onModel(h.id) }.padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { open(h.id, "${h.brand} ${h.name}") }.padding(horizontal = 20.dp, vertical = 14.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text("${h.brand} ${h.name}", style = MaterialTheme.typography.titleMedium)
                     h.note?.let { Text(it, color = Ignition, style = MaterialTheme.typography.bodySmall) }
                 }
                 Text(lakh(h.fromInr), color = Mute)
             }
+        }
+        if (typing && hits.isEmpty() && searched == q.trim()) item {
+            Text("No cars or bikes match \"${q.trim()}\". Try a brand or model name, like Tata or Swift.", color = Mute,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
         }
     }
 }

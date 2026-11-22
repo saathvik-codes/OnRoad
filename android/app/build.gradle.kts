@@ -98,6 +98,7 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")      // interactive map for showrooms / accessory shops (no API key)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

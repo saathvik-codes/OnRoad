@@ -36,7 +36,7 @@ class PushService : FirebaseMessagingService() {
     override fun onMessageReceived(msg: RemoteMessage) {
         // in the background Android shows the notification itself; in the foreground we show it
         val n = msg.notification ?: return
-        show(this, n.title ?: "OnRoad", n.body ?: "", msg.data["model"])
+        show(this, n.title ?: "OnRoad", n.body ?: "", msg.data["model"], (n.imageUrl ?: msg.data["image"])?.toString(), msg.data["tag"])
     }
 
     companion object {
@@ -48,15 +48,18 @@ class PushService : FirebaseMessagingService() {
                     .apply { description = "Your saved cars getting cheaper, and dealers answering your quote requests" })
         }
 
-        fun show(ctx: Context, title: String, body: String, model: String?) {
+        fun show(ctx: Context, title: String, body: String, model: String?, image: String? = null, tag: String? = null) {
             channel(ctx)
             val open = PendingIntent.getActivity(ctx, title.hashCode(), Intent(ctx, MainActivity::class.java)
                 .putExtra("open_model", model).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             runCatching {
-                NotificationManagerCompat.from(ctx).notify(title.hashCode(), NotificationCompat.Builder(ctx, CHANNEL)
-                    .setSmallIcon(R.drawable.ic_stat_notify).setContentTitle(title).setContentText(body)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(body)).setContentIntent(open).setAutoCancel(true).build())
+                val pic = loadBitmap(image)
+                // same tag (e.g. one saved car's price) replaces the earlier notification instead of stacking a copy
+                NotificationManagerCompat.from(ctx).notify((tag ?: title).hashCode(), NotificationCompat.Builder(ctx, CHANNEL)
+                    .setSmallIcon(R.drawable.ic_stat_notify).setContentTitle(title).setContentText(body).setLargeIcon(pic)
+                    .setStyle(if (pic != null) NotificationCompat.BigPictureStyle().bigPicture(pic).setSummaryText(body) else NotificationCompat.BigTextStyle().bigText(body))
+                    .setContentIntent(open).setAutoCancel(true).build())
             }
         }
 

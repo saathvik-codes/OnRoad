@@ -128,3 +128,29 @@ If you only do a few, start with 1-3 (onboarding), then 9 (offline) and 4 (empty
 Next: 24 (link sharing image) and 25-26 (store listing), then the rest.
 Note: 24, 25 and 26 are the only ones WITHOUT a transparent background.
 When they are in this folder, tell me and I will convert, compress and wire them into Android, iOS and the website.
+
+
+NEW FEATURES (Nov 2026) - landscape 1536x1024 unless marked
+-----------------------------------------------------------
+27. hero-for-you.png
+   The young Indian woman on a sofa scrolling her phone; three small floating car cards (hatchback, SUV, sedan) fan
+   out above the phone, the middle one glowing slightly orange as the best match.
+
+28. hero-waiting-period.png
+   A friendly calendar page and a small hourglass beside a parked orange SUV with a soft cover half pulled off,
+   suggesting a car that is about to be delivered.
+
+29. hero-resale.png
+   The young Indian man handing a car key to a smiling older Indian man across a small table; a soft upward-curving
+   ribbon floats above them (no numbers or arrows with text).
+
+30. hero-ev-cost.png
+   A compact orange electric car plugged into a home wall charger in a tidy Indian apartment parking spot, a small
+   leaf and a lightning shape floating nearby.
+
+31. hero-test-drive.png
+   The young Indian woman in the driver's seat of the orange SUV, a showroom staff member in a polo shirt smiling
+   from the passenger seat, both buckled up.
+
+32. empty-recent-search.png  (square 1024x1024)
+   A magnifying glass resting on a small stack of tiny toy cars, a soft clock shape behind it.

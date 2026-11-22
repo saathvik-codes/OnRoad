@@ -67,7 +67,7 @@ def _cache_reset() -> None:
     global _RESP_BYTES
     _RESP_CACHE.clear(); _RESP_BYTES = 0
 _CACHEABLE = ("/api/brands", "/api/explore", "/api/offers", "/api/campaigns", "/api/models/", "/api/bands", "/api/cities",
-              "/api/meta", "/api/variant-specs", "/api/updates", "/api/ownership", "/api/news", "/api/loan-rates", "/api/states", "/api/model-features")
+              "/api/meta", "/api/variant-specs", "/api/updates", "/api/resale", "/api/ownership", "/api/news", "/api/loan-rates", "/api/states", "/api/model-features")
 # catalogue data only changes on a refresh / snapshot, and both clear this cache (_cache_reset), so an hour is safe
 _CACHE_TTL = float(os.getenv("RESPONSE_CACHE_SECONDS", "3600"))
 
@@ -685,6 +685,18 @@ def _google(rows: list[dict]) -> None:
             continue
         if g.get("rating") is not None:
             d["google_rating"], d["google_count"], d["google_maps_uri"] = g["rating"], g["rating_count"], g["maps_uri"]
+        # the brand locator's data can be stale: Google's live listing wins for the pin and the phone number
+        if g.get("g_lat") and g.get("g_lng"):
+            d["lat"], d["lng"], d["location_verified"] = g["g_lat"], g["g_lng"], True
+        if g.get("g_phone"):
+            same = d.get("phone") and re.sub(r"\D", "", g["g_phone"])[-10:] in re.sub(r"\D", "", d["phone"])
+            if not d.get("phone"):
+                d["phone"] = g["g_phone"]                          # maker lists none: Google's is the only number
+            elif not same:
+                d["alt_phone"] = g["g_phone"]                      # maker's official line stays first; Google's shown too
+            d["phone_verified"] = bool(same) or not d.get("alt_phone")
+        if g.get("status") in ("CLOSED_PERMANENTLY", "CLOSED_TEMPORARILY"):
+            d["closed"] = g["status"]
         if g.get("photo"):
             d["photo_url"] = f"/api/dealer-photo?id={quote(d['id'], safe='')}"
             d["photo_credit"] = f"Photo: {g.get('photo_by') or 'Google user'} · Google"
@@ -804,6 +816,13 @@ def ownership_help(variant_id: str, city: str = "Hyderabad"):
         raise HTTPException(404, "Unknown variant")
     b = onroad(variant_id, city)
     return _own.ownership(v, {"id": v["mid"], "brand_slug": v["brand_slug"], "vehicle_type": v["vehicle_type"]}, city, b)
+
+
+@app.get("/api/resale")
+def resale_value(variant_id: str, city: str = "Hyderabad", years: int = Query(3, ge=1, le=7)):
+    """What this variant is likely worth after `years`, from today's live used-car listings for the model in this city."""
+    from . import resale
+    return resale.for_variant(variant_id, city, years)
 
 
 @app.get("/api/updates")
@@ -1564,9 +1583,17 @@ def dealers_near(lat: float, lng: float, brand: str | None = None, vehicle_type:
     for r in rows:
         r["distance_km"] = round(_km(lat, lng, r["lat"], r["lng"]), 1)
     rows.sort(key=lambda r: r["distance_km"])
-    rows = rows[:limit]
+    rows = rows[:limit * 2]
     _google(rows)
+    rows = [r for r in rows if r.get("closed") != "CLOSED_PERMANENTLY"][:limit]     # never send buyers to a shut showroom
     return rows
+
+
+@app.get("/api/accessory-shops")
+def accessory_shops(lat: float, lng: float, vehicle_type: str = "car"):
+    """Accessory shops near the buyer (Google Places, refreshed weekly per area)."""
+    from . import places
+    return places.accessory_shops(lat, lng, vehicle_type)
 
 
 @app.get("/api/dealers/search")

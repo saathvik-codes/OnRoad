@@ -116,7 +116,7 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
     val city by vm.prefs.city.collectAsStateWithLifecycle()
     var type by rememberKept("explore.type") { initType }
     var f by rememberKept("explore.filters") {
-        Filters(budget = initBudget ?: vm.prefs.prefBudget, bodies = if (initType == "car") vm.prefs.prefBodies else emptySet())
+        Filters(budget = initBudget)          // start unfiltered; sign-up choices are offered as a "Your picks" chip below
     }
     var sort by rememberKept("explore.sort") { "popular" }
     var bands by remember { mutableStateOf<List<Band>>(emptyList()) }
@@ -189,6 +189,16 @@ fun ExploreScreen(onModel: (String) -> Unit, onSearch: () -> Unit, initType: Str
                     f.bodies.forEach { b -> add(b to { f = f.copy(bodies = f.bodies - b) }) }
                     f.fuels.forEach { x -> add(x to { f = f.copy(fuels = f.fuels - x) }) }
                     f.gearbox.forEach { g -> add(g to { f = f.copy(gearbox = f.gearbox - g) }) }
+                }
+                // sign-up choices: a suggestion the user taps, never a filter forced on every launch
+                val picks = Filters(budget = vm.prefs.prefBudget, bodies = vm.prefs.prefBodies)
+                if (active.isEmpty() && !bike && brand == null && picks.count > 0) {
+                    val label = listOfNotNull(budgets.firstOrNull { it.id == picks.budget }?.label, picks.bodies.takeIf { it.isNotEmpty() }?.joinToString(", "))
+                    Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp).clip(Corner).border(1.dp, Ignition.copy(alpha = 0.5f), Corner)
+                        .clickable { f = picks }.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Tune, null, tint = Ignition, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(6.dp))
+                        Text("Your picks: " + label.joinToString(" · "), style = MaterialTheme.typography.labelLarge, color = Ink)
+                    }
                 }
                 if (active.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(active.size) { i ->

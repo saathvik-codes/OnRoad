@@ -81,6 +81,7 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     var type by remember { mutableStateOf("car") }
     var brand by remember { mutableStateOf<String?>(null) }
     var sort by remember { mutableStateOf("near") }
+    var view by remember { mutableStateOf("list") }                // "list" | "map"
     var brands by remember { mutableStateOf<List<Brand>>(emptyList()) }
     var list by remember { mutableStateOf<List<NearDealer>?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
@@ -102,12 +103,13 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     }
     LaunchedEffect(Unit) { if (here == null) locate() }
     LaunchedEffect(type, cityNow) {
+        if (type == "acc") { brands = emptyList(); return@LaunchedEffect }
         brands = runCatching { vm.api.brands(cityNow, type) }.getOrElse { emptyList() }.filter { it.models > 0 }
     }
     LaunchedEffect(here, type, brand, tick) {
         val h = here ?: return@LaunchedEffect
         list = null; err = null
-        runCatching { vm.api.dealersNear(h.first, h.second, brand, type) }
+        runCatching { if (type == "acc") vm.api.accessoryShops(h.first, h.second) else vm.api.dealersNear(h.first, h.second, brand, type) }
             .onSuccess { list = it }.onFailure { err = "Couldn't reach OnRoad. Check your connection." }
     }
     val shown = list?.let { l ->
@@ -119,7 +121,8 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
-            ScreenHeader("Showrooms", "Official dealers of every brand", onBack)
+            ScreenHeader(if (type == "acc") "Accessory shops" else "Showrooms",
+                if (type == "acc") "Car accessory stores near you, from Google Maps" else "Official dealers of every brand", onBack)
             // where we're searching from
             Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel)
                 .border(1.dp, Line, RoundedCornerShape(16.dp)).clickable { here = null; locate() }.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -136,7 +139,10 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                 Text("Locate", color = Ignition, style = MaterialTheme.typography.labelLarge)
             }
             Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Pills(listOf("car" to "Cars", "bike" to "Bikes"), type) { type = it; brand = null }
+                Pills(listOf("car" to "Cars", "bike" to "Bikes", "acc" to "Accessories"), type) { type = it; brand = null }
+            }
+            Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Pills(listOf("list" to "List", "map" to "Map"), view) { view = it }
                 Spacer(Modifier.weight(1f))
                 Pills(listOf("near" to "Nearest", "rated" to "Top rated"), sort) { sort = it }
             }
@@ -168,9 +174,12 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     if (brand != null) TextButton({ brand = null }) { Text("Show all brands", color = Ignition) }
                 }
             }
+            view == "map" -> item(key = "map") {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) { PlacesMap(l, here, ::call, ::go) }
+            }
             else -> {
                 item {
-                    Text("${l.size} showroom${if (l.size == 1) "" else "s"}${if (sort == "near") " · nearest first" else " · best rated first"}",
+                    Text("${l.size} ${if (type == "acc") "shop" else "showroom"}${if (l.size == 1) "" else "s"}${if (sort == "near") " · nearest first" else " · best rated first"}",
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 8.dp))
                 }
                 item(key = "hero-" + l.first().id) { FeaturedShowroom(l.first(), vm, ::call, ::go, { reviews = l.first() }) { rating = l.first() } }

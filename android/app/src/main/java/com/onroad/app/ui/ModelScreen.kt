@@ -168,6 +168,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                     }
                 }
                 variant?.let { v -> PriceTrend(model.priceHistory, v.id, v.priceCity ?: city) }
+                variant?.let { v -> ResaleCard(v.id, city, model.name) }
             }
             Tab.Emi -> item {
                 val total = variant?.onroad?.let { it.totalInr - it.refundableInr }
