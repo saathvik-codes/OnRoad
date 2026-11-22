@@ -58,26 +58,30 @@ val Electric: Color get() = Pal.c.electric
 val Good: Color get() = Pal.c.good
 val Amber: Color get() = Pal.c.amber
 val IsDark: Boolean get() = Pal.c.dark
-val IgnitionGradient = Brush.linearGradient(listOf(Color(0xFFFFB347), Color(0xFFFF4D2E), Color(0xFFC2185B)))
+// solid signal orange (was an orange-to-pink gradient: the stock "generated" look); kept as a Brush so callers don't change
+val IgnitionGradient = Brush.linearGradient(listOf(Color(0xFFFF4D2E), Color(0xFFF2441F)))
 
-// Same type as the website: Space Grotesk for headings and prices, Geist for everything else (both SIL OFL, bundled).
+// Type (design/DESIGN_LANGUAGE.md): Archivo semi-condensed for headings and prices - the narrow, sturdy grotesk of
+// spec sheets and dashboards; Hind (Indian Type Foundry) for reading text, drawn for Latin + Devanagari together so
+// Hindi and Marathi sit at the same size and weight as English. Prices use tabular figures so columns line up.
 @OptIn(ExperimentalTextApi::class)
-private fun vf(res: Int, w: Int) = Font(res, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+private fun vf(res: Int, w: Int, width: Float = 100f) = Font(res, FontWeight(w),
+    variationSettings = FontVariation.Settings(FontVariation.weight(w), FontVariation.width(width)))
 @OptIn(ExperimentalTextApi::class)
-val Display = FontFamily(vf(R.font.space_grotesk, 500), vf(R.font.space_grotesk, 600), vf(R.font.space_grotesk, 700))
-@OptIn(ExperimentalTextApi::class)
-val Body = FontFamily(vf(R.font.geist, 400), vf(R.font.geist, 500), vf(R.font.geist, 600), vf(R.font.geist, 700))
+val Display = FontFamily(vf(R.font.archivo, 500, 88f), vf(R.font.archivo, 600, 88f), vf(R.font.archivo, 700, 88f), vf(R.font.archivo, 800, 88f))
+val Body = FontFamily(Font(R.font.hind_regular, FontWeight.Normal), Font(R.font.hind_medium, FontWeight.Medium),
+    Font(R.font.hind_semibold, FontWeight.SemiBold), Font(R.font.hind_bold, FontWeight.Bold))
 
 private val Type = Typography(
-    displaySmall = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 32.sp, letterSpacing = (-1).sp, lineHeight = 37.sp),
-    headlineMedium = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp, letterSpacing = (-0.6).sp),
-    headlineSmall = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = (-0.4).sp),
-    titleLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 19.sp, letterSpacing = (-0.2).sp),
+    displaySmall = TextStyle(fontFamily = Display, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, letterSpacing = (-0.5).sp, lineHeight = 36.sp, fontFeatureSettings = "tnum"),
+    headlineMedium = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp, letterSpacing = (-0.3).sp, lineHeight = 30.sp, fontFeatureSettings = "tnum"),
+    headlineSmall = TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = (-0.2).sp, lineHeight = 26.sp, fontFeatureSettings = "tnum"),
+    titleLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 24.sp, fontFeatureSettings = "tnum"),
     titleMedium = TextStyle(fontFamily = Body, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
     titleSmall = TextStyle(fontFamily = Body, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
-    bodyLarge = TextStyle(fontFamily = Body, fontSize = 15.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontFamily = Body, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontFamily = Body, fontSize = 12.sp, lineHeight = 16.sp),
+    bodyLarge = TextStyle(fontFamily = Body, fontSize = 16.sp, lineHeight = 23.sp),       // Hind runs small: +1 sp keeps the same read size
+    bodyMedium = TextStyle(fontFamily = Body, fontSize = 15.sp, lineHeight = 21.sp),
+    bodySmall = TextStyle(fontFamily = Body, fontSize = 13.sp, lineHeight = 17.sp),
     labelLarge = TextStyle(fontFamily = Body, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
     labelMedium = TextStyle(fontFamily = Body, fontWeight = FontWeight.Medium, fontSize = 12.sp),
     labelSmall = TextStyle(fontFamily = Body, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 0.8.sp),
@@ -118,14 +122,13 @@ fun OnRoadTheme(content: @Composable () -> Unit) {
 /** Rounded panel used for every card. */
 @Composable
 fun Tile(modifier: Modifier = Modifier, pad: Int = 16, content: @Composable BoxScope.() -> Unit) = Box(
-    // light: white card with a soft shadow (like the big Indian car apps); dark: bordered panel
-    (if (IsDark) modifier else modifier.shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x22111522), spotColor = Color(0x22111522)))
-        .clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(20.dp)).padding(pad.dp),
+    // flat panel with a hairline rule, like a printed price sheet: no floating soft-shadow cards
+    modifier.clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(pad.dp),
     content = content,
 )
 
 /** The app's one corner for chips, tabs, badges and buttons: a soft rectangle, not a pill. */
-val Corner = RoundedCornerShape(10.dp)
+val Corner = RoundedCornerShape(8.dp)
 
 @Composable
 fun Chip(text: String, color: Color = Mute, modifier: Modifier = Modifier) = Text(
