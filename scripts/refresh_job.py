@@ -101,6 +101,17 @@ def main():
         gallery_sync.run(); gallery_sync.run_fallback(); image_check.run()
     weekly("photos", galleries)
 
+    def photo_overrides():
+        from onroad import image_overrides
+        with closing(db.connect()) as conn, conn:
+            log.info("photo overrides: %s", image_overrides.apply(conn))
+    step("photo overrides", photo_overrides)          # every run: hand-checked fixes win over whatever was scraped
+
+    def videos():
+        from onroad import video_sync
+        log.info("videos: %s", video_sync.sync())
+    weekly("videos", videos)                           # walkarounds and reviews, checked with YouTube oEmbed
+
     def accessory_catalogues():
         from onroad import accessories
         log.info("accessories: %s", accessories.run())

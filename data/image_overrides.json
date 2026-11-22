@@ -1,0 +1,12 @@
+{
+ "_note": "Main photos checked by eye (2026-11-22): the scraped one showed another model, an ad banner or no car. null = no correct photo yet, show the brand mark.",
+ "models": {
+  "mg/cyberster": "https://stimg.cardekho.com/images/carexteriorimages/930x620/MG/Cyberster/12221/1758802623039/front-left-side-47.jpg",
+  "porsche/911": "https://images.porsche.com/f/285489813253582/5000x1485/a203ff742b/model-9921b2-side-shot_c0332ade044b4b01b7e09d445787a5f5.png/m/5000x1485/smart/filters:format(avif)",
+  "tata_motors/curvv-ev": "https://stimg.cardekho.com/images/carexteriorimages/930x620/Tata/Curvv-EV/13538/1777897776645/front-left-side-47.jpg",
+  "volvo/ex40": "https://stimg.cardekho.com/images/carexteriorimages/930x620/Volvo/EX40/11561/1784203909692/front-view-118.jpg",
+  "mercedes_benz/amg-cle-53": "https://stimg.cardekho.com/images/expert-review/select-model/20250813_115416/930x620/1120250813_115416.jpg",
+  "lotus/emeya": null,
+  "mg/hector-tomahawk": null
+ }
+}

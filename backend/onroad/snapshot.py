@@ -30,7 +30,9 @@ RELEASE = os.getenv("SNAPSHOT_RELEASE", "https://github.com/saathvik-codes/OnRoa
 # everything people create; never shipped in a snapshot and never replaced by one
 USER_TABLES = {"accounts", "sessions", "saved_cars", "quote_requests", "quotes", "dealer_reviews", "opinions", "outreach",
                "push_tokens", "dealer_claims", "app_state", "refresh_runs", "sqlite_sequence",
-               "news"}                            # the server fetches news itself
+               "news",                            # the server fetches news itself
+               "push_log", "waiting_reports",     # what each buyer was told; buyers' delivery-time reports
+               "resale_cache", "accessory_cache"} # live lookups the server makes itself
 RESEARCH = ("popularity.json", "crash_tests.json")
 
 
