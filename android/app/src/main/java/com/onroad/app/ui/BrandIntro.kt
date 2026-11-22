@@ -55,7 +55,7 @@ private val Glide = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.mark(sweep: Float, lane: Float, laneShift: Float, bg: Color, dash: Color) {
     val stroke = size.minDimension * 0.25f
     val inset = stroke / 2
-    val ring = Brush.linearGradient(listOf(Color(0xFFFFB347), Color(0xFFFF4D2E), Color(0xFFC2185B)), Offset.Zero, Offset(size.width, size.height))
+    val ring = androidx.compose.ui.graphics.SolidColor(Color(0xFFFF4D2E))      // flat signal orange, same as the app icon
     drawArc(ring, startAngle = -200f, sweepAngle = 360f * sweep, useCenter = false, topLeft = Offset(inset, inset),
         size = Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Butt))
     if (lane <= 0f) return
@@ -96,7 +96,9 @@ fun BrandIntro(onDone: () -> Unit) {
 
     LaunchedEffect(Unit) {
         if (noMotion) { onDone(); return@LaunchedEffect }
-        coroutineScope {
+        // hard cap on wall-clock time: on a slow phone each animation step stretches (it waits for frames), and a
+        // sequential chain of them kept the app hidden for 5-7 s after Home was ready. Whatever has played by 1.6 s, go.
+        kotlinx.coroutines.withTimeoutOrNull(1600) { coroutineScope {
             // ~2.6 s with a pause on the finished logo, like the big Indian apps: one beat of motion, a clean logo, then straight into the app
             if (draw.value < 1f) { draw.animateTo(1f, tween(480, easing = Smooth)); lane.animateTo(1f, tween(160)) }
             drive.animateTo(0.45f, tween(320, easing = LinearEasing))                 // the lane races through once
@@ -109,9 +111,8 @@ fun BrandIntro(onDone: () -> Unit) {
             val d = async { shine.animateTo(1.3f, tween(420, easing = LinearEasing)) }
             tag.animateTo(1f, tween(260))
             d.await()
-            delay(700)
-            out.animateTo(0f, tween(260))
-        }
+            delay(150)
+        } }
         onDone()
     }
 

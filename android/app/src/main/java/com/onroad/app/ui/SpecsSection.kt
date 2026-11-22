@@ -218,10 +218,12 @@ private fun specIcon(label: String) = when (label) {
 }
 
 /** Adds the unit where the maker's sheet gives a bare number and the unit is unambiguous; tidies "@" figures. */
-private fun specValue(label: String, raw: String): String {
+internal fun specValue(label: String, raw: String): String {
     var v = raw.trim().replace(Regex("""\*+$"""), "").replace(Regex("""\s*@\s*"""), " @ ")
     val bare = Regex("""^[\d.,]+$""").matches(v)
     v = when {
+        label == "Power" -> normPower(v)
+        label == "Torque" -> normTorque(v)
         label == "Engine" && bare -> "$v cc"
         label == "Torque" && !Regex("nm|kgm", RegexOption.IGNORE_CASE).containsMatchIn(v) -> v.replaceFirst(Regex("""^([\d.,]+)"""), "$1 Nm")
         label == "Seats" && bare -> "$v seats"

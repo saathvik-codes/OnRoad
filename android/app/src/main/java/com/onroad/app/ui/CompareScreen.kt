@@ -1,5 +1,6 @@
 package com.onroad.app.ui
 
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,8 +99,18 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
                     }
                     Text(s.model.brandName, color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                     Text(s.model.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(s.variant?.name ?: "Pick a variant", color = Ignition, style = MaterialTheme.typography.labelMedium, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).clickable { pickVariantFor = s })
+                    // the variant is a field that looks tappable: label, value and a chevron, like a form select
+                    Column(Modifier.padding(top = 8.dp).fillMaxWidth().clip(Corner).border(1.dp, Line, Corner).clickable { pickVariantFor = s }
+                        .padding(horizontal = 8.dp, vertical = 6.dp)) {
+                        Text("VARIANT", color = Mute, style = MaterialTheme.typography.labelSmall)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(s.variant?.name ?: "Choose", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            Icon(Icons.Outlined.KeyboardArrowDown, "Change variant", tint = Ink, modifier = Modifier.size(18.dp))
+                        }
+                        s.variant?.let { v -> Text(listOfNotNull(v.fuel, v.transmission?.let { t -> if (t.equals("manual", true)) "Manual" else "Automatic" })
+                            .joinToString(" · "), color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 1) }
+                    }
                 }
             }
             if (slots.size < 3) Column(Modifier.weight(1f).height(if (slots.isEmpty()) 160.dp else 180.dp).clip(RoundedCornerShape(14.dp))
@@ -121,10 +132,17 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
         var q by remember { mutableStateOf("") }
         var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
         LaunchedEffect(q) { delay(200); hits = if (q.trim().length >= 2) runCatching { vm.api.search(q.trim()) }.getOrDefault(emptyList()) else emptyList() }
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).height(460.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).height(560.dp)) {
             OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search Creta, Nexon, Splendor…") },
                 shape = RoundedCornerShape(14.dp))
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (q.trim().length < 2) TopSearches(city, vm, exclude = slots.map { it.model.id }.toSet(), title = "Most compared in $city") { id, _ ->
+                    picking = false
+                    scope.launch {
+                        val (b, m) = id.split("/", limit = 2)
+                        runCatching { vm.api.model(b, m, city, vm.prefs.lat, vm.prefs.lng) }.onSuccess { slots.add(Slot(it, city)) }
+                    }
+                }
                 hits.filter { h -> slots.none { it.model.id == h.id } }.forEach { h ->
                     Row(Modifier.fillMaxWidth().clickable {
                         picking = false
@@ -174,7 +192,7 @@ private fun CompareTable(slots: List<Slot>, city: String) {
     section("Engine & economy")
     row("Fuel · gearbox", slots.map { s -> listOfNotNull(s.variant?.fuel, s.variant?.transmission).joinToString(" · ").ifBlank { null } })
     HEADLINE_SPECS.forEach { (label, rx) ->
-        val vals = slots.map { s -> findSpec(s.specs?.specs, rx) }
+        val vals = slots.map { s -> findSpec(s.specs?.specs, rx)?.let { v -> specValue(label, v) } }      // same units and format as the model page
         if (vals.any { it != null }) row(label, vals)
     }
     section("Safety & features")
@@ -184,4 +202,25 @@ private fun CompareTable(slots: List<Slot>, city: String) {
     row("Listed features", feats.map { it?.toString() }, winner(feats.map { it?.takeIf { n -> n > 0 } }, lowest = false))
     Text("On-road prices for $city. Green marks the better value in a row.",
         color = Mute, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp))
+}
+
+
+/** "60kW@5700 rpm or 81.58PS@5700 rpm", "87 bhp @ 6000 rpm", "88.5 PS" -> "80 bhp @ 5700 rpm": one unit so columns compare. */
+internal fun normPower(raw: String): String {
+    val t = raw.replace(",", "")
+    val rpm = Regex("""(\d{3,5}(?:\s*-\s*\d{3,5})?)\s*rpm""", RegexOption.IGNORE_CASE).find(t)?.groupValues?.get(1)?.replace(" ", "")
+    val m = Regex("""(\d+(?:\.\d+)?)\s*(bhp|hp|ps|kw)""", RegexOption.IGNORE_CASE).find(t) ?: return raw
+    val n = m.groupValues[1].toDouble()
+    val bhp = when (m.groupValues[2].lowercase()) { "kw" -> n * 1.341; "ps" -> n * 0.9863; else -> n }
+    return "%.0f bhp".format(bhp) + (rpm?.let { " @ $it rpm" } ?: "")
+}
+
+/** "111", "113Nm@4400rpm", "11.5 kgm" -> "113 Nm @ 4400 rpm". A bare number is a maker's Nm figure. */
+internal fun normTorque(raw: String): String {
+    val t = raw.replace(",", "")
+    val rpm = Regex("""(\d{3,5}(?:\s*-\s*\d{3,5})?)\s*rpm""", RegexOption.IGNORE_CASE).find(t)?.groupValues?.get(1)?.replace(" ", "")
+    val m = Regex("""(\d+(?:\.\d+)?)\s*(nm|kgm|kg-m)?""", RegexOption.IGNORE_CASE).find(t) ?: return raw
+    val n = m.groupValues[1].toDouble()
+    val nm = if (m.groupValues[2].lowercase().startsWith("kg")) n * 9.807 else n
+    return "%.0f Nm".format(nm) + (rpm?.let { " @ $it rpm" } ?: "")
 }

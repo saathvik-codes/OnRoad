@@ -1,5 +1,7 @@
 package com.onroad.app.ui
 
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.Map
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -123,28 +125,30 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
         item {
             ScreenHeader(if (type == "acc") "Accessory shops" else "Showrooms",
                 if (type == "acc") "Car accessory stores near you, from Google Maps" else "Official dealers of every brand", onBack)
-            // where we're searching from
-            Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel)
-                .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable { here = null; locate() }.padding(horizontal = 14.dp, vertical = 12.dp),
+            // where we're searching from: one quiet line, tap to use the exact location
+            Row(Modifier.fillMaxWidth().clickable { here = null; locate() }.padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(Electric.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.MyLocation, null, tint = Electric, modifier = Modifier.size(18.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(if (fromGps) "Near your location" else "Around $cityNow", fontWeight = FontWeight.SemiBold)
-                    Text(if (fromGps) "Using your phone's location" else "Centre of $cityNow · tap to use your exact location", color = Mute,
-                        style = MaterialTheme.typography.bodySmall)
-                }
-                Text("Locate", color = Ignition, style = MaterialTheme.typography.labelLarge)
+                Icon(Icons.Outlined.MyLocation, null, tint = Ink, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (fromGps) "Near your location" else "Around $cityNow", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                Text(if (fromGps) "Refresh" else "Use my location", color = Ignition, style = MaterialTheme.typography.labelLarge)
             }
-            Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Pills(listOf("car" to "Cars", "bike" to "Bikes", "acc" to "Accessories"), type) { type = it; brand = null }
-            }
-            Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Pills(listOf("list" to "List", "map" to "Map"), view) { view = it }
+            Segmented(listOf("car" to "Cars", "bike" to "Bikes", "acc" to "Accessories"), type, { type = it; brand = null },
+                Modifier.padding(horizontal = 16.dp).padding(top = 8.dp))
+            // one line of controls: sort as words on the left, list / map as a small two-icon switch on the right
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf("near" to "Nearest", "rated" to "Top rated").forEach { (k, l) ->
+                    Text(l, color = if (sort == k) Ink else Mute, fontWeight = if (sort == k) FontWeight.Bold else FontWeight.Medium,
+                        style = MaterialTheme.typography.labelLarge, modifier = Modifier.clickable { sort = k }.padding(end = 18.dp, top = 4.dp, bottom = 4.dp))
+                }
                 Spacer(Modifier.weight(1f))
-                Pills(listOf("near" to "Nearest", "rated" to "Top rated"), sort) { sort = it }
+                Row(Modifier.clip(Corner).border(1.dp, Line, Corner)) {
+                    listOf("list" to Icons.AutoMirrored.Outlined.List, "map" to Icons.Outlined.Map).forEach { (k, ic) ->
+                        Box(Modifier.background(if (view == k) Ink else Color.Transparent).clickable { view = k }.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                            Icon(ic, if (k == "map") "Map" else "List", tint = if (view == k) Panel else Mute, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
             }
             if (brands.isNotEmpty()) LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(brands, key = { it.slug }) { b ->
@@ -227,54 +231,30 @@ private fun Ratings(d: NearDealer) = Row(verticalAlignment = Alignment.CenterVer
 
 @Composable
 private fun Action(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: Color, modifier: Modifier, onClick: () -> Unit) = Row(
-    modifier.clip(Corner).background(tint.copy(alpha = 0.12f)).clickable(onClick = onClick).padding(vertical = 10.dp),
+    // one button style: hairline outline, ink text. Colour is kept for meaning (price, alerts), not decoration.
+    modifier.clip(Corner).border(1.dp, Line, Corner).clickable(onClick = onClick).padding(vertical = 10.dp),
     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
 ) {
-    Icon(icon, null, tint = tint, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(6.dp))
-    Text(label, color = tint, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+    Icon(icon, null, tint = Ink, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp))
+    Text(label, color = Ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
 private fun FeaturedShowroom(d: NearDealer, vm: BrowseVM, call: (NearDealer) -> Unit, go: (NearDealer) -> Unit, open: () -> Unit, rate: () -> Unit) =
-    Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable(onClick = open), pad = 12) {
-        Column {
-            Box {
-                ShowroomPhoto(d, vm, Modifier.fillMaxWidth().aspectRatio(16 / 9f), big = true)
-                Text("NEAREST", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(10.dp).clip(Corner).background(Ignition).padding(horizontal = 10.dp, vertical = 4.dp))
-                d.distanceKm?.let { km ->
-                    Text("%.1f km".format(km), color = Color.White, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).clip(Corner).background(Color.Black.copy(alpha = 0.6f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp))
-                }
-            }
-            d.photoCredit?.takeIf { SHOW_SHOWROOM_PHOTOS && d.photoUrl != null }?.let { Text(it, color = Mute, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp)) }
-            Spacer(Modifier.height(10.dp))
-            Chip(d.brandName, Ignition)
-            Text(d.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp))
-            Text(listOfNotNull(d.address.ifBlank { null }, d.city).joinToString(", "), color = Mute, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-            Box(Modifier.padding(vertical = 10.dp)) { Ratings(d) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (d.phone != null) Action(Icons.Outlined.Call, "Call", Good, Modifier.weight(1f)) { call(d) }
-                if (d.lat != null || d.address.isNotBlank()) Action(Icons.Outlined.Directions, "Directions", Electric, Modifier.weight(1f)) { go(d) }
-                Action(Icons.Outlined.StarOutline, "Rate", Amber, Modifier.weight(1f), rate)
-            }
-        }
-    }
+    ShowroomCard(d, vm, { call(d) }, { go(d) }, open, rate)
 
 @Composable
 private fun ShowroomCard(d: NearDealer, vm: BrowseVM, call: () -> Unit, go: () -> Unit, open: () -> Unit, rate: () -> Unit) =
     Tile(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable(onClick = open), pad = 12) {
         Column {
             Row {
-                ShowroomPhoto(d, vm, Modifier.width(96.dp).height(84.dp), big = false)
+                ShowroomPhoto(d, vm, Modifier.size(56.dp), big = false)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(d.brandName, color = Ignition, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+                        Text(d.brandName.ifBlank { "Accessories" }.uppercase(), color = Mute, style = MaterialTheme.typography.labelSmall,
                             maxLines = 1, modifier = Modifier.weight(1f))
-                        d.distanceKm?.let { Text("%.1f km".format(it), color = Electric, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
+                        d.distanceKm?.let { Text("%.1f km".format(it), color = Ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold) }
                     }
                     Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(listOfNotNull(d.address.ifBlank { null }, d.city).joinToString(", "), color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 1,

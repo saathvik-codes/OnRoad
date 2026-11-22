@@ -96,9 +96,7 @@ fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = h
     var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
     var searched by remember { mutableStateOf("") }
     var recent by remember { mutableStateOf(vm.prefs.recentSearches) }
-    var trending by remember { mutableStateOf<List<ModelSummary>>(emptyList()) }
     val city by vm.prefs.city.collectAsStateWithLifecycle()
-    LaunchedEffect(city) { trending = runCatching { vm.api.explore(city, type = "car") }.getOrDefault(emptyList()).take(8) }   // API order = most bought
     LaunchedEffect(q) {
         delay(200)
         val t = q.trim()
@@ -130,18 +128,7 @@ fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = h
                     }
                 }
             }
-            if (trending.isNotEmpty()) {
-                item { Text("Top searches in $city", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 4.dp)) }
-                items(trending.size, key = { "t" + trending[it].id }) { i ->
-                    val m = trending[i]
-                    val label = listOfNotNull(m.brand, m.name).joinToString(" ")
-                    Row(Modifier.fillMaxWidth().clickable { open(m.id, label) }.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${i + 1}", color = Ignition, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(28.dp))
-                        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                        Text(lakh(m.fromInr), color = Mute)
-                    }
-                }
-            }
+            item { TopSearches(city, vm) { id, label -> open(id, label) } }
         }
         items(hits, key = { it.id }) { h ->
             Row(Modifier.fillMaxWidth().clickable { open(h.id, "${h.brand} ${h.name}") }.padding(horizontal = 20.dp, vertical = 14.dp)) {

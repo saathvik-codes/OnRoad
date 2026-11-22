@@ -31,6 +31,38 @@ def repair(conn) -> dict:
     for rowid, key, raw, value, vt in rows:
         label = _canon_label(raw) or raw
         k = (key or "").lower()
+        # the unit lives in the label ("Max Power (PS@rpm)": "87.8 @ 6000"): move it into the value, so the figure can
+        # never be read without its unit ("87.8 PS @ 6000 rpm"); same for torque (Nm / kgm)
+        um = re.search(r"\((PS|bhp|hp|kW|Nm|kgm)\s*(@\s*rpm)?\)", raw or "", re.I)
+        vm = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(?:@\s*(\d{3,5}(?:\s*-\s*\d{3,5})?)\s*(?:rpm)?)?\s*", value or "")
+        if um and vm:
+            fixed = f"{vm.group(1)} {um.group(1)}" + (f" @ {vm.group(2).replace(' ', '')} rpm" if vm.group(2) else "")
+            if fixed != value:
+                conn.execute("UPDATE specs SET value = ? WHERE rowid = ?", (fixed, rowid))
+                n["reformatted"] += 1
+                value = fixed
+        if re.search(r"power|torque", raw or "", re.I):
+            # several engines' figures in one cell ("105 (143) @ ... ; 135 [184]"): no way to know which is this variant's
+            if ";" in (value or ""):
+                conn.execute("DELETE FROM specs WHERE rowid = ?", (rowid,))
+                n["removed"] += 1
+                continue
+            # "kW [PS] @ rpm" / "PS (kW) @ rpm": keep the PS figure with its unit
+            two = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*[\[(]\s*(\d+(?:\.\d+)?)\s*[\])]\s*(?:@\s*([\d\s-]+?))?\s*(?:rpm|r/min)?\s*", value or "")
+            order = re.search(r"(kW|PS)\s*[\[(]\s*(kW|PS)", raw or "", re.I)
+            if two and order:
+                ps = two.group(2) if order.group(1).lower() == "kw" else two.group(1)
+                rpm = re.sub(r"\s+", "", two.group(3) or "")
+                fixed = f"{ps} PS" + (f" @ {rpm} rpm" if rpm else "")
+                conn.execute("UPDATE specs SET value = ? WHERE rowid = ?", (fixed, rowid))
+                n["reformatted"] += 1
+                value = fixed
+            elif re.search(r"\(kW\s*@", raw or "", re.I) and re.fullmatch(r"\s*\d+(?:\.\d+)?\s*@\s*[\d\s-]+\s*", value or ""):
+                num, rpm = [x.strip() for x in value.split("@")]
+                fixed = f"{num} kW @ {re.sub(r'\s+', '', rpm)} rpm"
+                conn.execute("UPDATE specs SET value = ? WHERE rowid = ?", (fixed, rowid))
+                n["reformatted"] += 1
+                value = fixed
         # seat dimensions filed as the vehicle's; power-to-weight ratios are not power or weight
         if label in ("Height", "Length") and re.search(r"seat|saddle|seating", k):
             conn.execute("UPDATE specs SET label = ? WHERE rowid = ?", ("Seat height" if label == "Height" else "Seat length", rowid))

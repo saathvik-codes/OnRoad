@@ -1,5 +1,10 @@
 package com.onroad.app.ui
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.material3.HorizontalDivider
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -114,7 +119,7 @@ fun UpdatesScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
         item { ScreenHeader("Updates", "News, launches and price changes", onBack) }
         item {
             Segmented(listOf("news" to "News", "prices" to "Prices & launches"), tab, { tab = it },
-                Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp))
+                Modifier.padding(horizontal = 16.dp))
         }
         // filters stay pinned under the header while the list scrolls
         stickyHeader(key = "filters-$tab") {
@@ -138,19 +143,20 @@ fun UpdatesScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
                 else -> items(list, key = { it.id }) { n ->
                     Row(Modifier.fillMaxWidth().clickable { Track.news(n.source, n.topic); open(ctx, n.url) }.padding(horizontal = 16.dp, vertical = 12.dp)) {
                         Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                KindTag(TOPIC[n.topic] ?: "News", Ignition)
-                                Spacer(Modifier.width(8.dp))
-                                Text("${n.source} · ${ago(n.published)}", color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
+                            Text(buildAnnotatedString {
+                                withStyle(SpanStyle(color = Ink, fontWeight = FontWeight.Bold)) { append((TOPIC[n.topic] ?: "News").uppercase()) }
+                                append("  ·  ${n.source.uppercase()}  ·  ${ago(n.published).uppercase()}")
+                            }, color = Mute, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.height(6.dp))
-                            Text(n.title, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Text(n.title, style = MaterialTheme.typography.titleMedium.copy(fontFamily = Display, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp),
+                                maxLines = 3, overflow = TextOverflow.Ellipsis)
                             if (n.modelId != null) Text("${n.modelName}: on-road price", color = Ignition, style = MaterialTheme.typography.labelMedium,
                                 modifier = Modifier.padding(top = 6.dp).clickable { onModel(n.modelId) })
                         }
                         if (n.imageUrl != null) { Spacer(Modifier.width(12.dp))
-                            AsyncImage(n.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.size(96.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Panel2)) }
+                            AsyncImage(n.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.size(96.dp, 72.dp).clip(RoundedCornerShape(8.dp)).background(Panel2)) }
                     }
+                    HorizontalDivider(color = Line, modifier = Modifier.padding(horizontal = 16.dp))
                 }
             }
         } else {
@@ -167,39 +173,35 @@ fun UpdatesScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = 
     }
 }
 
-/** Two equal options in one rounded track; the chosen one is raised. */
+/** Section bar, like a newspaper's: plain words, the chosen one in ink with a rule under it, one hairline beneath all. */
 @Composable
-private fun Segmented(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(4.dp)) {
-        options.forEach { (k, label) ->
-            val on = k == selected
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) Panel else Color.Transparent)
-                .then(if (on) Modifier.border(1.dp, Line, RoundedCornerShape(10.dp)) else Modifier)
-                .clickable { onPick(k) }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Text(label, color = if (on) Ink else Mute, style = MaterialTheme.typography.labelLarge, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
+internal fun Segmented(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            options.forEach { (k, label) ->
+                val on = k == selected
+                Column(Modifier.clickable { onPick(k) }.padding(top = 6.dp), horizontalAlignment = Alignment.Start) {
+                    Text(label, color = if (on) Ink else Mute, style = MaterialTheme.typography.titleMedium.copy(fontFamily = Display),
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium)
+                    Box(Modifier.padding(top = 8.dp).height(2.dp).width(if (on) 28.dp else 0.dp).background(Ink))
+                }
             }
         }
+        HorizontalDivider(color = Line)
     }
 }
 
-/** Scrollable filter chips; the chosen one is tinted with the brand colour. Optional counts; empty filters are hidden. */
+/** Topic filter as a quiet line of words (not pills): the chosen one in ink and bold, counts in small figures. */
 @Composable
 private fun ChipRow(options: List<Pair<String?, String>>, selected: String?, counts: Map<String?, Int>? = null, onPick: (String?) -> Unit) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
         options.forEach { (k, label) ->
             val on = k == selected
             val n = counts?.get(k)
             if (counts != null && k != null && n == 0 && !on) return@forEach
-            Row(Modifier.height(36.dp).clip(RoundedCornerShape(14.dp))
-                .background(if (on) Ignition.copy(alpha = 0.12f) else Panel)
-                .border(1.dp, if (on) Ignition else Line, RoundedCornerShape(14.dp))
-                .clickable { onPick(k) }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, color = if (on) Ignition else Ink, style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
-                if (n != null) { Spacer(Modifier.width(6.dp))
-                    Text("$n", color = if (on) Ignition else Mute, style = MaterialTheme.typography.labelMedium) }
-            }
+            Text(label + (if (n != null) " $n" else ""), color = if (on) Ink else Mute, style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.clickable { onPick(k) }.padding(vertical = 4.dp))
         }
     }
 }
