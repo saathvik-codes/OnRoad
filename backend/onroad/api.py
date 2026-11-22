@@ -1080,12 +1080,14 @@ def _render_images(u: str, widths) -> None:
         return
     IMG_CACHE.mkdir(parents=True, exist_ok=True)
     import gc
+    # download OUTSIDE the lock with a short timeout: a maker site that stalls used to hold the lock for 30 s and every
+    # other uncached image queued behind it (whole screens of blank photos)
+    r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
+                   timeout=_httpx.Timeout(8.0, connect=4.0), follow_redirects=True)
+    r.raise_for_status()
     with _IMG_LOCK:                                       # one decode at a time: big PNGs need ~100 MB each
         if not [w for w in todo if not _img_path(u, w).exists()]:
             return                                        # another request rendered it while we waited
-        r = _httpx.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/129 Safari/537.36 OnRoadBot/0.1"},
-                       timeout=30, follow_redirects=True)
-        r.raise_for_status()
         if len(r.content) > 15_000_000:
             raise ValueError("image too large")
         with Image.open(io.BytesIO(r.content)) as src:
@@ -1130,6 +1132,7 @@ def model_cutout(brand: str, name: str):
 
 
 _CUTOUTS: dict = {}
+_IMG_FAILED: dict[str, float] = {}       # url -> time until which we don't retry fetching it ourselves
 
 
 @app.get("/api/img")
@@ -1164,10 +1167,17 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
                 _CUTOUTS.clear()
             _CUTOUTS[key] = data
         return Response(data, media_type="image/webp", headers={"Cache-Control": "public, max-age=604800, immutable"})
+    # the maker's server refused or stalled for us: send the phone to the original (makers serve Indian phones fine).
+    # Failures are remembered for 10 minutes so the next request redirects at once instead of waiting again.
+    from fastapi.responses import RedirectResponse
+    if _IMG_FAILED.get(u, 0) > time.time():
+        return RedirectResponse(u, status_code=307, headers={"Cache-Control": "public, max-age=600"})
     try:
         f = _img_file(u, w)
     except Exception as e:
-        raise HTTPException(502, f"Image unavailable ({type(e).__name__})")
+        logging.getLogger("onroad.img").warning("image fetch failed (%s), redirecting: %s", type(e).__name__, u[:120])
+        _IMG_FAILED[u] = time.time() + 600
+        return RedirectResponse(u, status_code=307, headers={"Cache-Control": "public, max-age=600"})
     return Response(f.read_bytes(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
 
 
