@@ -50,7 +50,7 @@ fun Gallery(items: List<GalleryItem>, variantImage: String?, variantName: String
             HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
                 val s = shots[i]
                 val car = s.kind != "feature"
-                Box(Modifier.fillMaxSize().padding(horizontal = 12.dp).clip(RoundedCornerShape(22.dp))
+                Box(Modifier.fillMaxSize().padding(horizontal = 12.dp).clip(RoundedCornerShape(14.dp))
                     .background(if (car) Color.Transparent else Panel), contentAlignment = Alignment.Center) {
                     SubcomposeAsyncImage(img(s.url), s.label, contentScale = if (car) ContentScale.Fit else ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

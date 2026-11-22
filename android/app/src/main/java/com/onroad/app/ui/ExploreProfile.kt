@@ -290,7 +290,7 @@ fun ProfileScreen(onSignIn: () -> Unit, onModel: (String) -> Unit, onCity: () ->
 
 @Composable
 private fun Stat(value: String, label: String, modifier: Modifier) = Column(
-    modifier.clip(RoundedCornerShape(16.dp)).background(Panel2).padding(vertical = 12.dp),
+    modifier.clip(RoundedCornerShape(14.dp)).background(Panel2).padding(vertical = 12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
 ) {
     Text(value, style = MaterialTheme.typography.headlineSmall)
@@ -301,8 +301,8 @@ private fun Stat(value: String, label: String, modifier: Modifier) = Column(
 private fun Shortcut(icon: ImageVector, label: String, tint: Color, modifier: Modifier, onClick: () -> Unit) = Column(
     modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
 ) {
-    Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(tint.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, Line, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Ink, modifier = Modifier.size(22.dp))
     }
     Spacer(Modifier.height(8.dp))
     Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, maxLines = 2)
@@ -319,7 +319,7 @@ private fun Section(title: String, icon: ImageVector?, count: String?) = Row(
 
 @Composable
 private fun Group(content: @Composable () -> Unit) = Column(
-    Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(22.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(22.dp)),
+    Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp)),
 ) { content() }
 
 @Composable
@@ -328,10 +328,8 @@ private fun SettingRow(icon: ImageVector, tint: Color, title: String, sub: Strin
     Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp, vertical = 14.dp),
     verticalAlignment = Alignment.CenterVertically,
 ) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-    }
-    Spacer(Modifier.width(14.dp))
+    Icon(icon, null, tint = if (titleColor != Ink) titleColor else Ink, modifier = Modifier.size(20.dp))
+    Spacer(Modifier.width(16.dp))
     Column(Modifier.weight(1f)) {
         Text(title, fontWeight = FontWeight.SemiBold, color = titleColor)
         sub?.let { Text(it, color = Mute, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }

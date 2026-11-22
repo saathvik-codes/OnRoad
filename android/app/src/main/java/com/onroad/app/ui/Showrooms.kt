@@ -124,8 +124,8 @@ fun ShowroomsScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             ScreenHeader(if (type == "acc") "Accessory shops" else "Showrooms",
                 if (type == "acc") "Car accessory stores near you, from Google Maps" else "Official dealers of every brand", onBack)
             // where we're searching from
-            Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel)
-                .border(1.dp, Line, RoundedCornerShape(16.dp)).clickable { here = null; locate() }.padding(horizontal = 14.dp, vertical = 12.dp),
+            Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel)
+                .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable { here = null; locate() }.padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(34.dp).clip(CircleShape).background(Electric.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.MyLocation, null, tint = Electric, modifier = Modifier.size(18.dp))
@@ -364,7 +364,7 @@ private fun ReviewsSheet(d: NearDealer, vm: BrowseVM, onRate: () -> Unit, onClos
                 res == null -> item { Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Ignition) } }
                 else -> {
                     item {
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel2).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("GOOGLE", style = MaterialTheme.typography.labelSmall, color = Mute)
                                 if (g?.rating != null) Row(verticalAlignment = Alignment.Bottom) {

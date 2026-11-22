@@ -47,8 +47,8 @@ import com.onroad.app.data.Variant
 /** The chosen variant as a card; tapping it opens the full picker. */
 @Composable
 fun VariantCard(v: Variant?, count: Int, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(16.dp)).background(Panel)
-        .border(1.dp, Line, RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(Panel)
+        .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("VARIANT", style = MaterialTheme.typography.labelSmall, color = Mute)
             Text(v?.name ?: "Choose a variant", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)

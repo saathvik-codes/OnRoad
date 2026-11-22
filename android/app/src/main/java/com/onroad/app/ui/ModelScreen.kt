@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,7 @@ import coil3.compose.AsyncImage
 import com.onroad.app.data.ModelDetail
 import com.onroad.app.data.VariantSpecs
 
-private enum class Tab(val label: String) { Price("On-road price"), Specs("Specs & features"), Ownership("Insurance & RTA"), Emi("EMI & loans"),
+private enum class Tab(val label: String) { Price("On-road price"), Specs("Specs & features"), Ownership("Insurance & RTA"), Emi("EMI & loans"), Videos("Videos"),
     Safety("Safety"), Showrooms("Showrooms"), Offers("Offers") }
 
 @Composable
@@ -159,16 +160,23 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
                         Text(rupees(b.totalInr - b.refundableInr), style = MaterialTheme.typography.displaySmall)
                         if (b.refundableInr > 0) Text("+ ${rupees(b.refundableInr)} TCS, which you get back in your tax return", color = Mute)
                         Spacer(Modifier.height(10.dp))
+                        // set like a printed receipt: dotted rules between lines, amounts in tabular figures on the right
                         b.lines.filter { !it.refundable }.forEach { l ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                                 Column(Modifier.weight(1f)) { Text(l.label, style = MaterialTheme.typography.titleMedium); Text(l.basis, color = Mute, style = MaterialTheme.typography.bodyMedium) }
-                                Text(if (l.amountInr != null) rupees(l.amountInr) else "—", fontWeight = FontWeight.SemiBold)
+                                Text(if (l.amountInr != null) rupees(l.amountInr) else "—", style = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp))
                             }
+                            DottedRule()
+                        }
+                        Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                            Text("You pay", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(rupees(b.totalInr - b.refundableInr), style = MaterialTheme.typography.titleLarge, color = Ignition)
                         }
                     }
                 }
                 variant?.let { v -> PriceTrend(model.priceHistory, v.id, v.priceCity ?: city) }
                 variant?.let { v -> ResaleCard(v.id, city, model.name) }
+                WaitingCard(model.id, model.name, city, onSignIn, vm)
             }
             Tab.Emi -> item {
                 val total = variant?.onroad?.let { it.totalInr - it.refundableInr }
@@ -181,6 +189,7 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
             Tab.Specs -> item {
                 SpecsSection(model.brandName, variant?.name ?: "", specs, topSpecs) { u -> vm.prefs.img(u, 640) }
             }
+            Tab.Videos -> item { VideosTab(model.videos, model.name) }
             Tab.Safety -> if (model.crashTests.isEmpty()) item {
                 Text("No official Bharat NCAP or Global NCAP result on record for the ${model.name}.", color = Mute, modifier = Modifier.padding(20.dp))
             } else items(model.crashTests, key = { it.sourceUrl + it.protocol }) { t ->
@@ -311,4 +320,12 @@ fun ModelScreen(id: String, onBack: () -> Unit, onSignIn: () -> Unit = {}, onMod
     }
     if (askQuote) variant?.let { v -> QuoteSheet(v.id, v.name, city, onClose = { askQuote = false }, vm = vm) }
     if (picking) VariantPicker(model.variants, variant?.id, onPick = { sel = it }, onClose = { picking = false })
+}
+
+
+/** Dotted rule between receipt lines. */
+@Composable
+private fun DottedRule() = androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(1.dp)) {
+    drawLine(Line, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), strokeWidth = 2f,
+        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 6f)))
 }

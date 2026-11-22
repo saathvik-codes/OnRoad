@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil3.ImageLoader
+import okio.Path.Companion.toOkioPath
 import coil3.SingletonImageLoader
 import coil3.svg.SvgDecoder
 import coil3.request.crossfade
@@ -84,7 +85,11 @@ import java.net.URLEncoder
 @HiltAndroidApp
 class OnRoadApp : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: coil3.PlatformContext) =
-        ImageLoader.Builder(context).components { add(SvgDecoder.Factory()) }.crossfade(true).build()   // brand logos are SVG
+        ImageLoader.Builder(context).components { add(SvgDecoder.Factory()) }                       // brand logos are SVG
+            .memoryCache { coil3.memory.MemoryCache.Builder().maxSizePercent(context, 0.25).build() }
+            .diskCache { coil3.disk.DiskCache.Builder().directory(context.cacheDir.resolve("img").toOkioPath()).maxSizeBytes(250L * 1024 * 1024).build() }
+            .crossfade(120)                                                                          // short fade: feels instant
+            .build()
 
     override fun onCreate() { super.onCreate(); com.onroad.app.data.AlertWorker.schedule(this) }
 }

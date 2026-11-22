@@ -75,7 +75,7 @@ fun NewsCarousel(news: List<NewsItem>, onModel: (String) -> Unit, onAll: () -> U
         Spacer(Modifier.height(10.dp))
         HorizontalPager(pager, pageSpacing = 12.dp) { i ->
             val n = slides[i]
-            Box(Modifier.fillMaxWidth().aspectRatio(16 / 10f).clip(RoundedCornerShape(22.dp)).background(Panel2)
+            Box(Modifier.fillMaxWidth().aspectRatio(16 / 10f).clip(RoundedCornerShape(14.dp)).background(Panel2)
                 .clickable { Track.news(n.source, n.topic); if (n.modelId != null) onModel(n.modelId) else open(ctx, n.url) }) {
                 AsyncImage(n.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)))))
@@ -191,9 +191,9 @@ private fun ChipRow(options: List<Pair<String?, String>>, selected: String?, cou
             val on = k == selected
             val n = counts?.get(k)
             if (counts != null && k != null && n == 0 && !on) return@forEach
-            Row(Modifier.height(36.dp).clip(RoundedCornerShape(18.dp))
+            Row(Modifier.height(36.dp).clip(RoundedCornerShape(14.dp))
                 .background(if (on) Ignition.copy(alpha = 0.12f) else Panel)
-                .border(1.dp, if (on) Ignition else Line, RoundedCornerShape(18.dp))
+                .border(1.dp, if (on) Ignition else Line, RoundedCornerShape(14.dp))
                 .clickable { onPick(k) }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(label, color = if (on) Ignition else Ink, style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
@@ -238,8 +238,8 @@ private fun UpdateRow(u: UpdateItem, vm: BrowseVM, onClick: () -> Unit) {
         "price" -> if (down) "Price cut" to Good else "Price rise" to Amber
         else -> "Update" to Mute
     }
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clip(RoundedCornerShape(16.dp)).background(Panel)
-        .border(1.dp, Line, RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clip(RoundedCornerShape(14.dp)).background(Panel)
+        .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(88.dp, 60.dp).clip(RoundedCornerShape(10.dp)).background(Panel2), contentAlignment = Alignment.Center) {
             AsyncImage(vm.prefs.img(u.imageUrl, 320), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(4.dp))
         }

@@ -98,6 +98,7 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")   // installs Compose's baseline profiles: faster cold start and scrolling
     implementation("org.osmdroid:osmdroid-android:6.1.20")      // interactive map for showrooms / accessory shops (no API key)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

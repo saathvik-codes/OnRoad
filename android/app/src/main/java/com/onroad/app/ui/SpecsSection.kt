@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.onroad.app.data.Feature
 import com.onroad.app.data.VariantSpecs
@@ -157,7 +158,7 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
                     photos.chunked(2).forEach { pair ->
                         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             pair.forEach { f ->
-                                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))) {
+                                Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))) {
                                     AsyncImage(img(sp.photos[f.key]?.imageUrl), f.label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(4 / 3f))
                                     Text(f.label, style = MaterialTheme.typography.labelLarge, maxLines = 2, modifier = Modifier.padding(10.dp))
                                 }
@@ -184,18 +185,19 @@ fun SpecsSection(brand: String, variantName: String, sp: VariantSpecs?, top: Var
 /** Key figures in a three-column grid (wraps to as many rows as needed). */
 @Composable
 fun KeySpecGrid(items: List<Pair<String, String>>) {
-    // one spec sheet: each spec a row (icon · name · value), read top to bottom like a maker's brochure
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))) {
-        items.forEachIndexed { i, (label, value) ->
-            if (i > 0) HorizontalDivider(color = Line, modifier = Modifier.padding(start = 56.dp))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(Ignition.copy(alpha = 0.10f)), contentAlignment = Alignment.Center) {
-                    Icon(specIcon(label), null, tint = Ignition, modifier = Modifier.size(17.dp))
+    // spec-sheet block: two columns, small-caps label above the figure, hairline rules; no icon chips
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))) {
+        items.chunked(2).forEachIndexed { r, pair ->
+            if (r > 0) HorizontalDivider(color = Line)
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
+                pair.forEachIndexed { c, (label, value) ->
+                    if (c > 0) androidx.compose.material3.VerticalDivider(color = Line)
+                    Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        Text(label.uppercase(), color = Mute, style = MaterialTheme.typography.labelSmall)
+                        Text(specValue(label, value), style = MaterialTheme.typography.titleLarge.copy(fontSize = 17.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(label, color = Mute, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                Text(specValue(label, value), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.padding(start = 12.dp).widthIn(max = 200.dp))
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -236,7 +238,7 @@ private fun specValue(label: String, raw: String): String {
 @Composable
 private fun FeatureGroup(c: Cat, rows: List<Pair<Feature, Boolean>>) {
     var open by remember(c.name) { mutableStateOf(true) }
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(20.dp))
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))
         .animateContentSize()) {
         Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(c.tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
@@ -265,7 +267,7 @@ private fun FeatureGroup(c: Cat, rows: List<Pair<Feature, Boolean>>) {
 @Composable
 private fun SpecGroup(title: String, rows: List<Pair<String, String>>) {
     var open by remember(title) { mutableStateOf(true) }
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(20.dp))
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))
         .animateContentSize()) {
         Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(Electric.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {

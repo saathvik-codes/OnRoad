@@ -134,7 +134,7 @@ fun WelcomeScreen(onCity: () -> Unit, onDone: (signIn: Boolean) -> Unit, vm: Bro
         AnimatedContent(last, label = "cta") { isLast ->
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isLast) {
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel2).clickable(onClick = onCity).padding(16.dp),
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2).clickable(onClick = onCity).padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.LocationOn, null, tint = Ignition); Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) { Text("Prices for", color = Mute, style = MaterialTheme.typography.labelSmall); Text(city, fontWeight = FontWeight.SemiBold) }
@@ -318,7 +318,7 @@ fun AccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, vm: BrowseVM = hiltV
  *  on a white card so its dark details stay visible in dark mode too. */
 @Composable
 private fun OnboardingArt(name: String) = Box(
-    Modifier.fillMaxWidth().aspectRatio(1.25f).clip(RoundedCornerShape(24.dp)).background(Color.White).padding(22.dp),
+    Modifier.fillMaxWidth().aspectRatio(1.25f).clip(RoundedCornerShape(14.dp)).background(Color.White).padding(22.dp),
     contentAlignment = Alignment.Center,
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current

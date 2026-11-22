@@ -213,8 +213,8 @@ fun FinderScreen(onBack: () -> Unit, onModel: (String) -> Unit, vm: BrowseVM = h
             Text("Pick one or more. The first one you pick counts the most.", color = Mute, style = MaterialTheme.typography.bodySmall)
             PRIOS.forEach { (k, l) ->
                 val pos = a.prios.indexOf(k)
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (pos >= 0) Ignition.copy(alpha = 0.12f) else Panel2)
-                    .border(1.dp, if (pos >= 0) Ignition else Color.Transparent, RoundedCornerShape(16.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (pos >= 0) Ignition.copy(alpha = 0.12f) else Panel2)
+                    .border(1.dp, if (pos >= 0) Ignition else Color.Transparent, RoundedCornerShape(14.dp))
                     .clickable { a = a.copy(prios = if (pos >= 0) a.prios - k else a.prios + k) }.padding(horizontal = 14.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(24.dp).clip(CircleShape).background(if (pos >= 0) Ignition else Color.Transparent)

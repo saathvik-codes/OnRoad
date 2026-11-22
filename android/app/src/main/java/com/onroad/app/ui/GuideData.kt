@@ -118,8 +118,8 @@ fun GuideScreen(onBack: () -> Unit) {
                     Box(Modifier.width(2.dp).weight(1f).background(if (i == GUIDE.lastIndex) Color.Transparent else Line))
                 }
                 Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f).padding(vertical = 6.dp).clip(RoundedCornerShape(20.dp))
-                    .background(if (expanded) Panel else Color.Transparent).border(1.dp, if (expanded) Line else Color.Transparent, RoundedCornerShape(20.dp))
+                Column(Modifier.weight(1f).padding(vertical = 6.dp).clip(RoundedCornerShape(14.dp))
+                    .background(if (expanded) Panel else Color.Transparent).border(1.dp, if (expanded) Line else Color.Transparent, RoundedCornerShape(14.dp))
                     .clickable { open = if (expanded) -1 else i }.padding(14.dp).animateContentSize()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(g.title, style = MaterialTheme.typography.titleMedium, color = if (isDone) Mute else Ink, modifier = Modifier.weight(1f))

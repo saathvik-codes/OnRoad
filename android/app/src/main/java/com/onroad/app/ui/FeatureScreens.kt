@@ -376,6 +376,9 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
     var busy by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf<String?>(null) }
     var consent by remember { mutableStateOf(false) }
+    var drive by remember { mutableStateOf(false) }
+    var driveDay by remember { mutableStateOf("Weekend") }
+    var driveTime by remember { mutableStateOf("Morning") }
     var verifying by remember { mutableStateOf(false) }
     var problem by remember { mutableStateOf<String?>(null) }
     val acc by vm.prefs.account.collectAsStateWithLifecycle()
@@ -386,8 +389,8 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
     }
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = Panel) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Art("hero-quote", Modifier.fillMaxWidth().height(130.dp))
-            Text("Get dealer quotes", style = MaterialTheme.typography.headlineSmall)
+            Art(if (drive) "hero-test-drive" else "hero-quote", Modifier.fillMaxWidth().height(130.dp))
+            Text(if (drive) "Quotes + test drive" else "Get dealer quotes", style = MaterialTheme.typography.headlineSmall)
             Text("$variantName · $city. Showrooms of this brand near you send their best on-road price with offers and waiting time.", color = Mute)
             if (done != null) { Art("success-quote-sent", Modifier.fillMaxWidth().height(170.dp)); Text(done!!, color = Good, fontWeight = FontWeight.SemiBold); Button(onClose, Modifier.fillMaxWidth(), shape = Corner) { Text("Done") }; return@Column }
             androidx.compose.material3.OutlinedTextField(pin, { pin = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true,
@@ -397,6 +400,12 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pills(listOf("y" to "Need a loan"), if (finance) "y" else "") { finance = !finance }
                 Pills(listOf("y" to "Exchange my vehicle"), if (exchange) "y" else "") { exchange = !exchange }
+            }
+            Pills(listOf("y" to "Book a test drive"), if (drive) "y" else "") { drive = !drive }
+            if (drive) {
+                Pills(listOf("Weekday" to "Weekday", "Weekend" to "Weekend"), driveDay) { driveDay = it }
+                Pills(listOf("Morning" to "Morning", "Afternoon" to "Afternoon", "Evening" to "Evening"), driveTime) { driveTime = it }
+                Text("The showroom calls to fix the exact slot.", color = Mute, style = MaterialTheme.typography.bodySmall)
             }
             if (acc != null && acc!!.phoneVerified == 0) Row(Modifier.fillMaxWidth().clip(Corner).background(Ignition.copy(alpha = 0.08f)).padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -412,8 +421,9 @@ fun QuoteSheet(variantId: String, variantName: String, city: String, onClose: ()
             Button(onClick = {
                 busy = true; problem = null
                 scope.launch {
-                    runCatching { vm.api.requestQuote(com.onroad.app.data.QuoteRequestIn(variantId, city, pin.ifBlank { null }, finance, exchange, when_, consent = true)) }
-                        .onSuccess { com.onroad.app.data.Track.quote(variantId, city, null); done = "Request sent. Quotes will appear in My garage as showrooms reply." }
+                    runCatching { vm.api.requestQuote(com.onroad.app.data.QuoteRequestIn(variantId, city, pin.ifBlank { null }, finance, exchange, when_,
+                        note = if (drive) "Test drive requested: $driveDay ${driveTime.lowercase()}" else null, consent = true)) }
+                        .onSuccess { com.onroad.app.data.Track.quote(variantId, city, null); done = if (drive) "Sent. Showrooms will call to fix your test drive, and quotes appear in My garage." else "Request sent. Quotes will appear in My garage as showrooms reply." }
                         .onFailure { e ->
                             done = null
                             if ((e as? retrofit2.HttpException)?.code() == 428) { verifying = true; problem = "Verify your mobile first, then send." }

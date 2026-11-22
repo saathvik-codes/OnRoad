@@ -90,7 +90,7 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
         var pickVariantFor by remember { mutableStateOf<Slot?>(null) }
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             slots.forEachIndexed { i, s ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp)).padding(8.dp)) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(8.dp)) {
                     Box {
                         AsyncImage(vm.prefs.img(s.variant?.imageUrl ?: s.model.imageUrl, 480), s.model.name, contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxWidth().aspectRatio(4 / 3f).clickable { onModel(s.model.id) })
@@ -102,8 +102,8 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).clickable { pickVariantFor = s })
                 }
             }
-            if (slots.size < 3) Column(Modifier.weight(1f).height(if (slots.isEmpty()) 160.dp else 180.dp).clip(RoundedCornerShape(18.dp))
-                .border(1.dp, Line, RoundedCornerShape(18.dp)).clickable { picking = true },
+            if (slots.size < 3) Column(Modifier.weight(1f).height(if (slots.isEmpty()) 160.dp else 180.dp).clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable { picking = true },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Icon(Icons.Outlined.Add, null, tint = Ignition)
                 Spacer(Modifier.height(6.dp)); Text(if (slots.isEmpty()) "Add a car or bike" else "Add another", color = Mute, style = MaterialTheme.typography.labelLarge)
@@ -123,7 +123,7 @@ fun CompareScreen(onBack: () -> Unit, onModel: (String) -> Unit, preset: List<St
         LaunchedEffect(q) { delay(200); hits = if (q.trim().length >= 2) runCatching { vm.api.search(q.trim()) }.getOrDefault(emptyList()) else emptyList() }
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).height(460.dp)) {
             OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search Creta, Nexon, Splendor…") },
-                shape = RoundedCornerShape(16.dp))
+                shape = RoundedCornerShape(14.dp))
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 hits.filter { h -> slots.none { it.model.id == h.id } }.forEach { h ->
                     Row(Modifier.fillMaxWidth().clickable {

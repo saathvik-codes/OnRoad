@@ -114,6 +114,8 @@ fun CalculatorScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
                     }
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            EvCostCard()
         }
     }
 }

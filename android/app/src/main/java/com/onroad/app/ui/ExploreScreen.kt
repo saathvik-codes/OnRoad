@@ -287,8 +287,8 @@ internal fun BarButton(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
 internal fun BrandLogo(b: Brand, on: Boolean, logo: String?, onClick: () -> Unit) = Column(
     Modifier.width(72.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally,
 ) {
-    Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(Color.White)
-        .border(2.dp, if (on) Ignition else Color.Transparent, RoundedCornerShape(18.dp)).padding(9.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(60.dp).clip(RoundedCornerShape(14.dp)).background(Color.White)
+        .border(2.dp, if (on) Ignition else Color.Transparent, RoundedCornerShape(14.dp)).padding(9.dp), contentAlignment = Alignment.Center) {
         if (logo != null) AsyncImage(logo, b.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
         else Text(b.name.take(2), color = Color.Black, fontWeight = FontWeight.Bold)
         if (on) Box(Modifier.align(Alignment.TopEnd).size(16.dp).clip(CircleShape).background(Ignition), contentAlignment = Alignment.Center) {
@@ -383,8 +383,8 @@ private fun FilterSheet(all: List<ModelSummary>, f0: Filters, budgets: List<Budg
 @Composable
 internal fun OptionCard(title: String, hint: String?, count: Int?, on: Boolean, radio: Boolean = false,
                        icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) = Row(
-    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (on) Ignition.copy(alpha = 0.12f) else Panel2)
-        .border(1.dp, if (on) Ignition else Color.Transparent, RoundedCornerShape(16.dp))
+    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (on) Ignition.copy(alpha = 0.12f) else Panel2)
+        .border(1.dp, if (on) Ignition else Color.Transparent, RoundedCornerShape(14.dp))
         .clickable(enabled = count == null || count > 0 || on, onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
 ) {

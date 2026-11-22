@@ -781,7 +781,15 @@ def model(brand: str, model: str, city: str = "Hyderabad", lat: float | None = N
     crash_tests = _crash_tests(m["brand_name"], m["name"])
     return {**m, "logo": _logo_url(brand), "variants": variants, "dealers": dealers,
             "offers": offers, "price_history": history, "recent_dealer_quotes": best_quotes,
-            "crash_tests": crash_tests, "gallery": _gallery(m, variants)}
+            "crash_tests": crash_tests, "gallery": _gallery(m, variants), "videos": _videos(m["id"])}
+
+
+def _videos(model_id: str) -> list[dict]:
+    """YouTube videos for the model (onroad/video_sync.py), official films first; played with YouTube's embed."""
+    try:
+        return q("SELECT video_id, title, channel, official FROM model_videos WHERE model_id = ? ORDER BY rank LIMIT 8", (model_id,))
+    except Exception:
+        return []
 
 
 def _km(a1, o1, a2, o2) -> float:
@@ -816,6 +824,50 @@ def ownership_help(variant_id: str, city: str = "Hyderabad"):
         raise HTTPException(404, "Unknown variant")
     b = onroad(variant_id, city)
     return _own.ownership(v, {"id": v["mid"], "brand_slug": v["brand_slug"], "vehicle_type": v["vehicle_type"]}, city, b)
+
+
+class WaitingIn(BaseModel):
+    model_id: str
+    city: str
+    weeks: int = Field(ge=0, le=104)
+    booked: str | None = None                      # "2026-10", the month they booked
+
+
+@app.get("/api/waiting")
+def waiting_period(model_id: str, city: str = "Hyderabad"):
+    """How long delivery is taking right now: dealer quotes (waiting_weeks) and buyer reports from the last 120 days,
+    for this city, else the whole state, else all of India. Never a guess: no reports means no number."""
+    import statistics
+    st = onroad_calc.STATE_OF_CITY.get(city.strip().lower())
+    scopes = [("city", city), ("state", st), ("india", None)]
+    for scope, val in scopes:
+        if scope == "state" and not st:
+            continue
+        cond = {"city": "lower(x.city) = lower(?)", "state": "1=1", "india": "1=1"}[scope]
+        args = (val,) if scope == "city" else ()
+        rows = q(f"""SELECT weeks, src, city FROM (
+                       SELECT q.waiting_weeks AS weeks, 'dealer' AS src, r.city AS city, q.created AS created FROM quotes q
+                         JOIN quote_requests r ON r.id = q.request_id JOIN variants v ON v.id = r.variant_id
+                        WHERE v.model_id = ? AND q.waiting_weeks IS NOT NULL
+                       UNION ALL
+                       SELECT weeks, 'buyer', city, created FROM waiting_reports WHERE model_id = ?) x
+                     WHERE x.created > datetime('now', '-120 days') AND {cond}""", (model_id, model_id, *args))
+        if scope == "state":
+            rows = [r for r in rows if onroad_calc.STATE_OF_CITY.get((r["city"] or "").lower()) == st]
+        if rows:
+            w = [r["weeks"] for r in rows]
+            return {"available": True, "scope": scope, "place": val or "India", "median_weeks": statistics.median(w),
+                    "min_weeks": min(w), "max_weeks": max(w), "dealer_quotes": sum(r["src"] == "dealer" for r in rows),
+                    "buyer_reports": sum(r["src"] == "buyer" for r in rows)}
+    return {"available": False}
+
+
+@app.post("/api/waiting")
+def report_waiting(body: WaitingIn, acc: dict = Depends(account)):
+    with closing(db.connect()) as conn, conn:
+        conn.execute("""INSERT OR REPLACE INTO waiting_reports (account_id, model_id, city, weeks, booked) VALUES (?, ?, ?, ?, ?)""",
+                     (acc["id"], body.model_id, body.city, body.weeks, body.booked))
+    return {"ok": True}
 
 
 @app.get("/api/resale")
@@ -1077,11 +1129,16 @@ def model_cutout(brand: str, name: str):
     return FileResponse(f, headers={"Cache-Control": "public, max-age=604800"})
 
 
+_CUTOUTS: dict = {}
+
+
 @app.get("/api/img")
 def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
     """Serves a manufacturer image we already store (models / feature photos), downscaled to WebP and cached on disk.
     Avoids huge originals (1-2 MB PNGs) and hotlink / referrer blocks. Only URLs present in our DB are allowed."""
     from fastapi.responses import Response
+    # snap to the sizes _warm_images pre-renders: an odd width (720) was a cache miss costing a 3-6 s fetch from the maker
+    w = 480 if w <= 480 else 800 if w <= 800 else 1200
     known = (one("SELECT 1 AS x FROM models WHERE image_url = ?", (u,)) or one("SELECT 1 AS x FROM variants WHERE image_url = ?", (u,))
              or one("SELECT 1 AS x FROM feature_images WHERE image_url = ?", (u,)))
     if not known:
@@ -1097,9 +1154,16 @@ def img(u: str, w: int = Query(default=640, ge=64, le=1600)):
             raise HTTPException(404, "Unknown image")
         import io
         from PIL import Image
-        im = Image.open(local); im.thumbnail((w, w * 2))
-        buf = io.BytesIO(); im.save(buf, "WEBP", quality=82)
-        return Response(buf.getvalue(), media_type="image/webp", headers={"Cache-Control": "public, max-age=604800"})
+        key = (u, w, local.stat().st_mtime)
+        data = _CUTOUTS.get(key)
+        if data is None:                             # encode once per size, then serve from memory
+            im = Image.open(local); im.thumbnail((w, w * 2))
+            buf = io.BytesIO(); im.save(buf, "WEBP", quality=82, method=4)
+            data = buf.getvalue()
+            if len(_CUTOUTS) > 400:
+                _CUTOUTS.clear()
+            _CUTOUTS[key] = data
+        return Response(data, media_type="image/webp", headers={"Cache-Control": "public, max-age=604800, immutable"})
     try:
         f = _img_file(u, w)
     except Exception as e:
@@ -1119,9 +1183,9 @@ def _warm_images() -> None:
             jobs.setdefault(r["image_url"], set()).update((480, 800, 1200))
         for r in q("""SELECT DISTINCT v.image_url FROM variants v JOIN models m ON m.id = v.model_id
                       WHERE v.active = 1 AND m.active = 1 AND v.image_url LIKE 'http%'"""):
-            jobs.setdefault(r["image_url"], set()).add(1200)
+            jobs.setdefault(r["image_url"], set()).update((800, 1200))
         for r in q("SELECT DISTINCT image_url FROM feature_images WHERE image_url LIKE 'http%'"):
-            jobs.setdefault(r["image_url"], set()).update((640, 1200))
+            jobs.setdefault(r["image_url"], set()).update((800, 1200))
         done = 0
         for u, widths in jobs.items():
             try:

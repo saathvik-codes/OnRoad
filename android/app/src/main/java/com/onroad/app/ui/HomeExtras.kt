@@ -66,9 +66,9 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
     Column {
         HorizontalPager(pager, pageSpacing = 12.dp) { i ->
             val o = offers[i]
-            Column(Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(26.dp))
+            Column(Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(14.dp))
                 .background(Brush.linearGradient(listOf(Panel, Panel)))
-                .border(1.dp, Line, RoundedCornerShape(26.dp)).clickable { onOpen(o) }.padding(16.dp)) {
+                .border(1.dp, Line, RoundedCornerShape(14.dp)).clickable { onOpen(o) }.padding(16.dp)) {
                     Row(Modifier.clip(Corner).background(Ignition.copy(alpha = 0.16f)).padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Text("MANUFACTURER OFFER", style = MaterialTheme.typography.labelSmall, color = Ignition)
@@ -100,7 +100,7 @@ fun OffersCarousel(offers: List<OfferItem>, img: (String?) -> String?, onOpen: (
 /** The offer's car on a light tile (manufacturer shots often have white backgrounds); the brand's logo for brand-wide offers. */
 @Composable
 fun OfferPhoto(o: OfferItem, img: (String?) -> String?, modifier: Modifier) = Box(
-    modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xFFF3F4F7)).padding(6.dp), contentAlignment = Alignment.Center,
+    modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFFF3F4F7)).padding(6.dp), contentAlignment = Alignment.Center,
 ) {
     if (o.modelImage != null) VehicleImage(img(o.modelImage), o.modelName, Modifier.fillMaxSize())
     else coil3.compose.AsyncImage(img("/api/logos/${o.brandSlug}"), o.brandName, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(0.7f))
@@ -116,7 +116,7 @@ val BIKE_BUDGET_CHIPS = listOf(BudgetChip("b1", "Under ₹1 lakh", "Commuters, s
 fun BudgetRow(chips: List<BudgetChip>, onPick: (String) -> Unit) =
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
         items(chips, key = { it.id }) { c ->
-            Column(Modifier.clip(RoundedCornerShape(18.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(18.dp))
+            Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))
                 .clickable { onPick(c.id) }.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(c.label, fontWeight = FontWeight.SemiBold)
                 Text(c.hint, color = Mute, style = MaterialTheme.typography.bodySmall)

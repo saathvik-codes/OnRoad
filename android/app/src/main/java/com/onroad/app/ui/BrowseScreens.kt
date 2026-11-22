@@ -111,7 +111,7 @@ fun SearchScreen(onModel: (String) -> Unit, onBack: () -> Unit, vm: BrowseVM = h
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Header("Search", null, onBack)
-            OutlinedTextField(q, { q = it }, placeholder = { Text("Creta, Nexon, Thar…") }, singleLine = true, shape = RoundedCornerShape(16.dp),
+            OutlinedTextField(q, { q = it }, placeholder = { Text("Creta, Nexon, Thar…") }, singleLine = true, shape = RoundedCornerShape(14.dp),
                 trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(Icons.Outlined.Close, "Clear") } },
                 modifier = Modifier.fillMaxWidth().padding(16.dp))
         }
@@ -185,7 +185,7 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Header("Your city", "Prices and road tax follow your city", onBack)
-            Row(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(16.dp)).background(Ignition.copy(alpha = 0.12f))
+            Row(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Ignition.copy(alpha = 0.12f))
                 .clickable { status = "Finding you…"; locate() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.MyLocation, null, tint = Ignition); Spacer(Modifier.padding(6.dp))
                 Column {
@@ -196,7 +196,7 @@ fun CityScreen(onBack: () -> Unit, vm: BrowseVM = hiltViewModel()) {
             if (locOff) Art("location-permission", Modifier.fillMaxWidth().height(150.dp))
             if (locOff) Text("Turn on location", color = Ignition, style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(start = 20.dp, bottom = 8.dp).clickable { com.onroad.app.data.openLocationSettings(ctx) })
-            OutlinedTextField(q, { q = it }, placeholder = { Text("Search city or state") }, singleLine = true, shape = RoundedCornerShape(16.dp),
+            OutlinedTextField(q, { q = it }, placeholder = { Text("Search city or state") }, singleLine = true, shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         }
         items(cities.filter { "${it.name} ${it.stateName}".contains(q, true) }, key = { it.name }) { c ->

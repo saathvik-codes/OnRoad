@@ -57,7 +57,8 @@ import javax.inject.Singleton
     val variants: List<Variant> = emptyList(), val dealers: List<Dealer> = emptyList(), val offers: List<Offer> = emptyList(),
     val crashTests: List<CrashTest> = emptyList(), val gallery: List<GalleryItem> = emptyList(), val vehicleType: String? = null,
     val priceHistory: List<PricePoint> = emptyList(),
-    val brandVehicleType: String? = null)
+    val brandVehicleType: String? = null, val videos: List<ModelVideo> = emptyList())
+@Serializable data class ModelVideo(val videoId: String, val title: String = "", val channel: String? = null, val official: Int = 0)
 @Serializable data class GalleryItem(val url: String, val label: String = "", val kind: String = "model")
 
 @Serializable data class Spec(val grp: String, val key: String, val label: String, val value: String, val sourceUrl: String = "")
@@ -122,6 +123,9 @@ import javax.inject.Singleton
     val source: String = "", val published: String = "", val modelId: String? = null, val modelName: String? = null, val topic: String = "industry")
 @Serializable data class UpdateItem(val kind: String, val date: String, val modelId: String? = null, val title: String, val detail: String = "",
     val sourceUrl: String? = null, val imageUrl: String? = null)
+@Serializable data class Waiting(val available: Boolean = false, val scope: String? = null, val place: String? = null,
+    val medianWeeks: Double? = null, val minWeeks: Int? = null, val maxWeeks: Int? = null, val dealerQuotes: Int = 0, val buyerReports: Int = 0)
+@Serializable data class WaitingIn(val modelId: String, val city: String, val weeks: Int, val booked: String? = null)
 @Serializable data class ResaleYear(val years: Int, val valueInr: Long)
 @Serializable data class ResaleBand(val year: Int, val medianInr: Long, val count: Int)
 @Serializable data class Resale(val available: Boolean = false, val listings: Int = 0, val sourceUrl: String? = null, val fetchedAt: String? = null,
@@ -152,6 +156,8 @@ interface Api {
     @GET("api/ownership") suspend fun ownership(@Query("variant_id") variantId: String, @Query("city") city: String): Ownership
     @GET("api/accessory-shops") suspend fun accessoryShops(@Query("lat") lat: Double, @Query("lng") lng: Double,
         @Query("vehicle_type") type: String = "car"): List<NearDealer>
+    @GET("api/waiting") suspend fun waiting(@Query("model_id") modelId: String, @Query("city") city: String): Waiting
+    @POST("api/waiting") suspend fun reportWaiting(@Body body: WaitingIn): Map<String, Boolean>
     @GET("api/resale") suspend fun resale(@Query("variant_id") variantId: String, @Query("city") city: String, @Query("years") years: Int = 3): Resale
     @GET("api/app/version") suspend fun appVersion(): AppVersion
     @POST("api/auth/login") suspend fun login(@Body body: LoginIn): Account
@@ -261,7 +267,9 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** Manufacturer images go through the API's resizing cache, exactly like the website. */
     fun img(url: String?, w: Int = 800): String? = url?.let {
-        if (it.startsWith("http")) "${server()}/api/img?w=$w&u=${URLEncoder.encode(it, "UTF-8")}" else "${server()}$it"
+        // the server pre-renders 480 / 800 / 1200 px; asking for those exact widths always hits its cache (~0.3 s, not 4 s)
+        val snap = if (w <= 480) 480 else if (w <= 800) 800 else 1200
+        if (it.startsWith("http")) "${server()}/api/img?w=$snap&u=${URLEncoder.encode(it, "UTF-8")}" else "${server()}$it"
     }
 }
 

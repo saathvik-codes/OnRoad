@@ -1,6 +1,8 @@
 package com.onroad.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -149,7 +151,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel2).clickable(onClick = onSearch).padding(16.dp),
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2).clickable(onClick = onSearch).padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Search, null, tint = Mute); Spacer(Modifier.width(10.dp))
                     Text(if (s.type == "bike") "Search Splendor, Activa, Classic 350…" else "Search Creta, Nexon, Thar…", color = Mute)
@@ -163,14 +165,19 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") "Find my\nbike" else "Find my\ncar", Ignition, Modifier.weight(1f), onFinder)
-                    QuickAction(Icons.Outlined.Storefront, "Showrooms\nnear me", Amber, Modifier.weight(1f), onShowrooms)
-                    QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, t("Compare"), Electric, Modifier.weight(1f), onCompare)
-                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying\nguide", Good, Modifier.weight(1f), onGuide)
+                // a plain index, like the contents of a price sheet: one hairline panel, one line per tool
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Line, RoundedCornerShape(14.dp))) {
+                    QuickAction(Icons.Outlined.TravelExplore, if (s.type == "bike") "Find my bike" else "Find my car", "Answer four questions, get your shortlist", onFinder)
+                    HorizontalDivider(color = Line)
+                    QuickAction(Icons.Outlined.Storefront, "Showrooms near me", "Official dealers on a map, with verified numbers", onShowrooms)
+                    HorizontalDivider(color = Line)
+                    QuickAction(Icons.AutoMirrored.Outlined.CompareArrows, t("Compare"), "Two cars side by side, rupee by rupee", onCompare)
+                    HorizontalDivider(color = Line)
+                    QuickAction(Icons.AutoMirrored.Outlined.MenuBook, "Buying guide", "Taxes, loans and delivery in plain words", onGuide)
                 }
                 s.error?.let { ErrorState(it) { vm.retry() } }
                 Spacer(Modifier.height(22.dp))
+                if (s.type != "bike") ForYouRow(onModel, hiltViewModel<BrowseVM>())
                 if (news.isNotEmpty()) { NewsCarousel(news, onModel, onUpdates); Spacer(Modifier.height(22.dp)) }
                 if (s.offers.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -206,7 +213,7 @@ fun HomeScreen(onBrand: (Brand) -> Unit, onModel: (String) -> Unit, onSearch: ()
         if (s.loading && s.popular.isEmpty()) {
             item(span = { GridItemSpan(3) }) {
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel2.copy(alpha = 0.7f)).padding(16.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel2.copy(alpha = 0.7f)).padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
@@ -277,7 +284,7 @@ private fun RivalCard(a: ModelSummary, b: ModelSummary, img: (String?) -> String
 
 @Composable
 private fun BrandTile(b: Brand, logo: String?, onClick: () -> Unit) = Box(
-    Modifier.aspectRatio(1f).clip(RoundedCornerShape(18.dp)).background(Color.White).clickable(onClick = onClick).padding(10.dp),
+    Modifier.aspectRatio(1f).clip(RoundedCornerShape(14.dp)).background(Color.White).clickable(onClick = onClick).padding(10.dp),
     contentAlignment = Alignment.Center,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -289,15 +296,17 @@ private fun BrandTile(b: Brand, logo: String?, onClick: () -> Unit) = Box(
 }
 
 @Composable
-private fun QuickAction(icon: ImageVector, label: String, tint: Color, modifier: Modifier, onClick: () -> Unit) = Column(
-    modifier.clip(RoundedCornerShape(18.dp)).background(Panel).clickable(onClick = onClick).padding(vertical = 14.dp, horizontal = 6.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
+private fun QuickAction(icon: ImageVector, label: String, hint: String, onClick: () -> Unit) = Row(
+    Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+    verticalAlignment = Alignment.CenterVertically,
 ) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+    Icon(icon, null, tint = Ink, modifier = Modifier.size(20.dp))
+    Spacer(Modifier.width(14.dp))
+    Column(Modifier.weight(1f)) {
+        Text(label, style = MaterialTheme.typography.titleSmall)
+        Text(hint, style = MaterialTheme.typography.bodySmall, color = Mute, maxLines = 1)
     }
-    Spacer(Modifier.height(8.dp))
-    Text(label, style = MaterialTheme.typography.labelMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
+    Text("›", color = Mute, style = MaterialTheme.typography.titleLarge)
 }
 
 @Composable
@@ -317,7 +326,7 @@ private fun SkeletonPopularRow() = Tile(Modifier.fillMaxWidth(), pad = 12) {
 
 @Composable
 private fun SkeletonBrandTile() = Box(
-    Modifier.aspectRatio(1f).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.85f)).padding(10.dp),
+    Modifier.aspectRatio(1f).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.85f)).padding(10.dp),
     contentAlignment = Alignment.Center,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
