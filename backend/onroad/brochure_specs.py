@@ -312,7 +312,8 @@ RPM = r"(?:[^@]{0,25}@\s*([\d ,~\-–]+?)\s*(?:r/min|rpm))?"
 
 
 def _rpm(x):
-    return f" @ {re.sub(r'(?<=\d) (?=\d{3})', '', x).strip()} rpm" if x else ""
+    x = re.sub(r"(?<=\d) (?=\d{3})", "", x).strip() if x else x      # outside the f-string (Python 3.11)
+    return f" @ {x} rpm" if x else ""
 
 
 def _power(v):

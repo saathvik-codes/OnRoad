@@ -59,7 +59,8 @@ def repair(conn) -> dict:
                 value = fixed
             elif re.search(r"\(kW\s*@", raw or "", re.I) and re.fullmatch(r"\s*\d+(?:\.\d+)?\s*@\s*[\d\s-]+\s*", value or ""):
                 num, rpm = [x.strip() for x in value.split("@")]
-                fixed = f"{num} kW @ {re.sub(r'\s+', '', rpm)} rpm"
+                rpm = re.sub(r"\s+", "", rpm)                 # outside the f-string: Python 3.11 allows no backslash in one
+                fixed = f"{num} kW @ {rpm} rpm"
                 conn.execute("UPDATE specs SET value = ? WHERE rowid = ?", (fixed, rowid))
                 n["reformatted"] += 1
                 value = fixed
