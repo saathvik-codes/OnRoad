@@ -10,7 +10,7 @@
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
 - **Itemised On-Road Price Breakdown**: Real-time tax calculator incorporating State Motor Vehicle Taxation Acts across all 36 States & Union Territories (Life-Time Tax, Central RTO, IRDAI Third-Party Insurance, TCS, and FASTag).
 - **Interactive 3D Showroom Stage**: WebGL-powered 3D concept vehicle preview built with `@react-three/fiber` and `@react-three/drei`.
@@ -22,7 +22,7 @@
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
                        ┌───────────────────────────────┐
@@ -54,7 +54,7 @@
 
 ---
 
-## 🚀 Live Services
+## Live Services
 
 | Service | Environment | Live URL | Description |
 |---|---|---|---|
@@ -64,7 +64,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend (`/web`)
 - **Framework**: Next.js 16 (App Router with Turbopack) & React 19
@@ -94,7 +94,7 @@ scripts/   maintenance scripts; scripts/dev/ holds local checks (run from the re
 
 ---
 
-## 💻 Local Development Setup
+## Local Development Setup
 
 ### 1. Clone the Repository
 ```bash
@@ -139,7 +139,7 @@ cd android
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 ### Backend (`backend/.env`)
 ```env
@@ -159,7 +159,7 @@ ALLOWED_DEV_ORIGINS=localhost,127.0.0.1
 
 ---
 
-## 🚢 Production Deployment (Render.com)
+## Production Deployment (Render.com)
 
 This repository includes a pre-configured `render.yaml` Blueprint and Dockerfiles for one-click deployment:
 
@@ -172,5 +172,5 @@ This repository includes a pre-configured `render.yaml` Blueprint and Dockerfile
 
 ---
 
-## 📄 License
+## License
 This project is proprietary and built for automotive price discovery in India. Vehicle names, logos, and trademarks belong to their respective manufacturers.
